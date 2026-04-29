@@ -1,0 +1,104 @@
+Starting project at D:\giac-app
+React Compiler enabled
+Starting Metro Bundler
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 85.4% (911/986)
+λ node_modules\expo-router\node\render.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 80.7% (1041/1161)
+λ Bundled 4379ms node_modules\expo-router\node\render.js (1392 modules)
+Web Bundled 5658ms node_modules\expo-router\entry.js (1244 modules)
+Web node_modules\expo-router\entry.js ▓▓▓▓░░░░░░░░░░░░ 25.0% ( 5/12)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓░░░░░░░░░ 47.3% (142/263)
+| Warning: Unknown at rule: @tailwind (global.css:1:10):
+| > 1 | @tailwind base;
+|     |          ^
+|   2 | @tailwind components;
+|   3 | @tailwind utilities;
+|   4 |
+| Warning: Unknown at rule: @tailwind (global.css:2:10):
+|   1 | @tailwind base;
+| > 2 | @tailwind components;
+|     |          ^
+|   3 | @tailwind utilities;
+|   4 |
+|   5 | /* Your existing web resets below */
+| Warning: Unknown at rule: @tailwind (global.css:3:10):
+|   1 | @tailwind base;
+|   2 | @tailwind components;
+| > 3 | @tailwind utilities;
+|     |          ^
+|   4 |
+|   5 | /* Your existing web resets below */
+|   6 | html,
+| (node:14068) DeprecationWarning: Passing lineNumber and colNumber is deprecated to @babel/code-frame. Please use `codeFrameColumns`.
+| (Use `node --trace-deprecation ...` to show where the warning was created)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓░░░░░░░░ 51.8% (395/590)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 70.2% (735/881)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 86.2% ( 937/1009)
+Web node_modules\expo-router\entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.8% (1244/1245)
+Web Bundled 19326ms node_modules\expo-router\entry.js (1245 modules)
+ LOG  [web] Logs will appear in the browser console
+λ Bundled 50ms node_modules\expo-router\node\render.js (1 module)
+Web Bundled 738ms node_modules\expo-router\entry.js (1 module)
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ Bundled 50ms node_modules\expo-router\node\render.js (1 module)
+Web Bundled 2648ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 83ms node_modules\expo-router\entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ Bundled 39ms node_modules\expo-router\node\render.js (1 module)
+Web Bundled 493ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 76ms node_modules\expo-router\entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ Bundled 39ms node_modules\expo-router\node\render.js (1 module)
+Web Bundled 518ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 70ms node_modules\expo-router\entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Android node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android Bundled 1922ms node_modules\expo-router\entry.js (1538 modules)
+ WARN  [2026-04-27T16:00:50.623Z]  @firebase/auth: Auth (12.12.0): 
+You are initializing Firebase Auth for React Native without providing
+AsyncStorage. Auth state will default to memory persistence and will not
+persist between sessions. In order to persist auth state, install the package
+"@react-native-async-storage/async-storage" and provide it to
+initializeAuth:
+
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+
+// For @react-native-async-storage/async-storage v3:
+import { createAsyncStorage } from '@react-native-async-storage/async-storage';
+const appStorage = createAsyncStorage("app");
+const persistence = getReactNativePersistence(appStorage);
+
+/*
+// For @react-native-async-storage/async-storage v2:
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+const persistence = getReactNativePersistence(ReactNativeAsyncStorage);
+*/
+
+// Then, initialize auth:
+const auth = initializeAuth(app, {
+  persistence
+});
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ Bundled 54ms node_modules\expo-router\node\render.js (1 module)
+Web Bundled 862ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 121ms node_modules\expo-router\entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+λ Bundled 48ms node_modules\expo-router\node\render.js (1 module)
+Web Bundled 823ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 92ms node_modules\expo-router\entry.js (1 module)
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+ LOG  [web] Logs will appear in the browser console
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ Bundled 49ms node_modules\expo-router\node\render.js (1 module)
+Web Bundled 839ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 109ms node_modules\expo-router\entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web node_modules\expo-router\entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ Bundled 61ms node_modules\expo-router\node\render.js (1 module)
+Web Bundled 1197ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 188ms node_modules\expo-router\entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console

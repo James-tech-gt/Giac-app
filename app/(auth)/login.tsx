@@ -1,5 +1,6 @@
+import { GoogleSignin, isCancelledResponse, isSuccessResponse } from '@react-native-google-signin/google-signin';
 import { router } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Animated,
@@ -12,13 +13,35 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
-import { signIn } from '../../services/auth';
+import { signIn, signInWithGoogle } from '../../services/auth';
 
-const { width } = Dimensions.get('window');
+const useNativeDriver = Platform.OS !== 'web';
 
 export default function LoginScreen() {
+  const [dimensions, setDimensions] = useState(Dimensions.get('window'));
+
+  useEffect(() => {
+    // Only configure if we are on native and NOT in Expo Go
+    if (Platform.OS !== 'web') {
+      try {
+        GoogleSignin.configure({
+          webClientId: '529116845053-0kr475md8ia75719u5cr89h0ijhm20qv.apps.googleusercontent.com',
+        });
+      } catch (e) {
+        console.log('Native Google Sign-In not available (Expo Go)');
+      }
+    }
+
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+
+    return () => subscription?.remove();
+  }, []);
+
+  const { width, height } = dimensions;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,29 +55,32 @@ export default function LoginScreen() {
   const slideAnim = useRef(new Animated.Value(30)).current;
   const errorShake = useRef(new Animated.Value(0)).current;
 
+  // Responsive values
+
+
   React.useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
       Animated.spring(slideAnim, {
         toValue: 0,
         tension: 60,
         friction: 10,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
     ]).start();
   }, []);
 
   const shakeError = () => {
     Animated.sequence([
-      Animated.timing(errorShake, { toValue: 8, duration: 60, useNativeDriver: true }),
-      Animated.timing(errorShake, { toValue: -8, duration: 60, useNativeDriver: true }),
-      Animated.timing(errorShake, { toValue: 6, duration: 60, useNativeDriver: true }),
-      Animated.timing(errorShake, { toValue: -6, duration: 60, useNativeDriver: true }),
-      Animated.timing(errorShake, { toValue: 0, duration: 60, useNativeDriver: true }),
+      Animated.timing(errorShake, { toValue: 8, duration: 60, useNativeDriver }),
+      Animated.timing(errorShake, { toValue: -8, duration: 60, useNativeDriver }),
+      Animated.timing(errorShake, { toValue: 6, duration: 60, useNativeDriver }),
+      Animated.timing(errorShake, { toValue: -6, duration: 60, useNativeDriver }),
+      Animated.timing(errorShake, { toValue: 0, duration: 60, useNativeDriver }),
     ]).start();
   };
 
@@ -73,11 +99,53 @@ export default function LoginScreen() {
       router.replace('/(main)/home');
     } catch (err: any) {
       const msg =
-        err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password'
+        err.code === 'auth/user-not-found' ||
+        err.code === 'auth/wrong-password' ||
+        err.code === 'auth/invalid-credential' ||
+        err.code === 'auth/invalid-login-credentials'
           ? 'Invalid email or password.'
           : err.code === 'auth/too-many-requests'
           ? 'Too many attempts. Please try again later.'
           : 'Something went wrong. Please try again.';
+      setError(msg);
+      shakeError();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      // Detect if the native Google module is available (it's absent in Expo Go)
+      const isNativeSupported = Platform.OS !== 'web' && typeof GoogleSignin?.signIn === 'function';
+
+      if (!isNativeSupported) {
+        // Standard Firebase Web flow for Expo Go and Browsers
+        await signInWithGoogle('');
+      } else {
+        // Native library for Development Builds
+        await GoogleSignin.hasPlayServices();
+        const googleResponse = await GoogleSignin.signIn();
+        if (isCancelledResponse(googleResponse)) {
+          return;
+        }
+
+        if (!isSuccessResponse(googleResponse)) {
+          throw new Error('Google Sign-In failed before a valid account response was returned.');
+        }
+
+        const idToken = googleResponse.data.idToken;
+        if (!idToken) {
+          throw new Error('Google Sign-In failed: No ID token obtained.');
+        }
+        await signInWithGoogle(idToken);
+      }
+      router.replace('/(main)/home');
+    } catch (err: any) {
+      const msg = err.message || 'Google sign-in failed. Please try again.';
       setError(msg);
       shakeError();
     } finally {
@@ -93,11 +161,11 @@ export default function LoginScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
 
       {/* Background accents */}
-      <View style={styles.bgAccentTop} />
-      <View style={styles.bgAccentBottom} />
+      <View style={[styles.bgAccentTop, { width: width * 0.9, height: width * 0.9, borderRadius: width * 0.45, top: -width * 0.4, right: -width * 0.2 }]} />
+      <View style={[styles.bgAccentBottom, { width: width * 0.6, height: width * 0.6, borderRadius: width * 0.3, bottom: -width * 0.1, left: -width * 0.1 }]} />
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { maxWidth: 480, alignSelf: 'center', width: '100%', paddingHorizontal: 24 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -234,9 +302,28 @@ export default function LoginScreen() {
             <View style={styles.dividerLine} />
           </View>
 
+          {/* Google Sign-in button */}
+          <TouchableOpacity
+            style={[styles.googleBtn, loading && styles.googleBtnDisabled]}
+            onPress={handleGoogleSignIn}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color="#0A1628" size="small" />
+            ) : (
+              <>
+                <View style={styles.googleIcon}>
+                  <View style={styles.googleCircle} />
+                </View>
+                <Text style={styles.googleBtnText}>Continue with Google</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
           {/* Sign up CTA */}
           <View style={styles.signUpRow}>
-            <Text style={styles.signUpPrompt}>Don't have an account? </Text>
+            <Text style={styles.signUpPrompt}>Don&apos;t have an account? </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
               <Text style={styles.signUpLink}>Create one</Text>
             </TouchableOpacity>
@@ -245,7 +332,7 @@ export default function LoginScreen() {
 
         {/* Footer */}
         <Text style={styles.footer}>
-          By signing in you agree to GIAC's Terms of Service
+          By signing in you agree to GIAC&apos;s Terms of Service
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -263,27 +350,25 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: NAV,
+    width: '100%',
+    ...Platform.select({
+      web: {
+        minHeight: '100vh' as any,
+      },
+    }),
   },
 
   bgAccentTop: {
     position: 'absolute',
-    width: width * 0.9,
-    height: width * 0.9,
-    borderRadius: width * 0.45,
     borderWidth: 1,
     borderColor: 'rgba(59,130,246,0.07)',
-    top: -width * 0.4,
-    right: -width * 0.2,
+    zIndex: -1,
   },
   bgAccentBottom: {
     position: 'absolute',
-    width: width * 0.6,
-    height: width * 0.6,
-    borderRadius: width * 0.3,
     borderWidth: 1,
     borderColor: 'rgba(200,169,107,0.06)',
-    bottom: -width * 0.1,
-    left: -width * 0.1,
+    zIndex: -1,
   },
 
   scroll: {
@@ -291,7 +376,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 64,
     paddingBottom: 40,
-    paddingHorizontal: 24,
   },
 
   // ── Header ──────────────────────────────────────────
@@ -546,6 +630,41 @@ const styles = StyleSheet.create({
   dividerText: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.3)',
+  },
+
+  // ── Google Sign-in button ─────────────────────────────
+  googleBtn: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    marginBottom: 20,
+    gap: 10,
+  },
+  googleBtnDisabled: {
+    opacity: 0.7,
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleCircle: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#4285F4',
+  },
+  googleBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    letterSpacing: 0.3,
   },
 
   // ── Sign up ───────────────────────────────────────────

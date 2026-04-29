@@ -1,16 +1,18 @@
 import { router } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import {
-    Animated,
-    Dimensions,
-    ImageBackground,
-    StatusBar,
-    StyleSheet,
-    Text,
-    View,
+  Animated,
+  Dimensions,
+  ImageBackground,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
+const useNativeDriver = Platform.OS !== 'web';
 
 export default function SplashScreen() {
   // Animation values
@@ -32,37 +34,37 @@ export default function SplashScreen() {
           toValue: 1,
           tension: 60,
           friction: 8,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
         Animated.timing(logoOpacity, {
           toValue: 1,
           duration: 600,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ]),
       // 2. Divider line expands
       Animated.timing(lineWidth, {
         toValue: 1,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
       // 3. Subtitle fades in
       Animated.timing(subtitleOpacity, {
         toValue: 1,
         duration: 400,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
       // 4. Tagline fades in
       Animated.timing(taglineOpacity, {
         toValue: 1,
         duration: 400,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
       // 5. Loading dots
       Animated.stagger(150, [
-        Animated.spring(dotScale1, { toValue: 1, useNativeDriver: true }),
-        Animated.spring(dotScale2, { toValue: 1, useNativeDriver: true }),
-        Animated.spring(dotScale3, { toValue: 1, useNativeDriver: true }),
+        Animated.spring(dotScale1, { toValue: 1, useNativeDriver }),
+        Animated.spring(dotScale2, { toValue: 1, useNativeDriver }),
+        Animated.spring(dotScale3, { toValue: 1, useNativeDriver }),
       ]),
     ]).start();
 

@@ -33,61 +33,415 @@ This project uses **Expo Router** with **TypeScript (TSX)** for type-safe develo
 giac-app/
 ├── app/
 │   ├── _layout.tsx              # Root navigation
-│   ├── index.tsx                # Splash OR redirect logic
+│   ├── index.tsx                # Entry point/redirect logic
+│   ├── splashscreen.tsx         # Splash screen
 │
-│   ├── (auth)/                  # Auth group
-│   │   ├── login.tsx
-│   │   ├── signup.tsx
+│   ├── (auth)/                  # Authentication routes
+│   │   ├── _layout.tsx
+│   │   ├── login.tsx            # Login page
+│   │   └── signup.tsx           # Sign up page
 │
-│   ├── (main)/                  # Main app
-│   │   ├── home.tsx
-│   │   ├── courses.tsx
-│   │   ├── apply.tsx
-│   │   ├── services.tsx
-│   │   ├── profile.tsx
+│   ├── (main)/                  # Main app navigation
+│   │   ├── _layout.tsx
+│   │   ├── home.tsx             # Home page
+│   │   ├── courses.tsx          # Courses listing
+│   │   ├── apply.tsx            # Application form
+│   │   ├── services.tsx         # Services page
+│   │   └── profile.tsx          # User profile
 │
-│   ├── (student)/               # Student-specific
-│   │   ├── dashboard.tsx
-│   │   ├── materials.tsx
+│   ├── (student)/               # Student-specific routes
+│   │   ├── _layout.tsx
+│   │   ├── dashboard.tsx        # Student dashboard
+│   │   └── materials.tsx        # Course materials
 │
-│   ├── (applicant)/             # Applicant-specific
-│   │   ├── status.tsx
+│   ├── (applicant)/             # Applicant-specific routes
+│   │   ├── _layout.tsx
+│   │   └── status.tsx           # Application status
 │
-│   ├── (client)/                # ADR clients
-│   │   ├── cases.tsx
-│
-│   └── splash.tsx
+│   └── (client)/                # Client routes
+│       ├── _layout.tsx
+│       └── cases.tsx            # Cases management
 │
 ├── components/
-│   ├── Button.tsx
-│   ├── Card.tsx
-│   ├── Input.tsx
+│   ├── external-link.tsx
+│   ├── haptic-tab.tsx
+│   ├── hello-wave.tsx
+│   ├── parallax-scroll-view.tsx
+│   ├── themed-text.tsx
+│   ├── themed-view.tsx
+│   └── ui/
+│       ├── collapsible.tsx
+│       ├── icon-symbol.ios.tsx
+│       └── icon-symbol.tsx
 │
-├── services/                    # Firebase logic
-│   ├── firebase.ts
-│   ├── auth.ts
-│   ├── user.ts
-│   ├── application.ts
-│   ├── case.ts
+├── services/                    # Backend services
+│   ├── firebase.ts              # Firebase configuration
+│   └── auth.ts                  # Authentication logic
 │
-├── context/                     # Global state
-│   ├── AuthContext.tsx
+├── context/                     # Global state management
 │
-├── hooks/
-│   ├── useAuth.ts
+├── hooks/                       # Custom React hooks
+│   ├── use-color-scheme.ts
+│   ├── use-color-scheme.web.ts
+│   └── use-theme-color.ts
 │
 ├── constants/
-│   └── theme.ts
+│   └── theme.ts                 # Theme configuration
 │
 ├── assets/
-│   └── images/
+│   └── images/                  # Image assets
 │
 ├── babel.config.js
+├── eslint.config.js
 ├── tailwind.config.js
 ├── tsconfig.json
 ├── package.json
-└── app.json
+├── app.json
+└── README.md
 ```
+
+## Pages Overview
+
+### Authentication (`(auth)`)
+- **login.tsx** - User login
+- **signup.tsx** - User registration
+
+### Main App (`(main)`)
+- **home.tsx** - Dashboard/home landing
+- **courses.tsx** - Browse available courses
+- **apply.tsx** - Course application form
+- **services.tsx** - Available services
+- **profile.tsx** - User profile management
+
+### Student Routes (`(student)`)
+- **dashboard.tsx** - Student dashboard with enrolled courses
+- **materials.tsx** - Access course materials
+
+### Applicant Routes (`(applicant)`)
+- **status.tsx** - View application status
+
+### Client Routes (`(client)`)
+- **cases.tsx** - Manage ADR cases
+
+---
+
+## Complete App Pages & Features
+
+### Authentication & Access Control
+- **login.tsx** - User login with email/password
+- **signup.tsx** - User registration
+- **Role-based access control** - Visitor → Applicant → Student → Professional Member → Client
+
+### Main Hub
+- **home.tsx** 
+  - Welcome message for each user role
+  - Announcements and events
+  - Quick action buttons (Explore Courses, Apply, Request Mediation, Track Status)
+  - Role-specific dashboard views
+
+### Courses & Programs
+- **courses.tsx**
+  - Display PECADR (4-week certificate)
+  - Display Master's program (3-month)
+  - Program details (description, modules, duration, fees, schedule)
+  - Enrollment information
+
+### Applications & Admissions
+- **apply.tsx**
+  - Course application form submission
+  - Document upload functionality
+  - Form validation and confirmation
+  
+- **status.tsx** (Applicant)
+  - Check application status (Pending/Approved/Rejected)
+  - View feedback from admin
+  - Re-apply option if rejected
+
+### ADR Services
+- **services.tsx**
+  - Submit mediation/arbitration requests
+  - Select dispute category (land, rent, family, workplace, etc.)
+  - Provide case details and upload documents
+  - Service request submission
+
+- **cases.tsx** (Client)
+  - Track submitted ADR cases
+  - View case status updates
+  - Communication with assigned mediator
+  - View mediation outcomes
+
+### Student Learning Module
+- **dashboard.tsx** (Student)
+  - Enrolled courses overview
+  - Class schedule and timetable
+  - Learning progress percentage
+  - Completed vs. pending modules
+  - Quick links to materials, assignments, tests
+
+- **materials.tsx** (Student)
+  - Access learning materials (PDFs, videos, docs)
+  - View modules and lessons
+  - Download resources
+  - Track module completion
+
+- **assignments.tsx** (Student) - *Subpage/Section under materials*
+  - View assigned tasks
+  - Submit assignments
+  - View grades and feedback
+  - Deadline tracking
+
+- **tests.tsx** (Student) - *Subpage/Section under materials*
+  - Take examinations and quizzes
+  - View test schedules
+  - Review past results and scores
+  - Access answer keys (if available)
+
+- **certificates.tsx** (Student)
+  - View earned certificates
+  - Download certificate files
+  - Share certificate credentials
+
+### User Profile
+- **profile.tsx**
+  - Display user information
+  - Role and current status
+  - Membership details (GIAC, GNAAP)
+  - Account settings
+  - Logout functionality
+
+---
+
+## Backend Services Required
+
+### Authentication Service
+- User registration and login
+- Email verification
+- Password reset
+- Token management (JWT)
+
+### User Management Service
+- Create/update user profile
+- Assign and manage user roles
+- Track user status transitions
+
+### Course Management Service
+- Store course information
+- Manage course modules and content
+- Track enrollment
+
+### Application Management Service
+- Submit course applications
+- Store application status
+- Admin review and approval workflow
+
+### Learning Progress Service
+- Track enrollment
+- Monitor module completion
+- Record attendance
+- Store assignment and test scores
+
+### ADR Case Management Service
+- Accept mediation/arbitration requests
+- Assign mediators/arbitrators
+- Update case status
+- Store case documents
+
+### Notification Service
+- Send application status updates
+- Class reminders and announcements
+- Case status notifications
+- Event updates
+
+### Certificate Management Service
+- Generate certificates upon completion
+- Store certificate data
+- Enable certificate downloads
+
+---
+
+## Components Needed
+
+### Common Components
+- Button (primary, secondary, danger states)
+- Input field (text, email, password, textarea)
+- Card component
+- Loading spinner
+- Modal/Dialog
+- Toast notifications
+- Dropdown/Select
+
+### Form Components
+- Form wrapper with validation
+- Date picker
+- File upload
+- Radio buttons and checkboxes
+
+### List Components
+- Course list
+- Application status list
+- Case list
+- Material list
+- Assignment list
+
+### Navigation Components
+- Bottom navigation (role-based tabs)
+- Header with user profile
+- Breadcrumbs
+
+---
+
+## Development & Implementation Plan
+
+### Phase 1: Foundation & Setup (Week 1)
+1. **Initialize project structure**
+   - Set up Firebase project and credentials
+   - Configure TypeScript, Tailwind, ESLint
+   - Create authentication context and hooks
+
+2. **Build Authentication System**
+   - Implement login page with form validation
+   - Implement signup page with user role selection
+   - Create auth context and useAuth hook
+   - Set up Firebase authentication
+
+3. **Create Reusable Components**
+   - Basic UI components (Button, Input, Card)
+   - Form wrapper component
+   - Loading and error states
+
+### Phase 2: Core Navigation & Routing (Week 2)
+4. **Set up navigation structure**
+   - Configure layout files for each route group
+   - Implement role-based route protection
+   - Create navigation between sections
+
+5. **Build Home Dashboard**
+   - Create role-specific home views
+   - Add quick action buttons
+   - Implement announcements section
+
+### Phase 3: Course & Application Module (Week 3)
+6. **Courses Module**
+   - Create courses listing page
+   - Add course detail view
+   - Display program schedules and fees
+
+7. **Application Module**
+   - Build application form page
+   - Implement document upload
+   - Create application status tracking page
+
+### Phase 4: Student Learning Module (Week 4)
+8. **Student Dashboard**
+   - Create dashboard with course enrollment overview
+   - Add learning progress tracker
+   - Display class schedule
+
+9. **Materials & Learning**
+   - Build materials listing page
+   - Create module view for accessing content
+   - Add assignment tracking section
+   - Add test/quiz section
+
+10. **Certificates**
+    - Create certificates viewing page
+    - Implement certificate download functionality
+
+### Phase 5: ADR Services Module (Week 5)
+11. **Service Request Module**
+    - Build mediation/arbitration request form
+    - Create case submission page
+    - Add dispute category selection
+
+12. **Case Tracking**
+    - Build client case tracking page
+    - Display case status updates
+    - Add case detail view
+
+### Phase 6: User Profile & Polish (Week 6)
+13. **Profile Module**
+    - Create user profile page
+    - Add account settings
+    - Implement logout functionality
+
+14. **Testing & Refinement**
+    - Test all user flows
+    - Optimize performance
+    - Bug fixes and UI polish
+
+---
+
+## Database Schema (Firestore Collections)
+
+```
+users/
+├── {userId}
+│   ├── name
+│   ├── email
+│   ├── role (applicant, student, professional, client)
+│   ├── status
+│   └── joinDate
+
+courses/
+├── {courseId}
+│   ├── title
+│   ├── description
+│   ├── duration
+│   ├── fee
+│   ├── schedule
+│   └── modules
+
+applications/
+├── {applicationId}
+│   ├── userId
+│   ├── courseId
+│   ├── status (pending, approved, rejected)
+│   ├── submittedDate
+│   └── documents
+
+enrollments/
+├── {enrollmentId}
+│   ├── userId
+│   ├── courseId
+│   ├── enrollmentDate
+│   └── progress
+
+learningProgress/
+├── {progressId}
+│   ├── userId
+│   ├── courseId
+│   ├── completedModules
+│   ├── totalModules
+│   ├── progressPercentage
+│   └── scores
+
+materials/
+├── {materialId}
+│   ├── courseId
+│   ├── moduleId
+│   ├── title
+│   ├── fileUrl
+│   └── uploadDate
+
+adRCases/
+├── {caseId}
+│   ├── clientId
+│   ├── disputeType
+│   ├── status
+│   ├── submittedDate
+│   ├── mediatorId
+│   └── documents
+
+certificates/
+├── {certificateId}
+│   ├── userId
+│   ├── courseId
+│   ├── issueDate
+│   ├── certificateUrl
+│   └── credentialId
+```
+
+---
 
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 

@@ -1,5 +1,6 @@
+import { GoogleSignin, isCancelledResponse, isSuccessResponse } from '@react-native-google-signin/google-signin';
 import { router } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -12,13 +13,37 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
-import { signUp } from '../../services/auth';
+import { signUp, signUpWithGoogle } from '../../services/auth';
 
-const { width } = Dimensions.get('window');
+const useNativeDriver = Platform.OS !== 'web';
 
 export default function SignupScreen() {
+  const [dimensions, setDimensions] = useState(Dimensions.get('window'));
+
+  useEffect(() => {
+    // Only configure if we are on native and NOT in Expo Go
+    if (Platform.OS !== 'web') {
+      try {
+        GoogleSignin.configure({
+          webClientId: '529116845053-0kr475md8ia75719u5cr89h0ijhm20qv.apps.googleusercontent.com',
+        });
+      } catch (e) {
+        console.log('Native Google Sign-In not available (Expo Go)');
+      }
+    }
+
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+
+    return () => subscription?.remove();
+  }, []);
+
+  const { width, height } = dimensions;
+
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -39,25 +64,25 @@ export default function SignupScreen() {
 
   React.useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, tension: 60, friction: 10, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 60, friction: 10, useNativeDriver }),
     ]).start();
   }, []);
 
   const shakeError = () => {
     Animated.sequence([
-      Animated.timing(errorShake, { toValue: 8, duration: 60, useNativeDriver: true }),
-      Animated.timing(errorShake, { toValue: -8, duration: 60, useNativeDriver: true }),
-      Animated.timing(errorShake, { toValue: 6, duration: 60, useNativeDriver: true }),
-      Animated.timing(errorShake, { toValue: -6, duration: 60, useNativeDriver: true }),
-      Animated.timing(errorShake, { toValue: 0, duration: 60, useNativeDriver: true }),
+      Animated.timing(errorShake, { toValue: 8, duration: 60, useNativeDriver }),
+      Animated.timing(errorShake, { toValue: -8, duration: 60, useNativeDriver }),
+      Animated.timing(errorShake, { toValue: 6, duration: 60, useNativeDriver }),
+      Animated.timing(errorShake, { toValue: -6, duration: 60, useNativeDriver }),
+      Animated.timing(errorShake, { toValue: 0, duration: 60, useNativeDriver }),
     ]).start();
   };
 
   const toggleAgreed = () => {
     Animated.sequence([
-      Animated.timing(checkScale, { toValue: 0.8, duration: 80, useNativeDriver: true }),
-      Animated.spring(checkScale, { toValue: 1, tension: 200, friction: 6, useNativeDriver: true }),
+      Animated.timing(checkScale, { toValue: 0.8, duration: 80, useNativeDriver }),
+      Animated.spring(checkScale, { toValue: 1, tension: 200, friction: 6, useNativeDriver }),
     ]).start();
     setAgreed((prev) => !prev);
   };
@@ -113,6 +138,45 @@ export default function SignupScreen() {
     }
   };
 
+  const handleGoogleSignup = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      // Detect if the native Google module is available (it's absent in Expo Go)
+      const isNativeSupported = Platform.OS !== 'web' && typeof GoogleSignin?.signIn === 'function';
+
+      if (!isNativeSupported) {
+        // Standard Firebase Web flow for Expo Go and Browsers
+        await signUpWithGoogle('');
+      } else {
+        // Native library for Development Builds
+        await GoogleSignin.hasPlayServices();
+        const googleResponse = await GoogleSignin.signIn();
+        if (isCancelledResponse(googleResponse)) {
+          return;
+        }
+
+        if (!isSuccessResponse(googleResponse)) {
+          throw new Error('Google Sign-In failed before a valid account response was returned.');
+        }
+
+        const { idToken, user } = googleResponse.data;
+        if (!idToken) {
+          throw new Error('Google Sign-In failed: No ID token obtained.');
+        }
+        await signUpWithGoogle(idToken, user.name || undefined);
+      }
+      router.replace('/(main)/home');
+    } catch (err: any) {
+      const msg = err.message || 'Google sign-up failed. Please try again.';
+      setError(msg);
+      shakeError();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const strength = getPasswordStrength();
 
   const inputStyle = (field: string) => [
@@ -127,11 +191,11 @@ export default function SignupScreen() {
     >
       <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
 
-      <View style={styles.bgAccentTop} />
-      <View style={styles.bgAccentBottom} />
+      <View style={[styles.bgAccentTop, { width: width * 0.9, height: width * 0.9, borderRadius: width * 0.45, top: -width * 0.4, right: -width * 0.2 }]} />
+      <View style={[styles.bgAccentBottom, { width: width * 0.6, height: width * 0.6, borderRadius: width * 0.3, bottom: -width * 0.1, left: -width * 0.1 }]} />
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { maxWidth: 480, alignSelf: 'center', width: '100%', paddingHorizontal: 24 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -346,7 +410,7 @@ export default function SignupScreen() {
               {agreed && <View style={styles.checkmark} />}
             </Animated.View>
             <Text style={styles.termsText}>
-              I agree to GIAC's{' '}
+              I agree to GIAC&apos;s{' '}
               <Text style={styles.termsLink}>Terms of Service</Text>
               {' '}and{' '}
               <Text style={styles.termsLink}>Privacy Policy</Text>
@@ -364,6 +428,32 @@ export default function SignupScreen() {
               <ActivityIndicator color="#0A1628" size="small" />
             ) : (
               <Text style={styles.submitBtnText}>Create account</Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Google Sign-up button */}
+          <TouchableOpacity
+            style={[styles.googleBtn, loading && styles.googleBtnDisabled]}
+            onPress={handleGoogleSignup}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color="#0A1628" size="small" />
+            ) : (
+              <>
+                <View style={styles.googleIcon}>
+                  <View style={styles.googleCircle} />
+                </View>
+                <Text style={styles.googleBtnText}>Sign up with Google</Text>
+              </>
             )}
           </TouchableOpacity>
         </Animated.View>
@@ -434,22 +524,33 @@ const BORDER = 'rgba(255,255,255,0.1)';
 const BORDER_FOCUS = 'rgba(59,130,246,0.5)';
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: NAV },
+  root: {
+    flex: 1,
+    backgroundColor: NAV,
+    width: '100%',
+    ...Platform.select({
+      web: {
+        minHeight: '100vh' as any,
+      },
+    }),
+  },
 
   bgAccentTop: {
-    position: 'absolute', width: width * 0.9, height: width * 0.9,
-    borderRadius: width * 0.45, borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.07)', top: -width * 0.4, right: -width * 0.2,
+    position: 'absolute',
+    borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.07)',
+    zIndex: -1,
   },
   bgAccentBottom: {
-    position: 'absolute', width: width * 0.6, height: width * 0.6,
-    borderRadius: width * 0.3, borderWidth: 1,
-    borderColor: 'rgba(200,169,107,0.06)', bottom: -width * 0.1, left: -width * 0.1,
+    position: 'absolute',
+    borderWidth: 1,
+    borderColor: 'rgba(200,169,107,0.06)',
+    zIndex: -1,
   },
 
   scroll: {
     flexGrow: 1, alignItems: 'center',
-    paddingTop: 56, paddingBottom: 40, paddingHorizontal: 24,
+    paddingTop: 56, paddingBottom: 40,
   },
 
   // ── Header ──────────────────────────────────
@@ -595,6 +696,59 @@ const styles = StyleSheet.create({
   },
   submitBtnDisabled: { opacity: 0.7 },
   submitBtnText: { fontSize: 15, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
+
+  // ── Divider ──────────────────────────────────
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+    marginTop: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  dividerText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.3)',
+  },
+
+  // ── Google Sign-up button ─────────────────────
+  googleBtn: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    marginBottom: 20,
+    gap: 10,
+  },
+  googleBtnDisabled: {
+    opacity: 0.7,
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleCircle: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#4285F4',
+  },
+  googleBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    letterSpacing: 0.3,
+  },
 
   // ── Sign in link ─────────────────────────────
   signInRow: {

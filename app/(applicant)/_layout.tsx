@@ -8,6 +8,10 @@ export default function ApplicantLayout() {
       }}
     >
       <Stack.Screen 
+        name="apply" 
+        options={{ title: 'Apply for Training' }}
+      />
+      <Stack.Screen 
         name="status" 
         options={{ title: 'Application Status' }}
       />

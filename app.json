@@ -17,10 +17,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.giacapp"
     },
     "web": {
-      "output": "static"
+      "output": "static",
+      "backgroundColor": "#0A1628"
     },
     "plugins": [
       "expo-router",
@@ -30,16 +32,24 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#0A1628",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#0A1628"
           }
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2c5403e1-398c-477d-ab76-1af1f18080b1"
+      }
     }
   }
 }
+  

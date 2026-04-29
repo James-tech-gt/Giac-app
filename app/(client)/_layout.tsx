@@ -8,6 +8,10 @@ export default function ClientLayout() {
       }}
     >
       <Stack.Screen 
+        name="request-mediation" 
+        options={{ title: 'Request Mediation' }}
+      />
+      <Stack.Screen 
         name="cases" 
         options={{ title: 'Cases' }}
       />
