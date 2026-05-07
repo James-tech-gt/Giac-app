@@ -4,13 +4,11 @@ import { ThemedView } from './themed-view';
 interface ResponsivePageProps extends ViewProps {
   children: React.ReactNode;
   scrollable?: boolean;
-  contentContainerClassName?: string;
 }
 
 export function ResponsivePage({
   children,
   scrollable = true,
-  contentContainerClassName = 'grow',
   className = 'flex-1',
   ...props
 }: ResponsivePageProps) {
@@ -32,7 +30,7 @@ export function ResponsivePage({
     <ThemedView className="flex-1">
       <ScrollView 
         className="flex-1" 
-        contentContainerClassName={contentContainerClassName}
+        contentContainerStyle={{ flexGrow: 1 }}
         scrollIndicatorInsets={{ right: 1 }}
       >
         {content}

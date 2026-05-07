@@ -1,3 +1,7 @@
+import { GoogleMark } from '@/components/google-mark';
+import { C, Fonts } from '@/constants/theme';
+import { canUseNativeGoogleSignIn, configureGoogleSignIn } from '@/services/google-signin';
+import { FontAwesome6 } from '@expo/vector-icons';
 import { GoogleSignin, isCancelledResponse, isSuccessResponse } from '@react-native-google-signin/google-signin';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -15,7 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { signUp, signUpWithGoogle } from '../../services/auth';
+import { sendVerificationEmail, signUp, signUpWithGoogle } from '../../services/auth';
 
 const useNativeDriver = Platform.OS !== 'web';
 
@@ -23,26 +27,10 @@ export default function SignupScreen() {
   const [dimensions, setDimensions] = useState(Dimensions.get('window'));
 
   useEffect(() => {
-    // Only configure if we are on native and NOT in Expo Go
-    if (Platform.OS !== 'web') {
-      try {
-        GoogleSignin.configure({
-          webClientId: '529116845053-0kr475md8ia75719u5cr89h0ijhm20qv.apps.googleusercontent.com',
-        });
-      } catch (e) {
-        console.log('Native Google Sign-In not available (Expo Go)');
-      }
-    }
-
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setDimensions(window);
-    });
-
-    return () => subscription?.remove();
+    configureGoogleSignIn();
+    const sub = Dimensions.addEventListener('change', ({ window }) => setDimensions(window));
+    return () => sub?.remove();
   }, []);
-
-  const { width, height } = dimensions;
-
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -54,45 +42,43 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [agreed, setAgreed] = useState(false);
-
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const errorShake = useRef(new Animated.Value(0)).current;
+  const fadeAnim   = useRef(new Animated.Value(0)).current;
+  const slideAnim  = useRef(new Animated.Value(24)).current;
+  const shakeAnim  = useRef(new Animated.Value(0)).current;
   const checkScale = useRef(new Animated.Value(1)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver }),
+      Animated.timing(fadeAnim,  { toValue: 1, duration: 480, useNativeDriver }),
       Animated.spring(slideAnim, { toValue: 0, tension: 60, friction: 10, useNativeDriver }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
-  const shakeError = () => {
+  const shake = () =>
     Animated.sequence([
-      Animated.timing(errorShake, { toValue: 8, duration: 60, useNativeDriver }),
-      Animated.timing(errorShake, { toValue: -8, duration: 60, useNativeDriver }),
-      Animated.timing(errorShake, { toValue: 6, duration: 60, useNativeDriver }),
-      Animated.timing(errorShake, { toValue: -6, duration: 60, useNativeDriver }),
-      Animated.timing(errorShake, { toValue: 0, duration: 60, useNativeDriver }),
+      Animated.timing(shakeAnim, { toValue: 7,  duration: 55, useNativeDriver }),
+      Animated.timing(shakeAnim, { toValue: -7, duration: 55, useNativeDriver }),
+      Animated.timing(shakeAnim, { toValue: 5,  duration: 55, useNativeDriver }),
+      Animated.timing(shakeAnim, { toValue: -5, duration: 55, useNativeDriver }),
+      Animated.timing(shakeAnim, { toValue: 0,  duration: 55, useNativeDriver }),
     ]).start();
-  };
 
   const toggleAgreed = () => {
     Animated.sequence([
       Animated.timing(checkScale, { toValue: 0.8, duration: 80, useNativeDriver }),
       Animated.spring(checkScale, { toValue: 1, tension: 200, friction: 6, useNativeDriver }),
     ]).start();
-    setAgreed((prev) => !prev);
+    setAgreed(v => !v);
   };
 
-  const getPasswordStrength = (): { label: string; color: string; width: string } => {
-    if (password.length === 0) return { label: '', color: 'transparent', width: '0%' };
-    if (password.length < 6) return { label: 'Weak', color: '#E24B4A', width: '25%' };
+  const getStrength = () => {
+    if (!password) return { label: '', color: 'transparent', pct: 0 };
+    if (password.length < 6) return { label: 'Weak', color: C.danger, pct: 25 };
     if (password.length < 10 || !/[A-Z]/.test(password) || !/[0-9]/.test(password))
-      return { label: 'Fair', color: '#EF9F27', width: '55%' };
-    return { label: 'Strong', color: '#1D9E75', width: '100%' };
+      return { label: 'Fair', color: C.warning, pct: 55 };
+    return { label: 'Strong', color: C.success, pct: 100 };
   };
 
   const validate = (): string | null => {
@@ -105,34 +91,22 @@ export default function SignupScreen() {
   };
 
   const handleSignup = async () => {
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
-      shakeError();
-      return;
-    }
-
+    const err = validate();
+    if (err) { setError(err); shake(); return; }
     setLoading(true);
     setError('');
-
     try {
-      await signUp(email.trim(), password, {
-        fullName: fullName.trim(),
-        phone: phone.trim(),
-        role: 'applicant',
-      });
+      await signUp(email.trim(), password, { fullName: fullName.trim(), phone: phone.trim(), role: 'applicant' });
+      sendVerificationEmail().catch(() => {});
       router.replace('/(main)/home');
-    } catch (err: any) {
+    } catch (e: any) {
       const msg =
-        err.code === 'auth/email-already-in-use'
-          ? 'An account with this email already exists.'
-          : err.code === 'auth/invalid-email'
-          ? 'Please enter a valid email address.'
-          : err.code === 'auth/weak-password'
-          ? 'Password is too weak. Use at least 6 characters.'
-          : 'Something went wrong. Please try again.';
+        e.code === 'auth/email-already-in-use' ? 'An account with this email already exists.' :
+        e.code === 'auth/invalid-email'        ? 'Please enter a valid email address.' :
+        e.code === 'auth/weak-password'        ? 'Password is too weak. Use at least 6 characters.' :
+        'Something went wrong. Please try again.';
       setError(msg);
-      shakeError();
+      shake();
     } finally {
       setLoading(false);
     }
@@ -141,178 +115,127 @@ export default function SignupScreen() {
   const handleGoogleSignup = async () => {
     setLoading(true);
     setError('');
-
     try {
-      // Detect if the native Google module is available (it's absent in Expo Go)
-      const isNativeSupported = Platform.OS !== 'web' && typeof GoogleSignin?.signIn === 'function';
-
-      if (!isNativeSupported) {
-        // Standard Firebase Web flow for Expo Go and Browsers
+      if (!canUseNativeGoogleSignIn()) {
         await signUpWithGoogle('');
       } else {
-        // Native library for Development Builds
         await GoogleSignin.hasPlayServices();
-        const googleResponse = await GoogleSignin.signIn();
-        if (isCancelledResponse(googleResponse)) {
-          return;
-        }
-
-        if (!isSuccessResponse(googleResponse)) {
-          throw new Error('Google Sign-In failed before a valid account response was returned.');
-        }
-
-        const { idToken, user } = googleResponse.data;
-        if (!idToken) {
-          throw new Error('Google Sign-In failed: No ID token obtained.');
-        }
+        const res = await GoogleSignin.signIn();
+        if (isCancelledResponse(res)) return;
+        if (!isSuccessResponse(res)) throw new Error('Google Sign-In failed.');
+        const { idToken, user } = res.data;
+        if (!idToken) throw new Error('No ID token returned.');
         await signUpWithGoogle(idToken, user.name || undefined);
       }
       router.replace('/(main)/home');
-    } catch (err: any) {
-      const msg = err.message || 'Google sign-up failed. Please try again.';
-      setError(msg);
-      shakeError();
+    } catch (e: any) {
+      setError(e.message || 'Google sign-up failed. Please try again.');
+      shake();
     } finally {
       setLoading(false);
     }
   };
 
-  const strength = getPasswordStrength();
-
-  const inputStyle = (field: string) => [
-    styles.inputWrapper,
-    focusedField === field && styles.inputWrapperFocused,
-  ];
+  const strength = getStrength();
+  const isFocused = (f: string) => focusedField === f;
+  const inputStyle = (f: string) => [styles.input, isFocused(f) && styles.inputFocused];
+  const hPad = dimensions.width < 380 ? 16 : 20;
 
   return (
     <KeyboardAvoidingView
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
-
-      <View style={[styles.bgAccentTop, { width: width * 0.9, height: width * 0.9, borderRadius: width * 0.45, top: -width * 0.4, right: -width * 0.2 }]} />
-      <View style={[styles.bgAccentBottom, { width: width * 0.6, height: width * 0.6, borderRadius: width * 0.3, bottom: -width * 0.1, left: -width * 0.1 }]} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bgWarm} />
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { maxWidth: 480, alignSelf: 'center', width: '100%', paddingHorizontal: 24 }]}
+        contentContainerStyle={[styles.scroll, { paddingHorizontal: hPad }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <Animated.View
-          style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
-        >
+        {/* ── Header ── */}
+        <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <View style={styles.backArrow} />
+            <FontAwesome6 name="arrow-left" size={12} color={C.secondary} />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
 
-          <View style={styles.miniLogo}>
-            <View style={styles.mlTop} />
-            <View style={styles.mlRow}>
-              <View style={styles.mlBL} />
-              <View style={styles.mlDiv} />
-              <View style={styles.mlBR} />
-            </View>
-            <View style={styles.mlBase} />
+          <View style={styles.seal}>
+            <View style={styles.sealInnerRing} />
+            <FontAwesome6 name="scale-balanced" size={24} color={C.accent} />
           </View>
-          <Text style={styles.brandName}>GIAC</Text>
-          <Text style={styles.brandSub}>Create your account</Text>
+          <Text style={styles.overline}>Global Institute of ADR Center</Text>
+          <Text style={styles.title}>Create your account</Text>
+          <Text style={styles.lead}>Fill in your details to get started with GIAC.</Text>
         </Animated.View>
 
-        {/* Step indicator */}
-        <Animated.View
-          style={[styles.stepRow, { opacity: fadeAnim }]}
-        >
-          <View style={styles.stepActive} />
-          <View style={styles.stepDot} />
-          <View style={styles.stepDot} />
-        </Animated.View>
+        {/* ── Error ── */}
+        {error ? (
+          <Animated.View style={[styles.errorBanner, { transform: [{ translateX: shakeAnim }] }]}>
+            <View style={styles.errorDot} />
+            <Text style={styles.errorText}>{error}</Text>
+          </Animated.View>
+        ) : null}
 
-        {/* Card */}
+        {/* ── Form card ── */}
         <Animated.View
-          style={[
-            styles.card,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }, { translateX: errorShake }],
-            },
-          ]}
+          style={[styles.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }, { translateX: shakeAnim }] }]}
         >
           <Text style={styles.cardTitle}>Personal details</Text>
-          <Text style={styles.cardSubtitle}>Fill in your information to get started</Text>
 
-          {/* Error */}
-          {error ? (
-            <View style={styles.errorBanner}>
-              <View style={styles.errorDot} />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
-
-          {/* Full Name */}
-          <View style={styles.fieldGroup}>
+          {/* Full name */}
+          <View style={styles.field}>
             <Text style={styles.label}>Full name</Text>
-            <View style={inputStyle('name')}>
-              <FieldIcon type="person" />
-              <TextInput
-                style={styles.input}
-                placeholder="John Doe"
-                placeholderTextColor="rgba(255,255,255,0.25)"
-                value={fullName}
-                onChangeText={setFullName}
-                autoCapitalize="words"
-                returnKeyType="next"
-                onFocus={() => setFocusedField('name')}
-                onBlur={() => setFocusedField(null)}
-              />
-            </View>
+            <TextInput
+              style={inputStyle('name')}
+              placeholder="John Doe"
+              placeholderTextColor={C.textMuted}
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+              returnKeyType="next"
+              onFocus={() => setFocusedField('name')}
+              onBlur={() => setFocusedField(null)}
+            />
           </View>
 
           {/* Email */}
-          <View style={styles.fieldGroup}>
+          <View style={styles.field}>
             <Text style={styles.label}>Email address</Text>
-            <View style={inputStyle('email')}>
-              <FieldIcon type="email" />
-              <TextInput
-                style={styles.input}
-                placeholder="you@example.com"
-                placeholderTextColor="rgba(255,255,255,0.25)"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                returnKeyType="next"
-                onFocus={() => setFocusedField('email')}
-                onBlur={() => setFocusedField(null)}
-              />
-            </View>
+            <TextInput
+              style={inputStyle('email')}
+              placeholder="you@example.com"
+              placeholderTextColor={C.textMuted}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              returnKeyType="next"
+              onFocus={() => setFocusedField('email')}
+              onBlur={() => setFocusedField(null)}
+            />
           </View>
 
-          {/* Phone (optional) */}
-          <View style={styles.fieldGroup}>
+          {/* Phone */}
+          <View style={styles.field}>
             <View style={styles.labelRow}>
               <Text style={styles.label}>Phone number</Text>
               <Text style={styles.optionalTag}>Optional</Text>
             </View>
-            <View style={inputStyle('phone')}>
-              <FieldIcon type="phone" />
-              <TextInput
-                style={styles.input}
-                placeholder="+233 XX XXX XXXX"
-                placeholderTextColor="rgba(255,255,255,0.25)"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                returnKeyType="next"
-                onFocus={() => setFocusedField('phone')}
-                onBlur={() => setFocusedField(null)}
-              />
-            </View>
+            <TextInput
+              style={inputStyle('phone')}
+              placeholder="+233 XX XXX XXXX"
+              placeholderTextColor={C.textMuted}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              returnKeyType="next"
+              onFocus={() => setFocusedField('phone')}
+              onBlur={() => setFocusedField(null)}
+            />
           </View>
 
-          {/* Divider */}
+          {/* Security divider */}
           <View style={styles.sectionDivider}>
             <View style={styles.sectionLine} />
             <Text style={styles.sectionLabel}>Security</Text>
@@ -320,14 +243,13 @@ export default function SignupScreen() {
           </View>
 
           {/* Password */}
-          <View style={styles.fieldGroup}>
+          <View style={styles.field}>
             <Text style={styles.label}>Password</Text>
-            <View style={inputStyle('password')}>
-              <FieldIcon type="lock" />
+            <View style={[styles.passwordWrap, isFocused('password') && styles.inputFocused]}>
               <TextInput
-                style={styles.input}
+                style={styles.passwordInput}
                 placeholder="Min. 6 characters"
-                placeholderTextColor="rgba(255,255,255,0.25)"
+                placeholderTextColor={C.textMuted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -336,40 +258,30 @@ export default function SignupScreen() {
                 onBlur={() => setFocusedField(null)}
               />
               <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
+                onPress={() => setShowPassword(v => !v)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Text style={styles.toggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Strength meter */}
-            {password.length > 0 && (
-              <View style={styles.strengthContainer}>
+            {password.length > 0 ? (
+              <View style={styles.strengthRow}>
                 <View style={styles.strengthTrack}>
-                  <View
-                    style={[
-                      styles.strengthFill,
-                      { width: `${parseInt(strength.width)}%`, backgroundColor: strength.color },
-                    ]}
-                  />
+                  <View style={[styles.strengthFill, { width: `${strength.pct}%` as any, backgroundColor: strength.color }]} />
                 </View>
-                <Text style={[styles.strengthLabel, { color: strength.color }]}>
-                  {strength.label}
-                </Text>
+                <Text style={[styles.strengthLabel, { color: strength.color }]}>{strength.label}</Text>
               </View>
-            )}
+            ) : null}
           </View>
 
-          {/* Confirm Password */}
-          <View style={styles.fieldGroup}>
+          {/* Confirm password */}
+          <View style={styles.field}>
             <Text style={styles.label}>Confirm password</Text>
-            <View style={inputStyle('confirm')}>
-              <FieldIcon type="lock" />
+            <View style={[styles.passwordWrap, isFocused('confirm') && styles.inputFocused]}>
               <TextInput
-                style={styles.input}
+                style={styles.passwordInput}
                 placeholder="Re-enter password"
-                placeholderTextColor="rgba(255,255,255,0.25)"
+                placeholderTextColor={C.textMuted}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!showConfirm}
@@ -378,19 +290,11 @@ export default function SignupScreen() {
                 onFocus={() => setFocusedField('confirm')}
                 onBlur={() => setFocusedField(null)}
               />
-              {confirmPassword.length > 0 && (
-                <View
-                  style={[
-                    styles.matchDot,
-                    {
-                      backgroundColor:
-                        confirmPassword === password ? '#1D9E75' : '#E24B4A',
-                    },
-                  ]}
-                />
-              )}
+              {confirmPassword.length > 0 ? (
+                <View style={[styles.matchDot, { backgroundColor: confirmPassword === password ? C.success : C.danger }]} />
+              ) : null}
               <TouchableOpacity
-                onPress={() => setShowConfirm(!showConfirm)}
+                onPress={() => setShowConfirm(v => !v)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Text style={styles.toggleText}>{showConfirm ? 'Hide' : 'Show'}</Text>
@@ -398,16 +302,10 @@ export default function SignupScreen() {
             </View>
           </View>
 
-          {/* Terms checkbox */}
+          {/* Terms */}
           <TouchableOpacity style={styles.termsRow} onPress={toggleAgreed} activeOpacity={0.7}>
-            <Animated.View
-              style={[
-                styles.checkbox,
-                agreed && styles.checkboxChecked,
-                { transform: [{ scale: checkScale }] },
-              ]}
-            >
-              {agreed && <View style={styles.checkmark} />}
+            <Animated.View style={[styles.checkbox, agreed && styles.checkboxChecked, { transform: [{ scale: checkScale }] }]}>
+              {agreed ? <View style={styles.checkmark} /> : null}
             </Animated.View>
             <Text style={styles.termsText}>
               I agree to GIAC&apos;s{' '}
@@ -417,18 +315,17 @@ export default function SignupScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Submit button */}
+          {/* Submit */}
           <TouchableOpacity
-            style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+            style={[styles.primaryBtn, loading && styles.btnDisabled]}
             onPress={handleSignup}
             disabled={loading}
-            activeOpacity={0.85}
+            activeOpacity={0.88}
           >
-            {loading ? (
-              <ActivityIndicator color="#0A1628" size="small" />
-            ) : (
-              <Text style={styles.submitBtnText}>Create account</Text>
-            )}
+            {loading
+              ? <ActivityIndicator color={C.textInverse} size="small" />
+              : <Text style={styles.primaryBtnText}>Create account</Text>
+            }
           </TouchableOpacity>
 
           {/* Divider */}
@@ -438,29 +335,26 @@ export default function SignupScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Google Sign-up button */}
+          {/* Google */}
           <TouchableOpacity
-            style={[styles.googleBtn, loading && styles.googleBtnDisabled]}
+            style={[styles.googleBtn, loading && styles.btnDisabled]}
             onPress={handleGoogleSignup}
             disabled={loading}
-            activeOpacity={0.85}
+            activeOpacity={0.88}
           >
-            {loading ? (
-              <ActivityIndicator color="#0A1628" size="small" />
-            ) : (
-              <>
-                <View style={styles.googleIcon}>
-                  <View style={styles.googleCircle} />
-                </View>
-                <Text style={styles.googleBtnText}>Sign up with Google</Text>
-              </>
-            )}
+            {loading
+              ? <ActivityIndicator color={C.textPrimary} size="small" />
+              : (<>
+                  <GoogleMark size={20} />
+                  <Text style={styles.googleBtnText}>Sign up with Google</Text>
+                </>)
+            }
           </TouchableOpacity>
         </Animated.View>
 
         {/* Sign in link */}
         <Animated.View style={[styles.signInRow, { opacity: fadeAnim }]}>
-          <Text style={styles.signInPrompt}>Already have an account? </Text>
+          <Text style={styles.signInPrompt}>Already have an account?{' '}</Text>
           <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
             <Text style={styles.signInLink}>Sign in</Text>
           </TouchableOpacity>
@@ -470,290 +364,157 @@ export default function SignupScreen() {
   );
 }
 
-// ── Small inline icon component ──────────────────────────────────────
-function FieldIcon({ type }: { type: 'email' | 'lock' | 'person' | 'phone' }) {
-  const base: React.ComponentProps<typeof View>['style'] = {
-    width: 16,
-    height: 16,
-    marginRight: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    opacity: 0.4,
-  };
-
-  if (type === 'email') {
-    return (
-      <View style={base}>
-        <View style={{ width: 14, height: 10, borderWidth: 1.5, borderColor: '#fff', borderRadius: 2 }} />
-        <View style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0, borderLeftWidth: 7, borderRightWidth: 7, borderTopWidth: 5, borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: '#fff' }} />
-      </View>
-    );
-  }
-  if (type === 'lock') {
-    return (
-      <View style={base}>
-        <View style={{ width: 11, height: 8, backgroundColor: '#fff', borderRadius: 2, marginTop: 3 }} />
-        <View style={{ width: 7, height: 6, borderWidth: 1.5, borderColor: '#fff', borderBottomWidth: 0, borderRadius: 4, position: 'absolute', top: 0 }} />
-      </View>
-    );
-  }
-  if (type === 'person') {
-    return (
-      <View style={base}>
-        <View style={{ width: 8, height: 8, borderRadius: 4, borderWidth: 1.5, borderColor: '#fff', marginBottom: 1 }} />
-        <View style={{ width: 13, height: 6, borderWidth: 1.5, borderColor: '#fff', borderBottomWidth: 0, borderRadius: 7 }} />
-      </View>
-    );
-  }
-  // phone
-  return (
-    <View style={base}>
-      <View style={{ width: 9, height: 13, borderWidth: 1.5, borderColor: '#fff', borderRadius: 2 }}>
-        <View style={{ width: 3, height: 1.5, backgroundColor: '#fff', borderRadius: 1, alignSelf: 'center', marginTop: 9 }} />
-      </View>
-    </View>
-  );
-}
-
-// ── Theme constants ──────────────────────────────────────────────────
-const NAV = '#0A1628';
-const BLUE = '#3B82F6';
-const GOLD = '#C8A96B';
-const CARD_BG = '#111E35';
-const BORDER = 'rgba(255,255,255,0.1)';
-const BORDER_FOCUS = 'rgba(59,130,246,0.5)';
-
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: NAV,
+    backgroundColor: C.bgWarm,
     width: '100%',
-    ...Platform.select({
-      web: {
-        minHeight: '100vh' as any,
-      },
-    }),
+    ...Platform.select({ web: { minHeight: '100vh' as any } }),
   },
-
-  bgAccentTop: {
-    position: 'absolute',
-    borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.07)',
-    zIndex: -1,
-  },
-  bgAccentBottom: {
-    position: 'absolute',
-    borderWidth: 1,
-    borderColor: 'rgba(200,169,107,0.06)',
-    zIndex: -1,
-  },
-
   scroll: {
-    flexGrow: 1, alignItems: 'center',
-    paddingTop: 56, paddingBottom: 40,
+    flexGrow: 1,
+    paddingTop: 52,
+    paddingBottom: 40,
+    maxWidth: 480,
+    alignSelf: 'center',
+    width: '100%',
+    gap: 20,
   },
 
-  // ── Header ──────────────────────────────────
-  header: { alignItems: 'center', marginBottom: 16, width: '100%' },
-
+  // ── Header ──────────────────────────────────────────────────
+  header: { alignItems: 'center', gap: 8, paddingBottom: 4 },
   backBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    alignSelf: 'flex-start', marginBottom: 20,
+    alignSelf: 'flex-start', marginBottom: 16,
   },
-  backArrow: {
-    width: 8, height: 8,
-    borderLeftWidth: 2, borderBottomWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
-    transform: [{ rotate: '45deg' }],
-  },
-  backText: { fontSize: 13, color: 'rgba(255,255,255,0.5)' },
-
-  miniLogo: {
-    width: 38, height: 38,
-    backgroundColor: 'rgba(59,130,246,0.12)',
-    borderRadius: 10, borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.25)',
+  backText: { fontSize: 13, fontFamily: Fonts.sans, color: C.secondary },
+  seal: {
+    width: 60, height: 60, borderRadius: 30,
+    backgroundColor: C.primary,
     alignItems: 'center', justifyContent: 'center',
-    gap: 3, marginBottom: 8, padding: 6,
+    marginBottom: 4, overflow: 'hidden',
   },
-  mlTop: { width: 16, height: 2, backgroundColor: BLUE, borderRadius: 1 },
-  mlRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  mlBL: { width: 6, height: 6, backgroundColor: 'rgba(59,130,246,0.5)', borderRadius: 2 },
-  mlDiv: { width: 1.5, height: 10, backgroundColor: GOLD, borderRadius: 1 },
-  mlBR: { width: 6, height: 6, backgroundColor: 'rgba(59,130,246,0.5)', borderRadius: 2 },
-  mlBase: { width: 12, height: 2, backgroundColor: GOLD, borderRadius: 1 },
-
-  brandName: {
-    fontSize: 20, fontWeight: '800', color: '#fff',
-    letterSpacing: 6, marginBottom: 2,
+  sealInnerRing: {
+    position: 'absolute',
+    width: 52, height: 52, borderRadius: 26,
+    borderWidth: 1.5, borderColor: C.accent,
   },
-  brandSub: { fontSize: 11, color: 'rgba(255,255,255,0.4)', letterSpacing: 0.3 },
-
-  // ── Step indicator ──────────────────────────
-  stepRow: {
-    flexDirection: 'row', gap: 6, alignItems: 'center',
-    marginBottom: 20,
+  overline: {
+    fontSize: 11, fontFamily: Fonts.sansBold,
+    color: C.accentStrong, textTransform: 'uppercase',
+    letterSpacing: 1.6, textAlign: 'center',
   },
-  stepActive: {
-    width: 24, height: 6, borderRadius: 3, backgroundColor: BLUE,
+  title: {
+    fontSize: 30, lineHeight: 34,
+    fontFamily: Fonts.displayBold,
+    color: C.textStrong, textAlign: 'center',
   },
-  stepDot: {
-    width: 6, height: 6, borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  lead: {
+    fontSize: 14, lineHeight: 22,
+    fontFamily: Fonts.sans,
+    color: C.textSecondary, textAlign: 'center',
   },
 
-  // ── Card ────────────────────────────────────
-  card: {
-    width: '100%', backgroundColor: CARD_BG,
-    borderRadius: 20, borderWidth: 1, borderColor: BORDER,
-    padding: 24, marginBottom: 20,
-  },
-  cardTitle: { fontSize: 20, fontWeight: '700', color: '#fff', marginBottom: 4 },
-  cardSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 22 },
-
-  // ── Error ────────────────────────────────────
+  // ── Error ────────────────────────────────────────────────────
   errorBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: 'rgba(226,75,74,0.12)',
-    borderWidth: 1, borderColor: 'rgba(226,75,74,0.3)',
-    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16,
+    backgroundColor: C.dangerSoft,
+    borderWidth: 1, borderColor: C.danger,
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
   },
-  errorDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E24B4A' },
-  errorText: { fontSize: 13, color: '#F09595', flex: 1, lineHeight: 18 },
+  errorDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.danger },
+  errorText: { fontSize: 13, fontFamily: Fonts.sans, color: C.danger, flex: 1, lineHeight: 19 },
 
-  // ── Fields ───────────────────────────────────
-  fieldGroup: { marginBottom: 14 },
-  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 },
-  label: {
-    fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 0.5, marginBottom: 7, textTransform: 'uppercase',
+  // ── Card ─────────────────────────────────────────────────────
+  card: {
+    backgroundColor: C.surface,
+    borderRadius: 22, borderWidth: 1, borderColor: C.border,
+    padding: 20, gap: 14,
   },
+  cardTitle: { fontSize: 18, fontFamily: Fonts.displaySemiBold, color: C.textPrimary },
+
+  // ── Fields ───────────────────────────────────────────────────
+  field: { gap: 8 },
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  label: { fontSize: 14, fontFamily: Fonts.sansSemiBold, color: C.textPrimary },
   optionalTag: {
-    fontSize: 10, color: 'rgba(255,255,255,0.25)',
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    fontSize: 11, fontFamily: Fonts.sans, color: C.textMuted,
+    backgroundColor: C.surfaceAlt,
     paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6,
   },
-
-  inputWrapper: {
+  input: {
+    backgroundColor: C.surfaceAlt,
+    borderWidth: 1, borderColor: C.border,
+    borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13,
+    fontSize: 15, fontFamily: Fonts.sans, color: C.textPrimary,
+  },
+  inputFocused: { borderColor: C.secondary, backgroundColor: C.surface },
+  passwordWrap: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 12, borderWidth: 1, borderColor: BORDER,
-    paddingHorizontal: 14, height: 50,
+    backgroundColor: C.surfaceAlt,
+    borderWidth: 1, borderColor: C.border,
+    borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13,
   },
-  inputWrapperFocused: {
-    borderColor: BORDER_FOCUS,
-    backgroundColor: 'rgba(59,130,246,0.06)',
+  passwordInput: {
+    flex: 1, fontSize: 15, fontFamily: Fonts.sans,
+    color: C.textPrimary, paddingVertical: 0,
   },
-  input: { flex: 1, fontSize: 14, color: '#FFFFFF', height: '100%', paddingVertical: 0 },
-  toggleText: { fontSize: 11, color: BLUE, fontWeight: '500', paddingLeft: 6 },
+  toggleText: { fontSize: 12, fontFamily: Fonts.sansSemiBold, color: C.secondary, paddingLeft: 8 },
+  matchDot: { width: 7, height: 7, borderRadius: 3.5, marginRight: 6 },
 
-  matchDot: { width: 7, height: 7, borderRadius: 3.5, marginRight: 4 },
-
-  // ── Password strength ────────────────────────
-  strengthContainer: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 7,
-  },
-  strengthTrack: {
-    flex: 1, height: 3, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2,
-  },
+  // ── Password strength ────────────────────────────────────────
+  strengthRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  strengthTrack: { flex: 1, height: 3, backgroundColor: C.border, borderRadius: 2 },
   strengthFill: { height: 3, borderRadius: 2 },
-  strengthLabel: { fontSize: 11, fontWeight: '600', minWidth: 40, textAlign: 'right' },
+  strengthLabel: { fontSize: 11, fontFamily: Fonts.sansSemiBold, minWidth: 40, textAlign: 'right' },
 
-  // ── Section divider ──────────────────────────
-  sectionDivider: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 16,
+  // ── Section divider ──────────────────────────────────────────
+  sectionDivider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 4 },
+  sectionLine: { flex: 1, height: 1, backgroundColor: C.border },
+  sectionLabel: {
+    fontSize: 10, fontFamily: Fonts.sansSemiBold,
+    color: C.textMuted, letterSpacing: 0.5, textTransform: 'uppercase',
   },
-  sectionLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.08)' },
-  sectionLabel: { fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: 0.5, textTransform: 'uppercase' },
 
-  // ── Terms checkbox ───────────────────────────
-  termsRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    marginBottom: 20, marginTop: 4,
-  },
+  // ── Terms ────────────────────────────────────────────────────
+  termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 2 },
   checkbox: {
     width: 20, height: 20, borderRadius: 6,
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 1.5, borderColor: C.borderStrong,
     alignItems: 'center', justifyContent: 'center', marginTop: 1,
-    backgroundColor: 'transparent',
   },
-  checkboxChecked: {
-    backgroundColor: BLUE, borderColor: BLUE,
-  },
+  checkboxChecked: { backgroundColor: C.secondary, borderColor: C.secondary },
   checkmark: {
     width: 10, height: 6,
     borderLeftWidth: 2, borderBottomWidth: 2,
-    borderColor: '#fff',
+    borderColor: C.textInverse,
     transform: [{ rotate: '-45deg' }, { translateY: -1 }],
   },
-  termsText: { flex: 1, fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 18 },
-  termsLink: { color: GOLD, fontWeight: '600' },
+  termsText: { flex: 1, fontSize: 12, fontFamily: Fonts.sans, color: C.textSecondary, lineHeight: 19 },
+  termsLink: { fontFamily: Fonts.sansSemiBold, color: C.secondary },
 
-  // ── Submit button ────────────────────────────
-  submitBtn: {
-    backgroundColor: BLUE, borderRadius: 12,
+  // ── Buttons ──────────────────────────────────────────────────
+  primaryBtn: {
+    backgroundColor: C.primary, borderRadius: 14,
     height: 52, alignItems: 'center', justifyContent: 'center',
   },
-  submitBtnDisabled: { opacity: 0.7 },
-  submitBtnText: { fontSize: 15, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
+  btnDisabled: { opacity: 0.65 },
+  primaryBtnText: { fontSize: 15, fontFamily: Fonts.sansBold, color: C.textInverse, letterSpacing: 0.2 },
 
-  // ── Divider ──────────────────────────────────
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 20,
-    marginTop: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  dividerText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.3)',
-  },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: C.border },
+  dividerText: { fontSize: 12, fontFamily: Fonts.sans, color: C.textMuted },
 
-  // ── Google Sign-up button ─────────────────────
   googleBtn: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    marginBottom: 20,
-    gap: 10,
+    flexDirection: 'row', backgroundColor: C.surface,
+    borderRadius: 14, height: 52,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: C.borderStrong, gap: 10,
   },
-  googleBtnDisabled: {
-    opacity: 0.7,
-  },
-  googleIcon: {
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleCircle: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#4285F4',
-  },
-  googleBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.9)',
-    letterSpacing: 0.3,
-  },
+  googleBtnText: { fontSize: 15, fontFamily: Fonts.sansSemiBold, color: C.textPrimary, letterSpacing: 0.2 },
 
-  // ── Sign in link ─────────────────────────────
-  signInRow: {
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-  },
-  signInPrompt: { fontSize: 13, color: 'rgba(255,255,255,0.4)' },
-  signInLink: { fontSize: 13, fontWeight: '600', color: GOLD },
+  // ── Footer ───────────────────────────────────────────────────
+  signInRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  signInPrompt: { fontSize: 14, fontFamily: Fonts.sans, color: C.textSecondary },
+  signInLink: { fontSize: 14, fontFamily: Fonts.sansSemiBold, color: C.secondary },
 });

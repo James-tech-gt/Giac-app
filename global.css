@@ -23,5 +23,7 @@ html {
 }
 
 body {
-  background-color: #0A1628;
+  background-color: #F8FAFD;
+  color: #1F2A44;
+  font-family: 'SourceSans3-Regular', 'Segoe UI', sans-serif;
 }

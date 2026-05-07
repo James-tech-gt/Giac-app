@@ -1,21 +1,25 @@
+import { GoogleMark } from '@/components/google-mark';
+import { C, Fonts } from '@/constants/theme';
+import { canUseNativeGoogleSignIn, configureGoogleSignIn } from '@/services/google-signin';
 import { GoogleSignin, isCancelledResponse, isSuccessResponse } from '@react-native-google-signin/google-signin';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
+import { FontAwesome6 } from '@expo/vector-icons';
 import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { signIn, signInWithGoogle } from '../../services/auth';
+import { resetPassword, signIn, signInWithGoogle } from '../../services/auth';
 
 const useNativeDriver = Platform.OS !== 'web';
 
@@ -23,92 +27,79 @@ export default function LoginScreen() {
   const [dimensions, setDimensions] = useState(Dimensions.get('window'));
 
   useEffect(() => {
-    // Only configure if we are on native and NOT in Expo Go
-    if (Platform.OS !== 'web') {
-      try {
-        GoogleSignin.configure({
-          webClientId: '529116845053-0kr475md8ia75719u5cr89h0ijhm20qv.apps.googleusercontent.com',
-        });
-      } catch (e) {
-        console.log('Native Google Sign-In not available (Expo Go)');
-      }
-    }
-
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setDimensions(window);
-    });
-
-    return () => subscription?.remove();
+    configureGoogleSignIn();
+    const sub = Dimensions.addEventListener('change', ({ window }) => setDimensions(window));
+    return () => sub?.remove();
   }, []);
 
-  const { width, height } = dimensions;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resetSent, setResetSent] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
 
-  // Animation refs
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const errorShake = useRef(new Animated.Value(0)).current;
+  const fadeAnim  = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
+  const shakeAnim = useRef(new Animated.Value(0)).current;
 
-  // Responsive values
-
-
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 60,
-        friction: 10,
-        useNativeDriver,
-      }),
+      Animated.timing(fadeAnim,  { toValue: 1, duration: 480, useNativeDriver }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 60, friction: 10, useNativeDriver }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
-  const shakeError = () => {
+  const shake = () =>
     Animated.sequence([
-      Animated.timing(errorShake, { toValue: 8, duration: 60, useNativeDriver }),
-      Animated.timing(errorShake, { toValue: -8, duration: 60, useNativeDriver }),
-      Animated.timing(errorShake, { toValue: 6, duration: 60, useNativeDriver }),
-      Animated.timing(errorShake, { toValue: -6, duration: 60, useNativeDriver }),
-      Animated.timing(errorShake, { toValue: 0, duration: 60, useNativeDriver }),
+      Animated.timing(shakeAnim, { toValue: 7,  duration: 55, useNativeDriver }),
+      Animated.timing(shakeAnim, { toValue: -7, duration: 55, useNativeDriver }),
+      Animated.timing(shakeAnim, { toValue: 5,  duration: 55, useNativeDriver }),
+      Animated.timing(shakeAnim, { toValue: -5, duration: 55, useNativeDriver }),
+      Animated.timing(shakeAnim, { toValue: 0,  duration: 55, useNativeDriver }),
     ]).start();
-  };
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       setError('Please enter your email and password.');
-      shakeError();
+      shake();
       return;
     }
-
     setLoading(true);
     setError('');
-
     try {
       await signIn(email.trim(), password);
       router.replace('/(main)/home');
     } catch (err: any) {
       const msg =
-        err.code === 'auth/user-not-found' ||
-        err.code === 'auth/wrong-password' ||
-        err.code === 'auth/invalid-credential' ||
-        err.code === 'auth/invalid-login-credentials'
-          ? 'Invalid email or password.'
+        ['auth/user-not-found', 'auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(err.code)
+          ? 'No account found or wrong password. Please check your details or sign up.'
           : err.code === 'auth/too-many-requests'
           ? 'Too many attempts. Please try again later.'
           : 'Something went wrong. Please try again.';
       setError(msg);
-      shakeError();
+      shake();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError('Enter your email address above, then tap Forgot password.');
+      shake();
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await resetPassword(email.trim());
+      setResetSent(true);
+    } catch {
+      setError('Could not send reset email. Check the address and try again.');
+      shake();
     } finally {
       setLoading(false);
     }
@@ -117,37 +108,25 @@ export default function LoginScreen() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setError('');
-
     try {
-      // Detect if the native Google module is available (it's absent in Expo Go)
-      const isNativeSupported = Platform.OS !== 'web' && typeof GoogleSignin?.signIn === 'function';
-
-      if (!isNativeSupported) {
-        // Standard Firebase Web flow for Expo Go and Browsers
+      if (!canUseNativeGoogleSignIn()) {
         await signInWithGoogle('');
       } else {
-        // Native library for Development Builds
         await GoogleSignin.hasPlayServices();
-        const googleResponse = await GoogleSignin.signIn();
-        if (isCancelledResponse(googleResponse)) {
-          return;
-        }
-
-        if (!isSuccessResponse(googleResponse)) {
-          throw new Error('Google Sign-In failed before a valid account response was returned.');
-        }
-
-        const idToken = googleResponse.data.idToken;
-        if (!idToken) {
-          throw new Error('Google Sign-In failed: No ID token obtained.');
-        }
+        const res = await GoogleSignin.signIn();
+        if (isCancelledResponse(res)) return;
+        if (!isSuccessResponse(res)) throw new Error('Google Sign-In failed.');
+        const { idToken } = res.data;
+        if (!idToken) throw new Error('No ID token returned.');
         await signInWithGoogle(idToken);
       }
       router.replace('/(main)/home');
     } catch (err: any) {
-      const msg = err.message || 'Google sign-in failed. Please try again.';
+      const msg = err.code === 'auth/no-account'
+        ? 'No account found. Please sign up first.'
+        : err.message || 'Google sign-in failed. Please try again.';
       setError(msg);
-      shakeError();
+      shake();
     } finally {
       setLoading(false);
     }
@@ -158,111 +137,76 @@ export default function LoginScreen() {
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#0A1628" />
-
-      {/* Background accents */}
-      <View style={[styles.bgAccentTop, { width: width * 0.9, height: width * 0.9, borderRadius: width * 0.45, top: -width * 0.4, right: -width * 0.2 }]} />
-      <View style={[styles.bgAccentBottom, { width: width * 0.6, height: width * 0.6, borderRadius: width * 0.3, bottom: -width * 0.1, left: -width * 0.1 }]} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bgWarm} />
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { maxWidth: 480, alignSelf: 'center', width: '100%', paddingHorizontal: 24 }]}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingHorizontal: dimensions.width < 380 ? 16 : 20 },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header / branding */}
-        <Animated.View
-          style={[
-            styles.header,
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-          ]}
-        >
-          {/* Mini logo mark */}
-          <View style={styles.miniLogo}>
-            <View style={styles.miniIconTop} />
-            <View style={styles.miniIconRow}>
-              <View style={styles.miniBarLeft} />
-              <View style={styles.miniDivider} />
-              <View style={styles.miniBarRight} />
-            </View>
-            <View style={styles.miniBase} />
+        {/* ── Brand header ── */}
+        <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          <View style={styles.seal}>
+            <View style={styles.sealInnerRing} />
+            <FontAwesome6 name="scale-balanced" size={26} color={C.accent} />
           </View>
-          <Text style={styles.brandName}>GIAC</Text>
-          <Text style={styles.brandSub}>Global Institute of ADR Center</Text>
+          <Text style={styles.overline}>Global Institute of ADR Center</Text>
+          <Text style={styles.title}>Welcome back.</Text>
+          <Text style={styles.lead}>
+            Sign in to continue your ADR training, applications, and mediation requests.
+          </Text>
         </Animated.View>
 
-        {/* Card */}
+        {/* ── Error banner ── */}
+        {error ? (
+          <Animated.View style={[styles.errorBanner, { transform: [{ translateX: shakeAnim }] }]}>
+            <View style={styles.errorDot} />
+            <Text style={styles.errorText}>{error}</Text>
+          </Animated.View>
+        ) : null}
+
+        {/* ── Form card ── */}
         <Animated.View
           style={[
             styles.card,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }, { translateX: errorShake }],
-            },
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }, { translateX: shakeAnim }] },
           ]}
         >
-          <Text style={styles.cardTitle}>Welcome back</Text>
-          <Text style={styles.cardSubtitle}>Sign in to your account to continue</Text>
-
-          {/* Error banner */}
-          {error ? (
-            <View style={styles.errorBanner}>
-              <View style={styles.errorDot} />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
-
-          {/* Email field */}
-          <View style={styles.fieldGroup}>
+          {/* Email */}
+          <View style={styles.field}>
             <Text style={styles.label}>Email address</Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                emailFocused && styles.inputWrapperFocused,
-              ]}
-            >
-              {/* Email icon */}
-              <View style={styles.inputIcon}>
-                <View style={styles.iconEnvelope} />
-                <View style={styles.iconEnvelopeFlap} />
-              </View>
-              <TextInput
-                style={styles.input}
-                placeholder="you@example.com"
-                placeholderTextColor="rgba(255,255,255,0.25)"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                returnKeyType="next"
-                onFocus={() => setEmailFocused(true)}
-                onBlur={() => setEmailFocused(false)}
-              />
-            </View>
+            <TextInput
+              style={[styles.input, emailFocused && styles.inputFocused]}
+              placeholder="you@example.com"
+              placeholderTextColor={C.textMuted}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              returnKeyType="next"
+              onFocus={() => setEmailFocused(true)}
+              onBlur={() => setEmailFocused(false)}
+            />
           </View>
 
-          {/* Password field */}
-          <View style={styles.fieldGroup}>
+          {/* Password */}
+          <View style={styles.field}>
             <View style={styles.labelRow}>
               <Text style={styles.label}>Password</Text>
-              <TouchableOpacity onPress={() => setEmail('')}>
-                <Text style={styles.forgotLink}>Forgot password?</Text>
+              <TouchableOpacity onPress={handleForgotPassword} disabled={loading}>
+                <Text style={styles.forgotLink}>
+                  {resetSent ? 'Reset email sent ✓' : 'Forgot password?'}
+                </Text>
               </TouchableOpacity>
             </View>
-            <View
-              style={[
-                styles.inputWrapper,
-                passwordFocused && styles.inputWrapperFocused,
-              ]}
-            >
-              {/* Lock icon */}
-              <View style={styles.inputIcon}>
-                <View style={styles.iconLockBody} />
-                <View style={styles.iconLockShackle} />
-              </View>
+            <View style={[styles.passwordWrap, passwordFocused && styles.inputFocused]}>
               <TextInput
-                style={styles.input}
+                style={styles.passwordInput}
                 placeholder="••••••••"
-                placeholderTextColor="rgba(255,255,255,0.25)"
+                placeholderTextColor={C.textMuted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -272,27 +216,25 @@ export default function LoginScreen() {
                 onBlur={() => setPasswordFocused(false)}
               />
               <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeButton}
+                onPress={() => setShowPassword(v => !v)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Text style={styles.eyeText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                <Text style={styles.toggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Sign in button */}
           <TouchableOpacity
-            style={[styles.signInBtn, loading && styles.signInBtnDisabled]}
+            style={[styles.primaryBtn, loading && styles.btnDisabled]}
             onPress={handleLogin}
             disabled={loading}
-            activeOpacity={0.85}
+            activeOpacity={0.88}
           >
-            {loading ? (
-              <ActivityIndicator color="#0A1628" size="small" />
-            ) : (
-              <Text style={styles.signInBtnText}>Sign in</Text>
-            )}
+            {loading
+              ? <ActivityIndicator color={C.textInverse} size="small" />
+              : <Text style={styles.primaryBtnText}>Sign in</Text>
+            }
           </TouchableOpacity>
 
           {/* Divider */}
@@ -302,372 +244,248 @@ export default function LoginScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Google Sign-in button */}
+          {/* Google */}
           <TouchableOpacity
-            style={[styles.googleBtn, loading && styles.googleBtnDisabled]}
+            style={[styles.googleBtn, loading && styles.btnDisabled]}
             onPress={handleGoogleSignIn}
             disabled={loading}
-            activeOpacity={0.85}
+            activeOpacity={0.88}
           >
-            {loading ? (
-              <ActivityIndicator color="#0A1628" size="small" />
-            ) : (
-              <>
-                <View style={styles.googleIcon}>
-                  <View style={styles.googleCircle} />
-                </View>
-                <Text style={styles.googleBtnText}>Continue with Google</Text>
-              </>
-            )}
+            {loading
+              ? <ActivityIndicator color={C.textPrimary} size="small" />
+              : (<>
+                  <GoogleMark size={20} />
+                  <Text style={styles.googleBtnText}>Continue with Google</Text>
+                </>)
+            }
           </TouchableOpacity>
-
-          {/* Sign up CTA */}
-          <View style={styles.signUpRow}>
-            <Text style={styles.signUpPrompt}>Don&apos;t have an account? </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-              <Text style={styles.signUpLink}>Create one</Text>
-            </TouchableOpacity>
-          </View>
         </Animated.View>
 
-        {/* Footer */}
-        <Text style={styles.footer}>
-          By signing in you agree to GIAC&apos;s Terms of Service
-        </Text>
+        {/* ── Create account ── */}
+        <View style={styles.signUpRow}>
+          <Text style={styles.signUpPrompt}>New to GIAC?{' '}</Text>
+          <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
+            <Text style={styles.signUpLink}>Create an account</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.footer}>By signing in you agree to GIAC&apos;s Terms of Service</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const NAV = '#0A1628';
-const BLUE = '#3B82F6';
-const GOLD = '#C8A96B';
-const CARD_BG = '#111E35';
-const BORDER = 'rgba(255,255,255,0.1)';
-const BORDER_FOCUS = 'rgba(59,130,246,0.5)';
-
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: NAV,
+    backgroundColor: C.bgWarm,
     width: '100%',
-    ...Platform.select({
-      web: {
-        minHeight: '100vh' as any,
-      },
-    }),
+    ...Platform.select({ web: { minHeight: '100vh' as any } }),
   },
-
-  bgAccentTop: {
-    position: 'absolute',
-    borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.07)',
-    zIndex: -1,
-  },
-  bgAccentBottom: {
-    position: 'absolute',
-    borderWidth: 1,
-    borderColor: 'rgba(200,169,107,0.06)',
-    zIndex: -1,
-  },
-
   scroll: {
     flexGrow: 1,
-    alignItems: 'center',
-    paddingTop: 64,
+    paddingTop: 60,
     paddingBottom: 40,
+    maxWidth: 480,
+    alignSelf: 'center',
+    width: '100%',
+    gap: 20,
   },
 
-  // ── Header ──────────────────────────────────────────
+  // ── Brand header ────────────────────────────────────────────
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    gap: 10,
+    paddingBottom: 8,
   },
-  miniLogo: {
-    width: 44,
-    height: 44,
-    backgroundColor: 'rgba(59,130,246,0.12)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.25)',
+  seal: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: C.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    marginBottom: 10,
-    padding: 8,
+    marginBottom: 6,
+    overflow: 'hidden',
   },
-  miniIconTop: {
-    width: 18,
-    height: 2,
-    backgroundColor: BLUE,
-    borderRadius: 1,
+  sealInnerRing: {
+    position: 'absolute',
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    borderWidth: 1.5,
+    borderColor: C.accent,
   },
-  miniIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  miniBarLeft: {
-    width: 7,
-    height: 7,
-    backgroundColor: 'rgba(59,130,246,0.5)',
-    borderRadius: 2,
-  },
-  miniDivider: {
-    width: 1.5,
-    height: 11,
-    backgroundColor: GOLD,
-    borderRadius: 1,
-  },
-  miniBarRight: {
-    width: 7,
-    height: 7,
-    backgroundColor: 'rgba(59,130,246,0.5)',
-    borderRadius: 2,
-  },
-  miniBase: {
-    width: 13,
-    height: 2,
-    backgroundColor: GOLD,
-    borderRadius: 1,
-  },
-  brandName: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 6,
-    marginBottom: 4,
-  },
-  brandSub: {
+  overline: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.45)',
-    letterSpacing: 0.3,
+    fontFamily: Fonts.sansBold,
+    color: C.accentStrong,
+    textTransform: 'uppercase',
+    letterSpacing: 1.6,
+    textAlign: 'center',
+  },
+  title: {
+    fontSize: 36,
+    lineHeight: 40,
+    fontFamily: Fonts.displayBold,
+    color: C.textStrong,
+    textAlign: 'center',
+  },
+  lead: {
+    fontSize: 15,
+    lineHeight: 24,
+    fontFamily: Fonts.sans,
+    color: C.textSecondary,
+    textAlign: 'center',
+    maxWidth: 300,
   },
 
-  // ── Card ─────────────────────────────────────────────
-  card: {
-    width: '100%',
-    backgroundColor: CARD_BG,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: BORDER,
-    padding: 24,
-    marginBottom: 20,
-  },
-  cardTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.45)',
-    marginBottom: 24,
-  },
-
-  // ── Error banner ─────────────────────────────────────
+  // ── Error ────────────────────────────────────────────────────
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(226,75,74,0.12)',
+    backgroundColor: C.dangerSoft,
     borderWidth: 1,
-    borderColor: 'rgba(226,75,74,0.3)',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 16,
+    borderColor: C.danger,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
   },
   errorDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#E24B4A',
+    backgroundColor: C.danger,
   },
   errorText: {
     fontSize: 13,
-    color: '#F09595',
+    fontFamily: Fonts.sans,
+    color: C.danger,
     flex: 1,
-    lineHeight: 18,
+    lineHeight: 19,
   },
 
-  // ── Fields ───────────────────────────────────────────
-  fieldGroup: {
-    marginBottom: 16,
+  // ── Card ─────────────────────────────────────────────────────
+  card: {
+    backgroundColor: C.surface,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: C.border,
+    padding: 20,
+    gap: 16,
+  },
+
+  // ── Fields ───────────────────────────────────────────────────
+  field: {
+    gap: 8,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.55)',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    textTransform: 'uppercase',
+    fontSize: 14,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.textPrimary,
   },
   labelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
   },
   forgotLink: {
-    fontSize: 12,
-    color: BLUE,
-    fontWeight: '500',
+    fontSize: 13,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.secondary,
   },
-
-  inputWrapper: {
+  input: {
+    backgroundColor: C.surfaceAlt,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    fontSize: 15,
+    fontFamily: Fonts.sans,
+    color: C.textPrimary,
+  },
+  inputFocused: {
+    borderColor: C.secondary,
+    backgroundColor: C.surface,
+  },
+  passwordWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 12,
+    backgroundColor: C.surfaceAlt,
     borderWidth: 1,
-    borderColor: BORDER,
-    paddingHorizontal: 14,
-    height: 52,
+    borderColor: C.border,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
   },
-  inputWrapperFocused: {
-    borderColor: BORDER_FOCUS,
-    backgroundColor: 'rgba(59,130,246,0.06)',
-  },
-
-  // Simple icon shapes
-  inputIcon: {
-    width: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-    opacity: 0.4,
-  },
-  iconEnvelope: {
-    width: 16,
-    height: 11,
-    borderWidth: 1.5,
-    borderColor: '#fff',
-    borderRadius: 2,
-  },
-  iconEnvelopeFlap: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderTopWidth: 6,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: '#fff',
-  },
-  iconLockBody: {
-    width: 12,
-    height: 9,
-    backgroundColor: '#fff',
-    borderRadius: 2,
-    marginTop: 3,
-  },
-  iconLockShackle: {
-    width: 8,
-    height: 7,
-    borderWidth: 1.5,
-    borderColor: '#fff',
-    borderBottomWidth: 0,
-    borderRadius: 4,
-    position: 'absolute',
-    top: 0,
-  },
-
-  input: {
+  passwordInput: {
     flex: 1,
     fontSize: 15,
-    color: '#FFFFFF',
-    height: '100%',
+    fontFamily: Fonts.sans,
+    color: C.textPrimary,
     paddingVertical: 0,
   },
-
-  eyeButton: {
+  toggleText: {
+    fontSize: 12,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.secondary,
     paddingLeft: 8,
   },
-  eyeText: {
-    fontSize: 12,
-    color: BLUE,
-    fontWeight: '500',
-  },
 
-  // ── Sign in button ────────────────────────────────────
-  signInBtn: {
-    backgroundColor: BLUE,
-    borderRadius: 12,
+  // ── Buttons ───────────────────────────────────────────────────
+  primaryBtn: {
+    backgroundColor: C.primary,
+    borderRadius: 14,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 20,
+    marginTop: 2,
   },
-  signInBtnDisabled: {
-    opacity: 0.7,
-  },
-  signInBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
+  btnDisabled: { opacity: 0.65 },
+  primaryBtnText: {
+    fontSize: 15,
+    fontFamily: Fonts.sansBold,
+    color: C.textInverse,
+    letterSpacing: 0.2,
   },
 
-  // ── Divider ───────────────────────────────────────────
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 20,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: C.border,
   },
   dividerText: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.3)',
+    fontFamily: Fonts.sans,
+    color: C.textMuted,
   },
 
-  // ── Google Sign-in button ─────────────────────────────
   googleBtn: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 12,
+    backgroundColor: C.surface,
+    borderRadius: 14,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    marginBottom: 20,
+    borderColor: C.borderStrong,
     gap: 10,
-  },
-  googleBtnDisabled: {
-    opacity: 0.7,
-  },
-  googleIcon: {
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleCircle: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#4285F4',
   },
   googleBtnText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.9)',
-    letterSpacing: 0.3,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.textPrimary,
+    letterSpacing: 0.2,
   },
 
-  // ── Sign up ───────────────────────────────────────────
+  // ── Footer ────────────────────────────────────────────────────
   signUpRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -675,18 +493,18 @@ const styles = StyleSheet.create({
   },
   signUpPrompt: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.45)',
+    fontFamily: Fonts.sans,
+    color: C.textSecondary,
   },
   signUpLink: {
     fontSize: 14,
-    fontWeight: '600',
-    color: GOLD,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.secondary,
   },
-
-  // ── Footer ────────────────────────────────────────────
   footer: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.2)',
+    fontFamily: Fonts.sans,
+    color: C.textMuted,
     textAlign: 'center',
     lineHeight: 16,
   },

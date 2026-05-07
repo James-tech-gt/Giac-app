@@ -1,20 +1,25 @@
+import { Fonts } from '@/constants/theme';
+import { auth } from '@/services/firebase';
 import { router } from 'expo-router';
-import React, { useEffect, useRef } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Animated,
-  Image,
-  Platform,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
+    Animated,
+    Image,
+    Platform,
+    StatusBar,
+    StyleSheet,
+    Text,
+    useWindowDimensions,
+    View,
 } from 'react-native';
 
 const useNativeDriver = Platform.OS !== 'web';
 
 export default function SplashScreen() {
   const { width, height } = useWindowDimensions();
+  const [animationFinished, setAnimationFinished] = useState(false);
+  const [targetRoute, setTargetRoute] = useState<'/(main)/home' | '/(auth)/login' | null>(null);
 
   const logoScale       = useRef(new Animated.Value(0.6)).current;
   const logoOpacity     = useRef(new Animated.Value(0)).current;
@@ -39,11 +44,22 @@ export default function SplashScreen() {
         Animated.spring(dotScale2, { toValue: 1, useNativeDriver }),
         Animated.spring(dotScale3, { toValue: 1, useNativeDriver }),
       ]),
-    ]).start();
+    ]).start(() => {
+      setAnimationFinished(true);
+    });
 
-    const timer = setTimeout(() => router.replace('/(auth)/login'), 3200);
-    return () => clearTimeout(timer);
-  }, []);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setTargetRoute(user ? '/(main)/home' : '/(auth)/login');
+    });
+
+    return unsubscribe;
+  }, [dotScale1, dotScale2, dotScale3, lineWidth, logoOpacity, logoScale, subtitleOpacity, taglineOpacity]);
+
+  useEffect(() => {
+    if (animationFinished && targetRoute) {
+      router.replace(targetRoute);
+    }
+  }, [animationFinished, targetRoute]);
 
   // The seal size — we want it large enough to fill the screen
   // but still look like a centered watermark, not a tiled image.
@@ -177,10 +193,10 @@ const styles = StyleSheet.create({
   },
 
   wordmark: {
-    fontSize: 52,
-    fontWeight: '800',
+    fontSize: 56,
+    fontFamily: Fonts.displayBold,
     color: '#FFFFFF',
-    letterSpacing: 14,
+    letterSpacing: 16,
     includeFontPadding: false,
   },
 
@@ -196,7 +212,7 @@ const styles = StyleSheet.create({
 
   fullName: {
     fontSize: 13,
-    fontWeight: '400',
+    fontFamily: Fonts.sans,
     color: 'rgba(255,255,255,0.65)',
     letterSpacing: 0.4,
     textAlign: 'center',
@@ -206,7 +222,7 @@ const styles = StyleSheet.create({
 
   tagline: {
     fontSize: 10,
-    fontWeight: '600',
+    fontFamily: Fonts.sansSemiBold,
     color: GOLD,
     letterSpacing: 3.5,
     textTransform: 'uppercase',
@@ -230,6 +246,7 @@ const styles = StyleSheet.create({
   footer: {
     position: 'absolute',
     fontSize: 11,
+    fontFamily: Fonts.sans,
     color: 'rgba(255,255,255,0.25)',
     letterSpacing: 0.3,
   },

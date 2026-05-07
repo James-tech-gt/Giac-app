@@ -1,0 +1,99 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function requestIsTryingToBecomeAdmin() {
+      return request.resource.data.role == 'admin';
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function belongsToCurrentUser(data) {
+      return isSignedIn() && (
+        data.userId == request.auth.uid ||
+        data.UserId == request.auth.uid
+      );
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && !requestIsTryingToBecomeAdmin();
+      allow update: if (isOwner(userId) && !requestIsTryingToBecomeAdmin()) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /Announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /Courses/{courseId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /APPLICATIONS/{applicationId} {
+      allow read: if belongsToCurrentUser(resource.data) || isAdmin();
+      allow create: if belongsToCurrentUser(request.resource.data) || isAdmin();
+      allow update, delete: if belongsToCurrentUser(resource.data) || isAdmin();
+    }
+
+    match /Services/{serviceId} {
+      allow read: if belongsToCurrentUser(resource.data) || isAdmin();
+      allow create: if belongsToCurrentUser(request.resource.data) || isAdmin();
+      allow update, delete: if belongsToCurrentUser(resource.data) || isAdmin();
+    }
+
+    match /AdminNotifications/{notifId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if isSignedIn();
+    }
+
+    match /Materials/{materialId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /Assignments/{assignmentId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    match /AssignmentSubmissions/{submissionId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /Tests/{testId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /TestGrades/{gradeId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /StudentNotifications/{notifId} {
+      allow read, update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

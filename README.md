@@ -130,7 +130,7 @@ giac-app/
 ### Authentication & Access Control
 - **login.tsx** - User login with email/password
 - **signup.tsx** - User registration
-- **Role-based access control** - Visitor → Applicant → Student → Professional Member → Client
+- **Role-based access control** - Visitor → Applicant / Student / Client / Admin
 
 ### Main Hub
 - **home.tsx** 
@@ -138,6 +138,12 @@ giac-app/
   - Announcements and events
   - Quick action buttons (Explore Courses, Apply, Request Mediation, Track Status)
   - Role-specific dashboard views
+
+### Dashboard Ownership Guide
+- **Admin** - Operations overview, application review, announcement publishing, user oversight, and platform control. Admin should not use the generic Explore tab.
+- **Applicant** - Admissions dashboard, application progress, reviewer feedback, and next-step actions.
+- **Student** - Learning dashboard, materials, assignments, tests, certificates, and progress tracking.
+- **Client** - ADR case dashboard, service request submission, case updates, and outcomes.
 
 ### Courses & Programs
 - **courses.tsx**
@@ -632,15 +638,23 @@ The GIAC system is a role-based platform designed to:
 - Visitor (Unauthenticated User)
 - Applicant
 - Student (Trainee)
-- Professional Member
 - Client (ADR Services User)
 - Administrator (Web-based system)
+
+### Current Mobile Scope
+The active mobile product is being aligned to four operational roles only:
+- Applicant
+- Student
+- Client
+- Admin
+
+Legacy references to `Professional Member` remain in older notes, but current mobile access should treat that state as part of the student journey until a separate membership workspace is intentionally designed.
 
 ---
 
 ### Lifecycle Flow
-Visitor → (Login/Signup) → Applicant → Student → Professional Member  
-                           ↘  
+Visitor → (Login/Signup) → Applicant → Student
+                           ↘
                             Client (via service request)
 
 ---
@@ -649,7 +663,6 @@ Visitor → (Login/Signup) → Applicant → Student → Professional Member
 - Visitor → Authenticated User: creates account (login/signup)
 - Authenticated User → Applicant: submits course application
 - Applicant → Student: approved by admin
-- Student → Professional Member: completes training
 - Authenticated User → Client: submits ADR case
 
 ---
@@ -726,7 +739,7 @@ Accessible only after approval.
 - Provide case details  
 - Track case status  
 
-⚠️ Note:  
+⚠️ Note:  .
 Visitors must log in or create an account before submitting a request.
 
 ---
@@ -871,3 +884,48 @@ Scalable architecture
 
 12. Conclusion
 The GIAC mobile application is designed as a comprehensive digital platform that integrates ADR training, applications, and mediation services into a single, secure, and user-friendly system.
+
+
+)  Design Style Guidance:
+
+Use modern, clean, professional UI patterns inspired by real-world apps, and translate them into clear UI structures:
+
+Education App Patterns (inspired by Coursera, Udemy):
+- Use vertical card-based layouts for courses
+- Each course card should include:
+  - Image/thumbnail (top)
+  - Course title (bold)
+  - Short description or progress indicator (optional)
+- Include simple action buttons like "View", "Apply", or "Continue"
+- Maintain clean spacing between cards
+
+Dashboard Patterns (inspired by Slack, Microsoft Teams):
+- Use a structured layout divided into clear sections
+- Group content into blocks (e.g., Courses, Services, Announcements)
+- Support role-based content visibility
+- Use bottom tab navigation for main sections
+
+Service & Form Patterns (inspired by LegalZoom, DoNotPay):
+- Use clean, well-spaced forms
+- Group related inputs logically
+- Use clear labels and placeholders
+- Display status indicators such as:
+  - Pending
+  - Approved
+  - Rejected
+
+Visual Design Rules (Material Design 3):
+- Rounded cards
+- Soft shadows
+- Clean, readable typography
+- Consistent spacing (padding and margins)
+- Use cards for all major content sections
+
+Layout Rules:
+- Fully responsive using Flexbox only
+- No horizontal scrolling or overflow
+- Avoid unnecessary white space
+- Maintain consistent alignment and spacing
+- Screens must fill full height (flex: 1)
+
+The final UI should feel like a modern education + professional service mobile app.

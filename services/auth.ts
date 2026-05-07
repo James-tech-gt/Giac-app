@@ -1,23 +1,68 @@
 import {
     createUserWithEmailAndPassword,
+    deleteUser,
+    getAdditionalUserInfo,
     GoogleAuthProvider,
+    sendEmailVerification,
+    sendPasswordResetEmail,
     signInWithPopup,
     signInWithCredential,
     signInWithEmailAndPassword,
     signOut,
     User
-    
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db, googleProvider } from './firebase';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Platform } from 'react-native';
+import { normalizeUserRole } from './access';
+import { auth, db, googleProvider } from './firebase';
+import type { UserRole } from './access';
+
+const USERS_COLLECTION = 'users';
+const GOOGLE_NATIVE_UNAVAILABLE_MESSAGE =
+  'Google sign-in needs the web flow or a development build with native Google Sign-In enabled.';
+export type { UserRole } from './access';
 
 export interface UserProfile {
   fullName: string;
   phone: string;
-  role: 'applicant' | 'student' | 'professional' | 'admin';
+  role: UserRole;
   email: string;
-  createdAt: Date;
+  createdAt: Date | null;
+}
+
+function buildUserProfile(
+  user: User,
+  overrides: {
+    fullName?: string;
+    phone?: string;
+    role?: UserRole;
+    email?: string;
+  } = {}
+): UserProfile {
+  return {
+    fullName: overrides.fullName?.trim() || user.displayName || '',
+    phone: overrides.phone?.trim() || '',
+    role: normalizeUserRole(overrides.role),
+    email: overrides.email?.trim() || user.email || '',
+    createdAt: new Date(),
+  };
+}
+
+async function ensureUserProfile(
+  user: User,
+  overrides: {
+    fullName?: string;
+    phone?: string;
+    role?: UserRole;
+    email?: string;
+  } = {}
+) {
+  const userRef = doc(db, USERS_COLLECTION, user.uid);
+  const userDoc = await getDoc(userRef);
+
+  if (!userDoc.exists()) {
+    await setDoc(userRef, buildUserProfile(user, overrides));
+  }
 }
 
 /**
@@ -29,7 +74,7 @@ export async function signUp(
   userData: {
     fullName: string;
     phone: string;
-    role?: 'applicant' | 'student' | 'professional' | 'admin';
+    role?: UserRole;
   }
 ): Promise<User> {
   try {
@@ -38,15 +83,15 @@ export async function signUp(
     const user = userCredential.user;
 
     // Create user profile in Firestore
-    const userProfile: UserProfile = {
-      fullName: userData.fullName,
-      phone: userData.phone,
-      role: userData.role || 'applicant',
-      email: user.email || email,
-      createdAt: new Date(),
-    };
-
-    await setDoc(doc(db, 'users', user.uid), userProfile);
+    await setDoc(
+      doc(db, USERS_COLLECTION, user.uid),
+      buildUserProfile(user, {
+        fullName: userData.fullName,
+        phone: userData.phone,
+        role: userData.role,
+        email,
+      })
+    );
 
     return user;
   } catch (error) {
@@ -82,14 +127,40 @@ export async function logOut(): Promise<void> {
  */
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   try {
-    const userDoc = await getDoc(doc(db, 'users', uid));
+    const userDoc = await getDoc(doc(db, USERS_COLLECTION, uid));
     if (userDoc.exists()) {
-      return userDoc.data() as UserProfile;
+      const data = userDoc.data();
+      return {
+        fullName: data.fullName || '',
+        phone: data.phone || '',
+        role: normalizeUserRole(data.role ?? data.Role),
+        email: data.email || '',
+        createdAt: data.createdAt?.toDate?.() ?? data.createdAt ?? null,
+      } as UserProfile;
     }
+
     return null;
   } catch (error) {
     throw error;
   }
+}
+
+/**
+ * Update the current user's profile fields in Firestore
+ */
+export async function updateUserProfile(
+  uid: string,
+  updates: { fullName?: string; phone?: string }
+): Promise<void> {
+  const updateData: Record<string, string> = {};
+  if (updates.fullName !== undefined) updateData.fullName = updates.fullName.trim();
+  if (updates.phone !== undefined) updateData.phone = updates.phone.trim();
+
+  if (Object.keys(updateData).length === 0) {
+    return;
+  }
+
+  await updateDoc(doc(db, USERS_COLLECTION, uid), updateData);
 }
 
 /**
@@ -99,43 +170,46 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
  */
 export async function signInWithGoogle(idToken: string): Promise<User> {
   try {
-    // Use popup flow if no token is provided (Web or Expo Go)
     if (!idToken) {
+      if (Platform.OS !== 'web') {
+        throw new Error(GOOGLE_NATIVE_UNAVAILABLE_MESSAGE);
+      }
       const userCredential = await signInWithPopup(auth, googleProvider);
-      const userProfile = await getUserProfile(userCredential.user.uid);
-      if (!userProfile) {
-        const newProfile: UserProfile = {
-          fullName: userCredential.user.displayName || '',
-          phone: '',
-          role: 'applicant',
-          email: userCredential.user.email || '',
-          createdAt: new Date(),
-        };
-        await setDoc(doc(db, 'users', userCredential.user.uid), newProfile);
+      const info = getAdditionalUserInfo(userCredential);
+      if (info?.isNewUser) {
+        await deleteUser(userCredential.user);
+        throw Object.assign(new Error('No account found. Please sign up first.'), { code: 'auth/no-account' });
       }
       return userCredential.user;
     }
 
     const credential = GoogleAuthProvider.credential(idToken);
     const userCredential = await signInWithCredential(auth, credential);
-    
-    // Check if user profile exists, if not create one
-    const userProfile = await getUserProfile(userCredential.user.uid);
-    if (!userProfile) {
-      const newProfile: UserProfile = {
-        fullName: userCredential.user.displayName || '',
-        phone: '',
-        role: 'applicant',
-        email: userCredential.user.email || '',
-        createdAt: new Date(),
-      };
-      await setDoc(doc(db, 'users', userCredential.user.uid), newProfile);
+    const info = getAdditionalUserInfo(userCredential);
+    if (info?.isNewUser) {
+      await deleteUser(userCredential.user);
+      throw Object.assign(new Error('No account found. Please sign up first.'), { code: 'auth/no-account' });
     }
-    
     return userCredential.user;
   } catch (error) {
     throw error;
   }
+}
+
+/**
+ * Send a verification email to the currently signed-in user
+ */
+export async function sendVerificationEmail(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('No signed-in user.');
+  await sendEmailVerification(user);
+}
+
+/**
+ * Send a password reset email
+ */
+export async function resetPassword(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email.trim());
 }
 
 /**
@@ -149,33 +223,21 @@ export async function signUpWithGoogle(
   fullName?: string
 ): Promise<User> {
   try {
-    // Use popup flow if no token is provided (Web or Expo Go)
+    // Use popup flow only on web. Native flows must provide an ID token.
     if (!idToken) {
+      if (Platform.OS !== 'web') {
+        throw new Error(GOOGLE_NATIVE_UNAVAILABLE_MESSAGE);
+      }
+
       const userCredential = await signInWithPopup(auth, googleProvider);
-      const userProfile: UserProfile = {
-        fullName: fullName || userCredential.user.displayName || '',
-        phone: '',
-        role: 'applicant',
-        email: userCredential.user.email || '',
-        createdAt: new Date(),
-      };
-      await setDoc(doc(db, 'users', userCredential.user.uid), userProfile);
+      await ensureUserProfile(userCredential.user, { fullName });
       return userCredential.user;
     }
 
     const credential = GoogleAuthProvider.credential(idToken);
     const userCredential = await signInWithCredential(auth, credential);
     
-    // Create user profile in Firestore
-    const userProfile: UserProfile = {
-      fullName: fullName || userCredential.user.displayName || '',
-      phone: '',
-      role: 'applicant',
-      email: userCredential.user.email || '',
-      createdAt: new Date(),
-    };
-    
-    await setDoc(doc(db, 'users', userCredential.user.uid), userProfile);
+    await ensureUserProfile(userCredential.user, { fullName });
     
     return userCredential.user;
   } catch (error) {
