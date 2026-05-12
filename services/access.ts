@@ -45,7 +45,7 @@ export function getEffectiveRole({
   if (getApprovedApplicationCount(applications) > 0) return 'student';
   if (applications.length > 0) return 'applicant';
   if (services.length > 0) return 'client';
-  return profileRole ?? 'applicant';
+  return 'applicant';
 }
 
 export function getDisplayRole({

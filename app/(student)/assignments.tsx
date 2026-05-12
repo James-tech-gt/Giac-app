@@ -4,7 +4,7 @@ import {
   Assignment,
   AssignmentSubmissionInput,
   getApprovedApplications,
-  getAssignments,
+  subscribeAssignments,
   submitAssignment,
 } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
@@ -13,6 +13,9 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -113,48 +116,49 @@ export default function AssignmentsScreen() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [submissionText, setSubmissionText] = useState('');
+  const [submissionDrafts, setSubmissionDrafts] = useState<Record<string, string>>({});
+  const [attachmentDrafts, setAttachmentDrafts] = useState<Record<string, string>>({});
+  const [studentName, setStudentName] = useState('');
+  const [studentEmail, setStudentEmail] = useState('');
 
   useEffect(() => {
+    if (!user?.uid) { setLoading(false); return; }
     let active = true;
-    async function load() {
-      if (!user?.uid) { if (active) setLoading(false); return; }
-      try {
-        const approved = await getApprovedApplications(user.uid);
-        if (approved.length === 0) { if (active) setLoading(false); return; }
+    const unsubscribers: (() => void)[] = [];
 
-        const allAssignments = await Promise.all(
-          approved.map((application) => getAssignments(user.uid, application.courseId))
-        );
-        const mergedAssignments = allAssignments
-          .flat()
-          .filter((assignment, index, array) => array.findIndex((item) => item.id === assignment.id) === index)
-          .sort((left, right) => {
-            const leftTime =
-              typeof left.deadline === 'object' &&
-              left.deadline !== null &&
-              'toDate' in left.deadline &&
-              typeof (left.deadline as { toDate: () => Date }).toDate === 'function'
-                ? (left.deadline as { toDate: () => Date }).toDate().getTime()
-                : 0;
-            const rightTime =
-              typeof right.deadline === 'object' &&
-              right.deadline !== null &&
-              'toDate' in right.deadline &&
-              typeof (right.deadline as { toDate: () => Date }).toDate === 'function'
-                ? (right.deadline as { toDate: () => Date }).toDate().getTime()
-                : 0;
-            return leftTime - rightTime;
-          });
-        if (active) setAssignments(mergedAssignments);
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-    load();
-    return () => { active = false; };
-  }, [user?.uid]);
+    getApprovedApplications(user.uid).then((approved) => {
+      if (!active) return;
+      if (approved.length === 0) { setLoading(false); return; }
+      const primary = approved[0];
+      setStudentName(primary.fullName?.trim() || user.displayName || '');
+      setStudentEmail(primary.email?.trim() || user.email || '');
+
+      const perCourse: Record<string, Assignment[]> = {};
+      let settled = 0;
+
+      approved.forEach((application) => {
+        perCourse[application.courseId] = [];
+        const unsub = subscribeAssignments(user.uid!, application.courseId, (data) => {
+          perCourse[application.courseId] = data;
+          settled++;
+          if (settled >= approved.length || data.length > 0) {
+            const merged = Object.values(perCourse)
+              .flat()
+              .filter((a, i, arr) => arr.findIndex((x) => x.id === a.id) === i)
+              .sort((l, r) => {
+                const lt = typeof l.deadline?.toDate === 'function' ? l.deadline.toDate().getTime() : 0;
+                const rt = typeof r.deadline?.toDate === 'function' ? r.deadline.toDate().getTime() : 0;
+                return lt - rt;
+              });
+            if (active) { setAssignments(merged); setLoading(false); }
+          }
+        });
+        unsubscribers.push(unsub);
+      });
+    }).catch(() => { if (active) setLoading(false); });
+
+    return () => { active = false; unsubscribers.forEach((u) => u()); };
+  }, [user?.uid, user?.displayName, user?.email]);
 
   const filtered = assignments.filter((a) => a.status === activeTab);
   const pendingCount = assignments.filter((a) => a.status === 'pending').length;
@@ -162,8 +166,10 @@ export default function AssignmentsScreen() {
   const gradedCount = assignments.filter((a) => a.status === 'graded').length;
 
   async function handleSubmit(assignment: Assignment) {
-    if (!submissionText.trim()) {
-      Alert.alert('Empty submission', 'Please enter your response before submitting.');
+    const draft = submissionDrafts[assignment.id]?.trim() ?? '';
+    const attachmentLink = attachmentDrafts[assignment.id]?.trim() ?? '';
+    if (!draft && !attachmentLink) {
+      Alert.alert('Nothing to submit', 'Enter a response, paste a share link, or do both before submitting.');
       return;
     }
     if (!user?.uid) return;
@@ -173,16 +179,19 @@ export default function AssignmentsScreen() {
         assignmentId: assignment.id,
         userId: user.uid,
         courseId: assignment.courseId,
-        submissionText,
+        submissionText: draft,
+        attachmentLink,
+        studentName: studentName || user.displayName || '',
+        studentEmail: studentEmail || user.email || '',
       };
       await submitAssignment(input);
       setAssignments((prev) =>
         prev.map((a) =>
-          a.id === assignment.id ? { ...a, status: 'submitted', submissionText } : a
+          a.id === assignment.id ? { ...a, status: 'submitted', submissionText: draft, attachmentLink } : a
         )
       );
-      setExpandedId(null);
-      setSubmissionText('');
+      setSubmissionDrafts((prev) => ({ ...prev, [assignment.id]: '' }));
+      setAttachmentDrafts((prev) => ({ ...prev, [assignment.id]: '' }));
       Alert.alert('Submitted!', 'Your assignment has been submitted successfully. Your instructor or admin can now review it.');
     } catch {
       Alert.alert('Error', 'Could not submit. Please try again.');
@@ -199,12 +208,17 @@ export default function AssignmentsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={styles.safe}
+        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
@@ -293,7 +307,6 @@ export default function AssignmentsScreen() {
           <View style={styles.list}>
             {filtered.map((assignment) => {
               const dl = formatDeadline(assignment.deadline);
-              const isExpanded = expandedId === assignment.id;
               return (
                 <View key={assignment.id} style={styles.card}>
                   <View style={styles.cardTop}>
@@ -315,7 +328,7 @@ export default function AssignmentsScreen() {
                     <StatusPill status={assignment.status} />
                   </View>
 
-                  <Text style={styles.description} numberOfLines={isExpanded ? undefined : 2}>
+                  <Text style={styles.description}>
                     {assignment.description}
                   </Text>
 
@@ -345,58 +358,67 @@ export default function AssignmentsScreen() {
                     </View>
                   )}
 
-                  {assignment.status === 'pending' && (
-                    <>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setExpandedId(isExpanded ? null : assignment.id);
-                          setSubmissionText('');
-                        }}
-                        style={[styles.submitToggle, isExpanded ? styles.submitToggleActive : null]}
-                      >
-                        <FontAwesome6
-                          name={isExpanded ? 'chevron-up' : 'pen-to-square'}
-                          size={12}
-                          color={C.secondary}
-                        />
-                        <Text style={styles.submitToggleText}>
-                          {isExpanded ? 'Cancel' : 'Write submission'}
-                        </Text>
-                      </TouchableOpacity>
+                  {assignment.status !== 'pending' && assignment.attachmentLink ? (
+                    <Pressable
+                      onPress={() => Linking.openURL(assignment.attachmentLink!)}
+                      style={styles.linkCard}
+                    >
+                      <Text style={styles.linkLabel}>Attached file link</Text>
+                      <Text style={styles.linkValue} numberOfLines={2}>{assignment.attachmentLink}</Text>
+                    </Pressable>
+                  ) : null}
 
-                      {isExpanded && (
-                        <View style={styles.submitForm}>
-                          <TextInput
-                            style={styles.textArea}
-                            placeholder="Type your submission here…"
-                            placeholderTextColor={C.textMuted}
-                            multiline
-                            numberOfLines={5}
-                            value={submissionText}
-                            onChangeText={setSubmissionText}
-                            textAlignVertical="top"
-                          />
-                          <TouchableOpacity
-                            style={styles.submitBtn}
-                            onPress={() => handleSubmit(assignment)}
-                            disabled={submitting === assignment.id}
-                          >
-                            {submitting === assignment.id ? (
-                              <ActivityIndicator color={C.surface} size="small" />
-                            ) : (
-                              <Text style={styles.submitBtnText}>Submit Assignment</Text>
-                            )}
-                          </TouchableOpacity>
-                        </View>
-                      )}
-                    </>
+                  {assignment.status === 'pending' && (
+                    <View style={styles.submitForm}>
+                      <View style={styles.submitIntro}>
+                        <Text style={styles.submitIntroTitle}>Submission Area</Text>
+                        <Text style={styles.submitIntroText}>
+                          Type your answer below, or upload your PDF/doc to Google Drive, Dropbox, or OneDrive and paste the share link here.
+                        </Text>
+                      </View>
+                      <TextInput
+                        style={styles.textArea}
+                        placeholder="Type your submission here..."
+                        placeholderTextColor={C.textMuted}
+                        multiline
+                        numberOfLines={5}
+                        value={submissionDrafts[assignment.id] ?? ''}
+                        onChangeText={(value) =>
+                          setSubmissionDrafts((prev) => ({ ...prev, [assignment.id]: value }))
+                        }
+                        textAlignVertical="top"
+                      />
+                      <TextInput
+                        style={styles.linkInput}
+                        placeholder="PDF/DOC share link"
+                        placeholderTextColor={C.textMuted}
+                        value={attachmentDrafts[assignment.id] ?? ''}
+                        onChangeText={(value) =>
+                          setAttachmentDrafts((prev) => ({ ...prev, [assignment.id]: value }))
+                        }
+                        autoCapitalize="none"
+                        keyboardType="url"
+                      />
+                      <TouchableOpacity
+                        style={styles.submitBtn}
+                        onPress={() => handleSubmit(assignment)}
+                        disabled={submitting === assignment.id}
+                      >
+                        {submitting === assignment.id ? (
+                          <ActivityIndicator color={C.surface} size="small" />
+                        ) : (
+                          <Text style={styles.submitBtnText}>Submit Assignment</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
                   )}
                 </View>
               );
             })}
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -523,22 +545,43 @@ const styles = StyleSheet.create({
   },
   submittedLabel: { fontSize: 12, fontFamily: Fonts.sansSemiBold, color: C.secondary },
   submittedText: { fontSize: 14, lineHeight: 20, fontFamily: Fonts.sans, color: C.textSecondary },
-
-  submitToggle: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 10,
-    borderRadius: 999, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
+  linkCard: {
+    backgroundColor: C.warningSoft,
+    borderRadius: 12,
+    padding: 12,
+    gap: 4,
   },
-  submitToggleActive: {
-    backgroundColor: C.secondarySoft,
-    borderColor: C.secondary,
-  },
-  submitToggleText: { fontSize: 14, fontFamily: Fonts.sansSemiBold, color: C.secondary },
+  linkLabel: { fontSize: 12, fontFamily: Fonts.sansSemiBold, color: C.warning },
+  linkValue: { fontSize: 14, lineHeight: 20, fontFamily: Fonts.sans, color: C.textSecondary },
 
   submitForm: { gap: 10 },
+  submitIntro: {
+    backgroundColor: C.secondarySoft,
+    borderRadius: 12,
+    padding: 12,
+    gap: 4,
+  },
+  submitIntroTitle: {
+    fontSize: 12,
+    fontFamily: Fonts.sansBold,
+    color: C.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  submitIntroText: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: Fonts.sans,
+    color: C.textSecondary,
+  },
   textArea: {
     backgroundColor: C.bg, borderWidth: 1, borderColor: C.border,
     borderRadius: 12, padding: 12, minHeight: 120,
+    fontSize: 14, fontFamily: Fonts.sans, color: C.textPrimary,
+  },
+  linkInput: {
+    backgroundColor: C.bg, borderWidth: 1, borderColor: C.border,
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12,
     fontSize: 14, fontFamily: Fonts.sans, color: C.textPrimary,
   },
   submitBtn: {

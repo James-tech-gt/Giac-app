@@ -58,7 +58,23 @@ service cloud.firestore {
 
     match /AdminNotifications/{notifId} {
       allow read, update, delete: if isAdmin();
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.read == false;
+    }
+
+    match /AccountDeletionRequests/{requestId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /WithdrawnApplications/{withdrawalId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isAdmin();
     }
 
     match /Materials/{materialId} {
@@ -84,6 +100,12 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /TestSubmissions/{submissionId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
     match /TestGrades/{gradeId} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow create, update: if isAdmin();
@@ -95,5 +117,12 @@ service cloud.firestore {
       allow create: if isAdmin();
       allow delete: if isAdmin();
     }
+
+    match /CaseMessages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.senderId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
   }
 }
+

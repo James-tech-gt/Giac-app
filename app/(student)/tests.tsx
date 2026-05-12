@@ -1,15 +1,28 @@
 import { Fonts } from '@/constants/theme';
 import { auth } from '@/services/firebase';
-import { Test, TestGrade, getApprovedApplications, getTests, subscribeStudentTestGrades } from '@/services/firestore';
+import {
+  Test,
+  TestGrade,
+  TestSubmissionInput,
+  getApprovedApplications,
+  submitTest,
+  subscribeStudentTestGrades,
+  subscribeTests,
+} from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -33,7 +46,7 @@ const C = {
   border: '#E3E9F2',
 };
 
-type Tab = 'upcoming' | 'completed';
+type Tab = 'upcoming' | 'submitted' | 'results';
 
 function formatDate(timestamp: unknown): string {
   if (!timestamp) return 'TBD';
@@ -52,6 +65,7 @@ function formatDate(timestamp: unknown): string {
 
 function getTestStatus(test: Test) {
   if (test.status === 'upcoming') return { label: 'Upcoming', bg: C.secondarySoft, color: C.secondary };
+  if (test.status === 'submitted') return { label: 'Submitted', bg: C.warningSoft, color: C.warning };
   if (test.status === 'missed') return { label: 'Missed', bg: C.dangerSoft, color: C.danger };
   const passed = test.score != null && test.score >= test.passMark;
   return {
@@ -126,26 +140,42 @@ export default function TestsScreen() {
   const [tests, setTests] = useState<Test[]>([]);
   const [testGrades, setTestGrades] = useState<TestGrade[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [submissionText, setSubmissionText] = useState('');
+  const [attachmentDraft, setAttachmentDraft] = useState('');
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [studentName, setStudentName] = useState('');
+  const [studentEmail, setStudentEmail] = useState('');
 
   useEffect(() => {
+    if (!user?.uid) { setLoading(false); return; }
     let active = true;
-    async function load() {
-      if (!user?.uid) { if (active) setLoading(false); return; }
-      try {
-        const approved = await getApprovedApplications(user.uid);
-        if (approved.length === 0) { if (active) setLoading(false); return; }
+    const unsubscribers: (() => void)[] = [];
 
-        const allTests = await Promise.all(
-          approved.map((app) => getTests(app.courseId))
-        );
-        if (active) setTests(allTests.flat());
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-    load();
-    return () => { active = false; };
-  }, [user?.uid]);
+    getApprovedApplications(user.uid).then((approved) => {
+      if (!active) return;
+      if (approved.length === 0) { setLoading(false); return; }
+      const primary = approved[0];
+      setStudentName(primary.fullName?.trim() || user.displayName || '');
+      setStudentEmail(primary.email?.trim() || user.email || '');
+
+      const perCourse: Record<string, Test[]> = {};
+
+      approved.forEach((app) => {
+        perCourse[app.courseId] = [];
+        const unsub = subscribeTests(user.uid!, app.courseId, (data) => {
+          perCourse[app.courseId] = data;
+          const merged = Object.values(perCourse)
+            .flat()
+            .filter((t, i, arr) => arr.findIndex((x) => x.id === t.id) === i);
+          if (active) { setTests(merged); setLoading(false); }
+        });
+        unsubscribers.push(unsub);
+      });
+    }).catch(() => { if (active) setLoading(false); });
+
+    return () => { active = false; unsubscribers.forEach((u) => u()); };
+  }, [user?.uid, user?.displayName, user?.email]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -156,26 +186,78 @@ export default function TestsScreen() {
     return testGrades.find((g) => g.testId === testId);
   }
 
-  const upcoming = tests.filter((t) => t.status === 'upcoming' && !getGradeForTest(t.id));
-  const completed = [
-    ...tests.filter((t) => t.status === 'completed' || t.status === 'missed'),
-    ...tests.filter((t) => t.status === 'upcoming' && !!getGradeForTest(t.id)),
+  async function handleSubmit(test: Test) {
+    const draft = submissionText.trim();
+    const attachmentLink = attachmentDraft.trim();
+    if (!draft && !attachmentLink) {
+      Alert.alert('Nothing to submit', 'Enter a response, paste a share link, or do both before submitting.');
+      return;
+    }
+    if (!user?.uid) return;
+    setSubmittingId(test.id);
+    try {
+      const input: TestSubmissionInput = {
+        testId: test.id,
+        userId: user.uid,
+        courseId: test.courseId,
+        submissionText: draft,
+        attachmentLink,
+        studentName: studentName || user.displayName || '',
+        studentEmail: studentEmail || user.email || '',
+      };
+      await submitTest(input);
+      setTests((prev) =>
+        prev.map((item) =>
+          item.id === test.id
+            ? {
+                ...item,
+                status: 'submitted',
+                submissionText: draft,
+                attachmentLink,
+              }
+            : item
+        )
+      );
+      setExpandedId(null);
+      setSubmissionText('');
+      setAttachmentDraft('');
+      Alert.alert('Submitted!', 'Your test response has been submitted successfully. Admin can now review it.');
+    } catch {
+      Alert.alert('Error', 'Could not submit your test response. Please try again.');
+    } finally {
+      setSubmittingId(null);
+    }
+  }
+
+  const upcoming = tests.filter((t) => t.status === 'upcoming');
+  const submitted = tests.filter((t) => t.status === 'submitted');
+  const results = [
+    ...tests.filter((t) => t.status === 'graded' || t.status === 'completed' || t.status === 'missed'),
+    ...tests.filter((t) => t.status === 'submitted' && !!getGradeForTest(t.id)),
   ].filter((t, i, arr) => arr.findIndex((x) => x.id === t.id) === i);
 
   const TABS: { key: Tab; label: string; count: number }[] = [
     { key: 'upcoming', label: 'Upcoming', count: upcoming.length },
-    { key: 'completed', label: 'Results', count: completed.length },
+    { key: 'submitted', label: 'Submitted', count: submitted.length },
+    { key: 'results', label: 'Results', count: results.length },
   ];
 
-  const displayed = activeTab === 'upcoming' ? upcoming : completed;
+  const displayed =
+    activeTab === 'upcoming' ? upcoming : activeTab === 'submitted' ? submitted : results;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.safe}
+        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
@@ -203,17 +285,21 @@ export default function TestsScreen() {
               <Text style={styles.summaryNum}>{upcoming.length}</Text>
               <Text style={styles.summaryLabel}>Upcoming</Text>
             </View>
+            <View style={[styles.summaryCard, { backgroundColor: C.warningSoft }]}>
+              <Text style={[styles.summaryNum, { color: C.warning }]}>
+                {submitted.length}
+              </Text>
+              <Text style={[styles.summaryLabel, { color: C.warning }]}>Submitted</Text>
+            </View>
             <View style={[styles.summaryCard, { backgroundColor: C.successSoft }]}>
               <Text style={[styles.summaryNum, { color: C.success }]}>
-                {completed.filter((t) => t.score != null && t.score >= t.passMark).length}
+                {results.filter((t) => {
+                  const grade = getGradeForTest(t.id);
+                  const score = grade?.score ?? t.score;
+                  return score != null && score >= t.passMark;
+                }).length}
               </Text>
               <Text style={[styles.summaryLabel, { color: C.success }]}>Passed</Text>
-            </View>
-            <View style={[styles.summaryCard, { backgroundColor: C.dangerSoft }]}>
-              <Text style={[styles.summaryNum, { color: C.danger }]}>
-                {completed.filter((t) => t.score != null && t.score < t.passMark).length}
-              </Text>
-              <Text style={[styles.summaryLabel, { color: C.danger }]}>Failed</Text>
             </View>
           </View>
         )}
@@ -254,12 +340,18 @@ export default function TestsScreen() {
               style={{ marginBottom: 8 }}
             />
             <Text style={styles.emptyTitle}>
-              {activeTab === 'upcoming' ? 'No upcoming tests' : 'No completed tests yet'}
+              {activeTab === 'upcoming'
+                ? 'No upcoming tests'
+                : activeTab === 'submitted'
+                ? 'No submitted tests yet'
+                : 'No test results yet'}
             </Text>
             <Text style={styles.emptyText}>
               {activeTab === 'upcoming'
                 ? 'Your instructor has not scheduled any tests yet. Check back soon.'
-                : 'Completed test results will appear here after each examination.'}
+                : activeTab === 'submitted'
+                ? 'Submit an upcoming test and it will appear here while it waits for grading.'
+                : 'Completed test results will appear here after admin reviews your submission.'}
             </Text>
           </View>
         ) : (
@@ -270,8 +362,9 @@ export default function TestsScreen() {
               const effectiveTotal = grade?.totalMarks ?? test.totalMarks;
               const effectivePass = grade?.passMark ?? test.passMark;
               const isGraded = effectiveScore != null;
-              const displayStatus = isGraded ? 'completed' : test.status;
+              const displayStatus = isGraded ? 'graded' : test.status;
               const ts = getTestStatus({ ...test, status: displayStatus, score: effectiveScore });
+              const isExpanded = expandedId === test.id;
               return (
               <View key={test.id} style={styles.card}>
                 <View style={styles.cardTop}>
@@ -311,18 +404,90 @@ export default function TestsScreen() {
                   <ScoreBar score={effectiveScore!} total={effectiveTotal} pass={effectivePass} />
                 )}
 
+                {test.status === 'submitted' && test.submissionText ? (
+                  <View style={styles.submittedCard}>
+                    <Text style={styles.submittedLabel}>Your submission</Text>
+                    <Text style={styles.submittedText}>{test.submissionText}</Text>
+                  </View>
+                ) : null}
+
+                {test.status !== 'upcoming' && test.attachmentLink ? (
+                  <Pressable onPress={() => Linking.openURL(test.attachmentLink!)} style={styles.linkCard}>
+                    <Text style={styles.submittedLabel}>Attached file link</Text>
+                    <Text style={styles.submittedText}>{test.attachmentLink}</Text>
+                  </Pressable>
+                ) : null}
+
                 {grade?.feedback ? (
                   <View style={styles.feedbackCard}>
                     <Text style={styles.feedbackLabel}>Instructor Feedback</Text>
                     <Text style={styles.feedbackText}>{grade.feedback}</Text>
                   </View>
                 ) : null}
+
+                {test.status === 'upcoming' ? (
+                  <>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setExpandedId(isExpanded ? null : test.id);
+                        setSubmissionText('');
+                        setAttachmentDraft('');
+                      }}
+                      style={[styles.submitToggle, isExpanded ? styles.submitToggleActive : null]}
+                    >
+                      <FontAwesome6
+                        name={isExpanded ? 'chevron-up' : 'pen-to-square'}
+                        size={12}
+                        color={C.secondary}
+                      />
+                      <Text style={styles.submitToggleText}>
+                        {isExpanded ? 'Cancel' : 'Write submission'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {isExpanded ? (
+                      <View style={styles.submitForm}>
+                        <TextInput
+                          style={styles.textArea}
+                          placeholder="Type your test answer or response here..."
+                          placeholderTextColor={C.textMuted}
+                          multiline
+                          numberOfLines={5}
+                          value={submissionText}
+                          onChangeText={setSubmissionText}
+                          textAlignVertical="top"
+                        />
+                        <TextInput
+                          style={styles.linkInput}
+                          placeholder="PDF/DOC share link"
+                          placeholderTextColor={C.textMuted}
+                          value={attachmentDraft}
+                          onChangeText={setAttachmentDraft}
+                          autoCapitalize="none"
+                          keyboardType="url"
+                        />
+                        <TouchableOpacity
+                          style={styles.submitBtn}
+                          onPress={() => handleSubmit(test)}
+                          disabled={submittingId === test.id}
+                        >
+                          {submittingId === test.id ? (
+                            <ActivityIndicator color={C.surface} size="small" />
+                          ) : (
+                            <Text style={styles.submitBtnText}>Submit Test</Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    ) : null}
+                  </>
+                ) : null}
               </View>
               );
             })}
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -377,9 +542,9 @@ const styles = StyleSheet.create({
     color: C.secondary,
   },
 
-  summaryRow: { flexDirection: 'row', gap: 10 },
+  summaryRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   summaryCard: {
-    flex: 1, borderRadius: 14, padding: 14, alignItems: 'center', gap: 4,
+    flex: 1, minWidth: 100, borderRadius: 14, padding: 14, alignItems: 'center', gap: 4,
   },
   summaryNum: {
     fontSize: 24, fontFamily: Fonts.displayBold, color: C.secondary,
@@ -433,7 +598,7 @@ const styles = StyleSheet.create({
 
   scoreBarContainer: { gap: 8 },
   scoreBarTrack: {
-    height: 8, backgroundColor: C.border, borderRadius: 999, overflow: 'hidden', position: 'relative',
+    height: 8, backgroundColor: C.border, borderRadius: 999, position: 'relative',
   },
   scoreBarFill: { height: '100%', borderRadius: 999 },
   passLine: {
@@ -446,6 +611,31 @@ const styles = StyleSheet.create({
   passFailTag: { fontSize: 13, fontFamily: Fonts.sansSemiBold },
   pressed: {
     opacity: 0.92,
+  },
+  submittedCard: {
+    backgroundColor: C.warningSoft,
+    borderRadius: 14,
+    padding: 12,
+    gap: 4,
+  },
+  submittedLabel: {
+    fontSize: 11,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.warning,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  submittedText: {
+    fontSize: 14,
+    lineHeight: 21,
+    fontFamily: Fonts.sans,
+    color: C.textSecondary,
+  },
+  linkCard: {
+    backgroundColor: C.warningSoft,
+    borderRadius: 14,
+    padding: 12,
+    gap: 4,
   },
   feedbackCard: {
     backgroundColor: C.successSoft,
@@ -465,5 +655,60 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontFamily: Fonts.sans,
     color: C.textSecondary,
+  },
+  submitToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: C.surface,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  submitToggleActive: {
+    backgroundColor: C.secondarySoft,
+    borderColor: C.secondary,
+  },
+  submitToggleText: {
+    fontSize: 14,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.secondary,
+  },
+  submitForm: { gap: 10 },
+  textArea: {
+    backgroundColor: C.bg,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 12,
+    padding: 12,
+    minHeight: 120,
+    fontSize: 14,
+    fontFamily: Fonts.sans,
+    color: C.textPrimary,
+  },
+  linkInput: {
+    backgroundColor: C.bg,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 14,
+    fontFamily: Fonts.sans,
+    color: C.textPrimary,
+  },
+  submitBtn: {
+    backgroundColor: C.primary,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  submitBtnText: {
+    fontSize: 15,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.surface,
   },
 });

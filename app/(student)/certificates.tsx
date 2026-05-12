@@ -234,9 +234,12 @@ const styles = StyleSheet.create({
 
   certCard: {
     backgroundColor: C.surface, borderRadius: 20,
-    borderWidth: 1, borderColor: C.border, overflow: 'hidden',
+    borderWidth: 1, borderColor: C.border,
   },
-  certAccent: { height: 4, backgroundColor: C.accent },
+  certAccent: {
+    height: 4, backgroundColor: C.accent,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+  },
   certBody: { flexDirection: 'row', gap: 14, padding: 18, alignItems: 'flex-start' },
   certIconWrap: {
     width: 48, height: 48, borderRadius: 14,

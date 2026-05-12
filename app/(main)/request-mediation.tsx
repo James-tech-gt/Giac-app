@@ -1,4 +1,5 @@
 import { Fonts } from '@/constants/theme';
+import { getUserProfile } from '@/services/auth';
 import { auth } from '@/services/firebase';
 import { createService } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
@@ -7,6 +8,8 @@ import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -186,8 +189,11 @@ export default function RequestMediationScreen() {
     setSubmitting(true);
 
     try {
+      const profile = await getUserProfile(user.uid);
       await createService({
         userId: user.uid,
+        clientName: profile?.fullName || user.displayName || user.email || '',
+        clientEmail: user.email ?? '',
         serviceType,
         category,
         caseDetails,
@@ -228,13 +234,6 @@ export default function RequestMediationScreen() {
           </View>
 
           <Pressable
-            onPress={() => router.push({ pathname: '/(client)/cases', params: { submitted: '1' } })}
-            style={({ pressed }) => [styles.submitButton, pressed ? styles.pressed : null]}
-          >
-            <Text style={styles.submitButtonText}>View My Cases</Text>
-          </Pressable>
-
-          <Pressable
             onPress={() => router.replace('/(main)/home')}
             style={({ pressed }) => [styles.ghostButton, pressed ? styles.pressed : null]}
           >
@@ -247,33 +246,29 @@ export default function RequestMediationScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.content,
-          {
-            paddingHorizontal: horizontalPadding,
-            paddingBottom: isCompact ? 120 : 132,
-          },
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={styles.safe}
+        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.content,
+            {
+              paddingHorizontal: horizontalPadding,
+              paddingBottom: isCompact ? 120 : 132,
+            },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         <View style={styles.hero}>
           <View style={styles.heroTopRow}>
             <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backButton, pressed ? styles.pressed : null]}>
               <FontAwesome6 name="arrow-left" size={14} color={C.secondary} />
               <Text style={styles.backButtonText}>Back</Text>
             </Pressable>
-            {user?.uid ? (
-              <Pressable
-                onPress={() => router.push({ pathname: '/(client)/cases', params: { submitted: '1' } })}
-                style={({ pressed }) => [styles.casesButton, pressed ? styles.pressed : null]}
-              >
-                <FontAwesome6 name="folder-open" size={13} color={C.secondary} />
-                <Text style={styles.casesButtonText}>View My Cases</Text>
-              </Pressable>
-            ) : null}
           </View>
           <Text style={styles.heroEyebrow}>ADR Request</Text>
           <Text style={[styles.heroTitle, isCompact ? styles.heroTitleCompact : null]}>
@@ -510,7 +505,8 @@ export default function RequestMediationScreen() {
             <Text style={styles.ghostButtonText}>Cancel</Text>
           </Pressable>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -544,22 +540,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
-  },
-  casesButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: C.primarySoft,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  casesButtonText: {
-    fontSize: 13,
-    fontFamily: Fonts.sansSemiBold,
-    color: C.secondary,
   },
   backButtonText: {
     fontSize: 12,

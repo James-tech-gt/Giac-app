@@ -8,11 +8,11 @@ import {
   resolveCourseFromReference,
   withdrawApplication,
 } from '@/services/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -62,6 +62,9 @@ function getStatusTone(status: Application['status']) {
   }
   if (status === 'rejected') {
     return { label: 'Rejected', color: C.danger, bg: C.dangerSoft, border: '#E7C8C0' };
+  }
+  if (status === 'withdrawn') {
+    return { label: 'Withdrawn', color: C.textMuted, bg: C.surfaceAlt, border: C.border };
   }
   return { label: 'Pending review', color: C.warning, bg: C.warningSoft, border: '#E7D7A8' };
 }
@@ -246,7 +249,7 @@ function resolveApplicationCourse(
 }
 
 export default function ApplicationStatusScreen() {
-  const user = auth.currentUser;
+  const [user, setUser] = useState(auth.currentUser);
   const { width } = useWindowDimensions();
   const isCompact = width < 390;
   const horizontalPadding = width < 380 ? 16 : 20;
@@ -254,6 +257,11 @@ export default function ApplicationStatusScreen() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
+  const [confirmWithdrawId, setConfirmWithdrawId] = useState<string | null>(null);
+  const [withdrawError, setWithdrawError] = useState('');
+
+  useEffect(() => onAuthStateChanged(auth, setUser), []);
 
   useEffect(() => {
     let active = true;
@@ -301,35 +309,28 @@ export default function ApplicationStatusScreen() {
     };
   }, [user?.uid]);
 
-  const handleWithdraw = (applicationId: string) => {
-    Alert.alert(
-      'Withdraw application',
-      'Are you sure you want to withdraw this application? This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Withdraw',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await withdrawApplication(applicationId);
-              setApplications((prev) => prev.filter((a) => a.id !== applicationId));
-            } catch {
-              Alert.alert('Error', 'Could not withdraw your application. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+  const handleWithdrawConfirm = async (applicationId: string) => {
+    setWithdrawingId(applicationId);
+    setWithdrawError('');
+    try {
+      await withdrawApplication(applicationId);
+      setConfirmWithdrawId(null);
+    } catch (e) {
+      console.error('Withdraw failed:', e);
+      setWithdrawError('Could not withdraw. Please try again.');
+    } finally {
+      setWithdrawingId(null);
+    }
   };
 
   const courseMap = useMemo(
     () => new Map(courses.map((course) => [course.id, course])),
     [courses]
   );
-  const pendingCount = applications.filter((application) => application.status === 'pending').length;
-  const approvedCount = applications.filter((application) => application.status === 'approved').length;
-  const rejectedCount = applications.filter((application) => application.status === 'rejected').length;
+  const activeApplications = applications.filter((a) => a.status !== 'withdrawn');
+  const pendingCount = activeApplications.filter((application) => application.status === 'pending').length;
+  const approvedCount = activeApplications.filter((application) => application.status === 'approved').length;
+  const rejectedCount = activeApplications.filter((application) => application.status === 'rejected').length;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -360,10 +361,10 @@ export default function ApplicationStatusScreen() {
             <StatusChip status="approved" count={approvedCount} />
             <StatusChip status="pending" count={pendingCount} />
             <StatusChip status="rejected" count={rejectedCount} />
-            <StatusChip status="submitted" count={applications.length} />
+            <StatusChip status="submitted" count={activeApplications.length} />
           </View>
           <View style={styles.metaPillRail}>
-            <MetaPill label={`${applications.length} total applications`} />
+            <MetaPill label={`${activeApplications.length} total applications`} />
             <MetaPill label={`${approvedCount} accepted by admin`} brass />
             <MetaPill label={`${rejectedCount} need action`} outline />
           </View>
@@ -398,8 +399,8 @@ export default function ApplicationStatusScreen() {
             <Text style={styles.errorTitle}>Unable to load application status</Text>
             <Text style={styles.placeholder}>{error}</Text>
           </View>
-        ) : applications.length > 0 ? (
-          applications.map((application) => {
+        ) : activeApplications.length > 0 ? (
+          activeApplications.map((application) => {
             const course = resolveApplicationCourse(application, courseMap);
             const tone = getStatusTone(application.status);
             const courseTitle =
@@ -491,18 +492,41 @@ export default function ApplicationStatusScreen() {
                     </>
                   ) : null}
                   {application.status === 'pending' ? (
-                    <>
-                      <ApplicationCTA
-                        kind="ghost"
-                        label="Open mediation form"
-                        onPress={() => router.push('/(main)/request-mediation')}
-                      />
-                      <ApplicationCTA
-                        kind="danger"
-                        label="Withdraw application"
-                        onPress={() => handleWithdraw(application.id)}
-                      />
-                    </>
+                    confirmWithdrawId === application.id ? (
+                      <View style={styles.confirmBox}>
+                        <Text style={styles.confirmText}>
+                          Are you sure? This cannot be undone.
+                        </Text>
+                        {withdrawError ? (
+                          <Text style={styles.confirmError}>{withdrawError}</Text>
+                        ) : null}
+                        <View style={styles.confirmRow}>
+                          <ApplicationCTA
+                            kind="secondary"
+                            label="Cancel"
+                            onPress={() => { setConfirmWithdrawId(null); setWithdrawError(''); }}
+                          />
+                          <ApplicationCTA
+                            kind="danger"
+                            label={withdrawingId === application.id ? 'Withdrawing…' : 'Confirm withdraw'}
+                            onPress={() => withdrawingId ? undefined : handleWithdrawConfirm(application.id)}
+                          />
+                        </View>
+                      </View>
+                    ) : (
+                      <>
+                        <ApplicationCTA
+                          kind="ghost"
+                          label="Open mediation form"
+                          onPress={() => router.push('/(main)/request-mediation')}
+                        />
+                        <ApplicationCTA
+                          kind="danger"
+                          label="Withdraw application"
+                          onPress={() => { setConfirmWithdrawId(application.id); setWithdrawError(''); }}
+                        />
+                      </>
+                    )
                   ) : null}
                 </View>
               </View>
@@ -894,5 +918,27 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.92,
+  },
+  confirmBox: {
+    backgroundColor: C.dangerSoft,
+    borderRadius: 18,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#E7C8C0',
+  },
+  confirmText: {
+    fontSize: 14,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.danger,
+  },
+  confirmError: {
+    fontSize: 13,
+    fontFamily: Fonts.sans,
+    color: C.danger,
+  },
+  confirmRow: {
+    flexDirection: 'row',
+    gap: 10,
   },
 });

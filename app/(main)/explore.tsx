@@ -4,10 +4,12 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -101,12 +103,49 @@ const WHY_CHOOSE_GIAC: { icon: IconName; label: string }[] = [
   },
 ];
 
-const CONTACT_ITEMS: { icon: IconName; label: string }[] = [
-  { icon: 'location-dot', label: 'Kasoa, Ghana' },
-  { icon: 'phone', label: '+233 24 687 2805 | +233 50 257 3336' },
-  { icon: 'envelope', label: 'globalinstituteofadrcenter@gmail.com' },
-  { icon: 'globe', label: 'www.giacghana.com' },
+type ContactType = 'map' | 'whatsapp' | 'phone' | 'gmail' | 'web';
+
+const CONTACT_ITEMS: { icon: IconName; label: string; type: ContactType; value: string }[] = [
+  { icon: 'location-dot', label: 'Kasoa, Ghana',                          type: 'map',       value: 'Kasoa,Ghana' },
+  { icon: 'whatsapp',     label: '+233 24 687 2805',                      type: 'whatsapp',  value: '233246872805' },
+  { icon: 'phone',        label: '+233 50 257 3336',                      type: 'phone',     value: '+233502573336' },
+  { icon: 'envelope',     label: 'globalinstituteofadrcenter@gmail.com',  type: 'gmail',     value: 'globalinstituteofadrcenter@gmail.com' },
+  { icon: 'globe',        label: 'www.giacghana.com',                     type: 'web',       value: 'https://www.giacghana.com' },
 ];
+
+async function openContact(type: ContactType, value: string) {
+  let primaryUrl = '';
+  let fallbackUrl = '';
+
+  switch (type) {
+    case 'map':
+      primaryUrl = `https://maps.google.com/?q=${encodeURIComponent(value)}`;
+      break;
+    case 'whatsapp':
+      primaryUrl = `whatsapp://send?phone=${value}`;
+      fallbackUrl = `https://wa.me/${value}`;
+      break;
+    case 'phone':
+      primaryUrl = `tel:${value}`;
+      break;
+    case 'gmail':
+      primaryUrl = `googlegmail://co?to=${encodeURIComponent(value)}`;
+      fallbackUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(value)}`;
+      break;
+    case 'web':
+      primaryUrl = value;
+      break;
+  }
+
+  const canOpen = await Linking.canOpenURL(primaryUrl).catch(() => false);
+  if (canOpen) {
+    Linking.openURL(primaryUrl);
+  } else if (fallbackUrl) {
+    Linking.openURL(fallbackUrl);
+  } else {
+    Linking.openURL(primaryUrl);
+  }
+}
 
 function SectionTitle({ icon, title }: { icon: IconName; title: string }) {
   return (
@@ -253,8 +292,46 @@ export default function ExploreScreen() {
             <Text style={styles.aboutTitle}>About GIAC</Text>
           </View>
           <Text style={styles.aboutBody}>
-            GIAC supports professional ADR training, practical mediation services, and continuous growth for learners and practitioners across certificate and executive master&apos;s programs.
+            The Global Institute of ADR Center (GIAC) is a registered institution in Ghana dedicated to advancing Alternative Dispute Resolution (ADR). It provides world-class training and professional development in mediation, arbitration, negotiation, and other ADR mechanisms. Through its certification programs, mediation services, and research initiatives, GIAC equips individuals and organizations with the skills to resolve conflicts efficiently, preserving relationships while saving time and resources. GIAC also offers tailored programs for international students and organizations who wish to study ADR abroad, providing customized training solutions to meet diverse needs.
           </Text>
+
+          <View style={styles.aboutDivider} />
+
+          <View style={styles.aboutMetaRow}>
+            <Text style={styles.aboutMetaLabel}>Motto</Text>
+            <Text style={styles.aboutMetaValue}>Collaborative Effort for a Sustainable World</Text>
+          </View>
+
+          <View style={styles.aboutMetaRow}>
+            <Text style={styles.aboutMetaLabel}>Vision</Text>
+            <Text style={styles.aboutMetaValue}>
+              Advancing Alternative Dispute Resolution (ADR) as a catalyst for global peace, justice, and sustainability.
+            </Text>
+          </View>
+
+          <View style={styles.aboutMetaRow}>
+            <Text style={styles.aboutMetaLabel}>Mission</Text>
+            <Text style={styles.aboutMetaValue}>
+              To promote and advance the use of ADR methods—such as mediation, arbitration, negotiation, and other conflict resolution mechanisms—to resolve disputes efficiently and effectively.
+            </Text>
+          </View>
+
+          <View style={styles.aboutDivider} />
+
+          <Text style={styles.aboutMetaLabel}>Objectives</Text>
+          {[
+            'Provide training and certification programs for ADR professionals.',
+            'Offer resources and support for individuals and organizations seeking ADR services.',
+            'Promote the benefits of ADR through research, publications, and events.',
+            'Foster a global network of ADR professionals and organizations.',
+          ].map((obj, i) => (
+            <View key={i} style={styles.objectiveRow}>
+              <View style={styles.objectiveNum}>
+                <Text style={styles.objectiveNumText}>{i + 1}</Text>
+              </View>
+              <Text style={styles.objectiveText}>{obj}</Text>
+            </View>
+          ))}
         </View>
 
         <View style={styles.infoCard}>
@@ -302,12 +379,17 @@ export default function ExploreScreen() {
         <View style={styles.contactCard}>
           <SectionTitle icon="location-dot" title="Contact GIAC" />
           {CONTACT_ITEMS.map((item) => (
-            <View key={item.label} style={styles.infoRow}>
+            <TouchableOpacity
+              key={item.label}
+              style={styles.infoRow}
+              onPress={() => openContact(item.type, item.value)}
+              activeOpacity={0.65}
+            >
               <View style={styles.infoBadge}>
                 <FontAwesome6 name={item.icon} size={13} color={C.secondary} />
               </View>
-              <Text style={styles.contactText}>{item.label}</Text>
-            </View>
+              <Text style={[styles.contactText, styles.contactLink]}>{item.label}</Text>
+            </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
@@ -431,6 +513,55 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sans,
     color: C.textSecondary,
   },
+  aboutDivider: {
+    height: 1,
+    backgroundColor: C.border,
+    marginVertical: 4,
+  },
+  aboutMetaRow: {
+    gap: 3,
+  },
+  aboutMetaLabel: {
+    fontSize: 11,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
+  aboutMetaValue: {
+    fontSize: 14,
+    lineHeight: 22,
+    fontFamily: Fonts.sans,
+    color: C.textSecondary,
+  },
+  objectiveRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 6,
+  },
+  objectiveNum: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: C.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  objectiveNumText: {
+    fontSize: 11,
+    fontFamily: Fonts.sansBold,
+    color: C.secondary,
+  },
+  objectiveText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 22,
+    fontFamily: Fonts.sans,
+    color: C.textSecondary,
+  },
   infoCard: {
     backgroundColor: C.surface,
     borderRadius: 22,
@@ -497,6 +628,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontFamily: Fonts.sansSemiBold,
     color: C.textPrimary,
+  },
+  contactLink: {
+    color: C.secondary,
+    textDecorationLine: 'underline',
   },
   placeholderText: {
     fontSize: 14,

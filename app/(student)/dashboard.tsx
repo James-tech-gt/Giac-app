@@ -463,7 +463,6 @@ const styles = StyleSheet.create({
     height: 6,
     backgroundColor: C.progressBg,
     borderRadius: 999,
-    overflow: 'hidden',
   },
   progressFill: {
     height: '100%',

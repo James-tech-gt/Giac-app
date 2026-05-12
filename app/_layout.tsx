@@ -54,7 +54,7 @@ export default function RootLayout() {
       const inAuthGroup = rootSegment === '(auth)';
       const inProtectedGroup = ['(main)', '(student)', '(applicant)', '(client)', 'admin'].includes(rootSegment ?? '');
 
-      if (rootSegment === 'splashscreen') return;
+      if (rootSegment === 'splashscreen' || rootSegment === 'onboarding') return;
       if (user && inAuthGroup) { router.replace('/(main)/home'); return; }
       if (!user && inProtectedGroup) { router.replace('/(auth)/login'); }
     });
@@ -83,6 +83,7 @@ export default function RootLayout() {
         >
           <Stack.Screen name="index" />
           <Stack.Screen name="splashscreen" />
+          <Stack.Screen name="onboarding" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(main)" />
           <Stack.Screen name="(student)" />

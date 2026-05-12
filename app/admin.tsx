@@ -1,23 +1,36 @@
 import { AccessGate } from '@/components/access-gate';
 import { C, Fonts } from '@/constants/theme';
+import { auth } from '@/services/firebase';
 import {
+  AccountDeletionRequest,
   AdminAssignment,
+  AdminTest,
   AdminNotification,
   Announcement,
   Application,
+  CaseMessage,
   Material,
   Service,
-  Test,
+  UserRecord,
+  approveAccountDeletionRequest,
   approveApplication,
+  deleteApplication,
+  assignMediator,
   createAdminAssignment,
   createAdminTest,
   createAnnouncement,
   createMaterial,
   deleteMaterial,
+  getAllUsers,
   gradeAssignmentSubmission,
   gradeTestSubmission,
   markAdminNotificationsRead,
+  createStudentNotification,
+  deleteService,
+  rejectAccountDeletionRequest,
   rejectApplication,
+  sendCaseMessage,
+  subscribeAccountDeletionRequests,
   subscribeAdminAssignments,
   subscribeAdminNotifications,
   subscribeAdminTests,
@@ -25,16 +38,19 @@ import {
   subscribeAllMaterials,
   subscribeAllServices,
   subscribeAnnouncements,
-  updateServiceRequest,
+  subscribeCaseMessages,
+  updateCaseStatus,
+  updateUserRole,
 } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
-import { router } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -46,7 +62,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type AdminView = 'overview' | 'admissions' | 'cases' | 'announcements' | 'materials' | 'assignments' | 'tests';
+type AdminView = 'overview' | 'admissions' | 'cases' | 'announcements' | 'materials' | 'assignments' | 'tests' | 'deletions' | 'team';
 
 type StatusTone = {
   bg: string;
@@ -115,11 +131,12 @@ function getApplicationTone(status: Application['status']): StatusTone {
   if (status === 'approved') {
     return { label: 'Approved', color: C.success, bg: C.successSoft, dot: C.success };
   }
-
   if (status === 'rejected') {
     return { label: 'Rejected', color: C.danger, bg: C.dangerSoft, dot: C.danger };
   }
-
+  if (status === 'withdrawn') {
+    return { label: 'Withdrawn', color: C.textMuted, bg: C.surfaceAlt, dot: C.textMuted };
+  }
   return { label: 'Pending review', color: C.warning, bg: C.warningSoft, dot: C.warning };
 }
 
@@ -254,15 +271,18 @@ function ApplicationCard({
   busy,
   onApprove,
   onReject,
+  onDelete,
 }: {
   application: Application;
   busy: boolean;
   onApprove: () => void;
   onReject: (feedback: string) => void;
+  onDelete: () => void;
 }) {
   const tone = getApplicationTone(application.status);
   const [rejecting, setRejecting] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
     <View style={styles.panelCard}>
@@ -380,43 +400,115 @@ function ApplicationCard({
           </Text>
         </View>
       )}
+
+      {confirmDelete ? (
+        <View style={styles.editorCard}>
+          <Text style={[styles.editorLabel, { color: C.danger }]}>Delete this application permanently?</Text>
+          <View style={styles.buttonRow}>
+            <Pressable
+              onPress={() => setConfirmDelete(false)}
+              style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null]}
+            >
+              <Text style={styles.secondaryButtonText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={onDelete}
+              disabled={busy}
+              style={({ pressed }) => [styles.dangerButton, pressed ? styles.pressed : null]}
+            >
+              <Text style={styles.dangerButtonText}>Delete</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <Pressable
+          onPress={() => setConfirmDelete(true)}
+          style={({ pressed }) => [styles.deleteRow, pressed ? styles.pressed : null]}
+        >
+          <FontAwesome6 name="trash" size={12} color={C.danger} />
+          <Text style={styles.deleteRowText}>Delete application</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
 
 function CaseCard({
-  busy,
-  onSave,
+  busyAssign,
+  busyStatus,
+  busyDelete,
+  onAssignMediator,
+  onMarkComplete,
+  onDelete,
   service,
 }: {
-  busy: boolean;
-  onSave: (updates: { mediatorAssigned?: string; status?: Service['status'] }) => void;
+  busyAssign: boolean;
+  busyStatus: boolean;
+  busyDelete: boolean;
+  onAssignMediator: (name: string, note: string) => void;
+  onMarkComplete: (resolution: string) => void;
+  onDelete: () => void;
   service: Service;
 }) {
   const tone = getServiceTone(service.status);
-  const [mediatorAssigned, setMediatorAssigned] = useState(service.mediatorAssigned ?? '');
-  const [status, setStatus] = useState<Service['status']>(service.status);
+  const [mediatorName, setMediatorName] = useState(service.mediatorName ?? '');
+  const [mediatorNote, setMediatorNote] = useState(service.mediatorNote ?? '');
+  const [resolution, setResolution] = useState(service.resolution ?? '');
+  const [messages, setMessages] = useState<CaseMessage[]>([]);
+  const [chatText, setChatText] = useState('');
+  const [chatSending, setChatSending] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
-    setMediatorAssigned(service.mediatorAssigned ?? '');
-    setStatus(service.status);
-  }, [service.mediatorAssigned, service.status]);
+    setMediatorName(service.mediatorName ?? '');
+    setMediatorNote(service.mediatorNote ?? '');
+    setResolution(service.resolution ?? '');
+  }, [service.mediatorName, service.mediatorNote, service.resolution]);
+
+  useEffect(() => subscribeCaseMessages(service.id, setMessages), [service.id]);
+
+  const handleSendChat = async () => {
+    const text = chatText.trim();
+    if (!text) return;
+    setChatSending(true);
+    const senderName = service.mediatorName?.trim() || 'GIAC Admin';
+    try {
+      await sendCaseMessage(service.id, auth.currentUser?.uid ?? 'admin', senderName, 'admin', text);
+      createStudentNotification(
+        service.userId,
+        `New message from ${senderName}`,
+        'case_message',
+        service.id
+      ).catch(() => {});
+      setChatText('');
+    } catch {
+      Alert.alert('Error', 'Could not send message. Please try again.');
+    } finally {
+      setChatSending(false);
+    }
+  };
 
   return (
     <View style={styles.panelCard}>
       <View style={styles.panelHeaderRow}>
         <View style={styles.panelHeaderCopy}>
           <Text style={styles.panelTitle}>
-            {service.serviceType === 'arbitration' ? 'Arbitration request' : 'Mediation request'}
+            {service.serviceType === 'arbitration' ? 'Arbitration' : 'Mediation'} — {service.category || 'Uncategorized'}
           </Text>
-          <Text style={styles.panelSubtitle}>Client ID: {service.userId}</Text>
+          <Text style={styles.panelSubtitle}>Submitted {formatDate(service.createdAt)}</Text>
         </View>
         <StatusChip tone={tone} />
       </View>
 
-      <View style={styles.metaWrap}>
-        <MetaChip label={service.category || 'Uncategorized case'} />
-        <MetaChip icon="calendar" label={`Opened ${formatDate(service.createdAt)}`} subtle />
+      <View style={styles.detailsCard}>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Client</Text>
+          <Text style={styles.detailValue}>{service.clientName?.trim() || 'Unknown'}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Email</Text>
+          <Text style={styles.detailValue}>{service.clientEmail?.trim() || service.userId}</Text>
+        </View>
       </View>
 
       <View style={styles.detailsCard}>
@@ -425,60 +517,169 @@ function CaseCard({
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>Assigned mediator / officer</Text>
+        <Text style={styles.fieldLabel}>Mediator / Officer name</Text>
         <TextInput
-          value={mediatorAssigned}
-          onChangeText={setMediatorAssigned}
-          placeholder="Enter assigned mediator or officer"
+          value={mediatorName}
+          onChangeText={setMediatorName}
+          placeholder="Full name of assigned mediator"
           placeholderTextColor={C.textMuted}
           style={styles.input}
         />
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>Case status</Text>
-        <View style={styles.statusSelectorRow}>
-          {(['submitted', 'in-progress', 'completed'] as Service['status'][]).map((option) => {
-            const optionTone = getServiceTone(option);
-            const selected = status === option;
-            return (
-              <Pressable
-                key={option}
-                onPress={() => setStatus(option)}
-                style={({ pressed }) => [
-                  styles.selectorChip,
-                  selected ? { backgroundColor: optionTone.bg, borderColor: optionTone.color } : null,
-                  pressed ? styles.pressed : null,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.selectorChipText,
-                    selected ? { color: optionTone.color } : null,
-                  ]}
-                >
-                  {optionTone.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Text style={styles.fieldLabel}>Note to client (optional)</Text>
+        <TextInput
+          value={mediatorNote}
+          onChangeText={setMediatorNote}
+          placeholder="e.g. Your mediator will contact you within 48 hours."
+          placeholderTextColor={C.textMuted}
+          multiline
+          style={[styles.input, { minHeight: 60, textAlignVertical: 'top' }]}
+        />
       </View>
 
-      <View style={styles.buttonRow}>
-        <Pressable
-          onPress={() => onSave({ mediatorAssigned, status })}
-          disabled={busy}
-          style={({ pressed }) => [
-            styles.primaryButton,
-            (busy || pressed) ? styles.pressed : null,
-          ]}
-        >
-          {busy ? (
-            <ActivityIndicator size="small" color={C.textInverse} />
+      <Pressable
+        onPress={() => onAssignMediator(mediatorName, mediatorNote)}
+        disabled={busyAssign}
+        style={({ pressed }) => [styles.primaryButton, (busyAssign || pressed) ? styles.pressed : null]}
+      >
+        {busyAssign
+          ? <ActivityIndicator size="small" color={C.textInverse} />
+          : <Text style={styles.primaryButtonText}>
+              {service.mediatorName ? 'Update Mediator' : 'Assign Mediator'}
+            </Text>
+        }
+      </Pressable>
+
+      {service.status === 'in-progress' ? (
+        <>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Resolution summary (optional)</Text>
+            <TextInput
+              value={resolution}
+              onChangeText={setResolution}
+              placeholder="Describe the outcome or resolution before marking complete."
+              placeholderTextColor={C.textMuted}
+              multiline
+              style={[styles.input, { minHeight: 72, textAlignVertical: 'top' }]}
+            />
+          </View>
+          <View style={styles.buttonRow}>
+            <Pressable
+              onPress={() => onMarkComplete(resolution)}
+              disabled={busyStatus}
+              style={({ pressed }) => [styles.primaryButton, { flex: 1 }, (busyStatus || pressed) ? styles.pressed : null]}
+            >
+              {busyStatus
+                ? <ActivityIndicator size="small" color={C.textInverse} />
+                : <Text style={styles.primaryButtonText}>Mark Complete</Text>
+              }
+            </Pressable>
+            {confirmDelete ? (
+              <View style={styles.confirmRow}>
+                <Text style={styles.confirmText}>Delete this case?</Text>
+                <Pressable onPress={() => setConfirmDelete(false)} style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null]}>
+                  <Text style={styles.secondaryButtonText}>Cancel</Text>
+                </Pressable>
+                <Pressable onPress={() => { setConfirmDelete(false); onDelete(); }} disabled={busyDelete} style={({ pressed }) => [styles.dangerButton, (busyDelete || pressed) ? styles.pressed : null]}>
+                  {busyDelete ? <ActivityIndicator size="small" color={C.textInverse} /> : <Text style={styles.dangerButtonText}>Delete</Text>}
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable onPress={() => setConfirmDelete(true)} style={({ pressed }) => [styles.deleteBtn, pressed ? styles.pressed : null]}>
+                <FontAwesome6 name="trash" size={14} color={C.danger} />
+              </Pressable>
+            )}
+          </View>
+        </>
+      ) : service.status === 'completed' ? (
+        <>
+          {service.resolution ? (
+            <View style={[styles.detailsCard, { borderColor: C.success + '40' }]}>
+              <Text style={[styles.noteLabel, { color: C.success }]}>Resolution</Text>
+              <Text style={styles.noteBody}>{service.resolution}</Text>
+            </View>
+          ) : null}
+          <View style={styles.buttonRow}>
+            <View style={{ flex: 1 }} />
+            {confirmDelete ? (
+              <View style={styles.confirmRow}>
+                <Text style={styles.confirmText}>Delete this case?</Text>
+                <Pressable onPress={() => setConfirmDelete(false)} style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null]}>
+                  <Text style={styles.secondaryButtonText}>Cancel</Text>
+                </Pressable>
+                <Pressable onPress={() => { setConfirmDelete(false); onDelete(); }} disabled={busyDelete} style={({ pressed }) => [styles.dangerButton, (busyDelete || pressed) ? styles.pressed : null]}>
+                  {busyDelete ? <ActivityIndicator size="small" color={C.textInverse} /> : <Text style={styles.dangerButtonText}>Delete</Text>}
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable onPress={() => setConfirmDelete(true)} style={({ pressed }) => [styles.deleteBtn, pressed ? styles.pressed : null]}>
+                <FontAwesome6 name="trash" size={14} color={C.danger} />
+              </Pressable>
+            )}
+          </View>
+        </>
+      ) : (
+        <View style={styles.buttonRow}>
+          <View style={{ flex: 1 }} />
+          {confirmDelete ? (
+            <View style={styles.confirmRow}>
+              <Text style={styles.confirmText}>Delete this case?</Text>
+              <Pressable onPress={() => setConfirmDelete(false)} style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null]}>
+                <Text style={styles.secondaryButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable onPress={() => { setConfirmDelete(false); onDelete(); }} disabled={busyDelete} style={({ pressed }) => [styles.dangerButton, (busyDelete || pressed) ? styles.pressed : null]}>
+                {busyDelete ? <ActivityIndicator size="small" color={C.textInverse} /> : <Text style={styles.dangerButtonText}>Delete</Text>}
+              </Pressable>
+            </View>
           ) : (
-            <Text style={styles.primaryButtonText}>Save Case Update</Text>
+            <Pressable onPress={() => setConfirmDelete(true)} style={({ pressed }) => [styles.deleteBtn, pressed ? styles.pressed : null]}>
+              <FontAwesome6 name="trash" size={14} color={C.danger} />
+            </Pressable>
           )}
+        </View>
+      )}
+
+      <View style={styles.chatDivider} />
+      <Text style={styles.fieldLabel}>Client Messages</Text>
+      {messages.length > 0 ? (
+        <View style={styles.chatMessages}>
+          {messages.map((msg) => (
+            <View
+              key={msg.id}
+              style={[
+                styles.chatBubble,
+                msg.senderType === 'admin' ? styles.chatBubbleAdmin : styles.chatBubbleClient,
+              ]}
+            >
+              <Text style={styles.chatSender}>{msg.senderName}</Text>
+              <Text style={styles.chatText}>{msg.text}</Text>
+              <Text style={styles.chatTime}>{formatDate(msg.createdAt)}</Text>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.chatEmpty}>No messages yet.</Text>
+      )}
+      <View style={styles.chatInputRow}>
+        <TextInput
+          value={chatText}
+          onChangeText={setChatText}
+          placeholder="Reply to client…"
+          placeholderTextColor={C.textMuted}
+          style={styles.chatInput}
+          multiline
+        />
+        <Pressable
+          onPress={handleSendChat}
+          disabled={chatSending || !chatText.trim()}
+          style={({ pressed }) => [styles.chatSendBtn, (chatSending || !chatText.trim() || pressed) ? styles.pressed : null]}
+        >
+          {chatSending
+            ? <ActivityIndicator size="small" color={C.textInverse} />
+            : <FontAwesome6 name="paper-plane" size={13} color={C.textInverse} />
+          }
         </Pressable>
       </View>
     </View>
@@ -537,6 +738,9 @@ function AdminPanel() {
   const isCompactMaterialsLayout = width < 720;
 
   const [activeView, setActiveView] = useState<AdminView>('overview');
+  const { openCaseId, openAdmissions } = useLocalSearchParams<{ openCaseId?: string; openAdmissions?: string }>();
+  const openCaseFired = useRef(false);
+  const openAdmissionsFired = useRef(false);
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -545,9 +749,14 @@ function AdminPanel() {
   const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
   const [markingRead, setMarkingRead] = useState(false);
   const [admissionsMsg, setAdmissionsMsg] = useState<{ text: string; kind: 'success' | 'error' } | null>(null);
-  const [admissionsTab, setAdmissionsTab] = useState<'pending' | 'decided'>('pending');
-  const [decidedFilter, setDecidedFilter] = useState<'all' | 'approved' | 'rejected'>('all');
-  const [decidedDropdownOpen, setDecidedDropdownOpen] = useState(false);
+  const [admissionsTab, setAdmissionsTab] = useState<'enrolled' | 'pending' | 'rejected' | 'withdrawn'>('enrolled');
+
+  // Team
+  const [teamUsers, setTeamUsers] = useState<UserRecord[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [teamMsg, setTeamMsg] = useState<{ text: string; kind: 'success' | 'error' } | null>(null);
+  const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   // Materials
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -575,7 +784,7 @@ function AdminPanel() {
   const [gradingSaving, setGradingSaving] = useState(false);
 
   // Tests
-  const [adminTests, setAdminTests] = useState<Test[]>([]);
+  const [adminTests, setAdminTests] = useState<AdminTest[]>([]);
   const [testTab, setTestTab] = useState<'create' | 'grade'>('create');
   const [testTitle, setTestTitle] = useState('');
   const [testDesc, setTestDesc] = useState('');
@@ -587,13 +796,15 @@ function AdminPanel() {
   const [testSaving, setTestSaving] = useState(false);
   const [testMsg, setTestMsg] = useState<{ text: string; kind: 'success' | 'error' } | null>(null);
   const [gradingTestKey, setGradingTestKey] = useState<string | null>(null);
-  const [testStudentId, setTestStudentId] = useState('');
   const [testScore, setTestScore] = useState('');
   const [testFeedback, setTestFeedback] = useState('');
   const [testGradingSaving, setTestGradingSaving] = useState(false);
 
+  const [casesTab, setCasesTab] = useState<'unassigned' | 'assigned'>('unassigned');
   const [busyApplicationId, setBusyApplicationId] = useState<string | null>(null);
-  const [busyServiceId, setBusyServiceId] = useState<string | null>(null);
+  const [busyAssignId, setBusyAssignId] = useState<string | null>(null);
+  const [busyStatusId, setBusyStatusId] = useState<string | null>(null);
+  const [busyDeleteId, setBusyDeleteId] = useState<string | null>(null);
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementDetail, setAnnouncementDetail] = useState('');
   const [announcementUrgent, setAnnouncementUrgent] = useState(false);
@@ -605,16 +816,45 @@ function AdminPanel() {
   useEffect(() => subscribeAllServices(setServices), []);
   useEffect(() => subscribeAnnouncements(setAnnouncements), []);
   useEffect(() => subscribeAdminNotifications(setAdminNotifications), []);
+
+  // Navigate straight to the Cases view when arriving from a notification tap
+  useEffect(() => {
+    if (openCaseId && !openCaseFired.current) {
+      openCaseFired.current = true;
+      setActiveView('cases');
+    }
+  }, [openCaseId]);
+
+  // Navigate straight to Admissions → Withdrawn tab when arriving from a withdrawal notification
+  useEffect(() => {
+    if (openAdmissions && !openAdmissionsFired.current) {
+      openAdmissionsFired.current = true;
+      setActiveView('admissions');
+      setAdmissionsTab('withdrawn');
+    }
+  }, [openAdmissions]);
+
+  // Once services load, switch to whichever tab contains the target case
+  useEffect(() => {
+    if (!openCaseId || services.length === 0) return;
+    const target = services.find((s) => s.id === openCaseId);
+    if (target) setCasesTab(target.mediatorName ? 'assigned' : 'unassigned');
+  }, [openCaseId, services]);
   useEffect(() => subscribeAllMaterials(setMaterials), []);
   useEffect(() => subscribeAdminAssignments(setAdminAssignments), []);
   useEffect(() => subscribeAdminTests(setAdminTests), []);
+
+  const [deletionRequests, setDeletionRequests] = useState<AccountDeletionRequest[]>([]);
+  const [busyDeletionId, setBusyDeletionId] = useState<string | null>(null);
+  useEffect(() => subscribeAccountDeletionRequests(setDeletionRequests), []);
 
   const applicationCounts = useMemo(() => {
     return {
       approved: applications.filter((item) => item.status === 'approved').length,
       pending: applications.filter((item) => item.status === 'pending').length,
       rejected: applications.filter((item) => item.status === 'rejected').length,
-      total: applications.length,
+      withdrawn: applications.filter((item) => item.status === 'withdrawn').length,
+      total: applications.filter((item) => item.status !== 'withdrawn').length,
     };
   }, [applications]);
 
@@ -632,13 +872,37 @@ function AdminPanel() {
     [applications]
   );
 
-  const decidedApplications = useMemo(
+  const enrolledApplications = useMemo(
     () =>
       applications
-        .filter((a) => a.status !== 'pending')
+        .filter((a) => a.status === 'approved')
         .sort((a, b) => {
           const aTime = typeof a.decidedAt?.toDate === 'function' ? a.decidedAt.toDate().getTime() : new Date(a.decidedAt ?? 0).getTime();
           const bTime = typeof b.decidedAt?.toDate === 'function' ? b.decidedAt.toDate().getTime() : new Date(b.decidedAt ?? 0).getTime();
+          return bTime - aTime;
+        }),
+    [applications]
+  );
+
+  const rejectedApplications = useMemo(
+    () =>
+      applications
+        .filter((a) => a.status === 'rejected')
+        .sort((a, b) => {
+          const aTime = typeof a.decidedAt?.toDate === 'function' ? a.decidedAt.toDate().getTime() : new Date(a.decidedAt ?? 0).getTime();
+          const bTime = typeof b.decidedAt?.toDate === 'function' ? b.decidedAt.toDate().getTime() : new Date(b.decidedAt ?? 0).getTime();
+          return bTime - aTime;
+        }),
+    [applications]
+  );
+
+  const withdrawnApplications = useMemo(
+    () =>
+      applications
+        .filter((a) => a.status === 'withdrawn')
+        .sort((a, b) => {
+          const aTime = typeof a.withdrawnAt?.toDate === 'function' ? a.withdrawnAt.toDate().getTime() : new Date(a.withdrawnAt ?? 0).getTime();
+          const bTime = typeof b.withdrawnAt?.toDate === 'function' ? b.withdrawnAt.toDate().getTime() : new Date(b.withdrawnAt ?? 0).getTime();
           return bTime - aTime;
         }),
     [applications]
@@ -671,6 +935,42 @@ function AdminPanel() {
       });
   }, [materials, matCourse]);
 
+  const loadTeamUsers = async () => {
+    setTeamLoading(true);
+    setTeamMsg(null);
+    try {
+      const users = await getAllUsers();
+      setTeamUsers(users.sort((a, b) => a.fullName.localeCompare(b.fullName)));
+    } catch {
+      setTeamMsg({ text: 'Could not load users. Try again.', kind: 'error' });
+    } finally {
+      setTeamLoading(false);
+    }
+  };
+
+  const handleToggleAdmin = async (user: UserRecord) => {
+    const newRole = user.role === 'admin' ? 'applicant' : 'admin';
+    setTogglingUserId(user.id);
+    setTeamMsg(null);
+    try {
+      await updateUserRole(user.id, newRole);
+      setTeamUsers((prev) =>
+        prev.map((u) => (u.id === user.id ? { ...u, role: newRole } : u))
+      );
+      setTeamMsg({
+        text: newRole === 'admin'
+          ? `${user.fullName || user.email} is now an admin.`
+          : `${user.fullName || user.email} has been removed as admin.`,
+        kind: 'success',
+      });
+    } catch {
+      setTeamMsg({ text: 'Could not update role. Try again.', kind: 'error' });
+    } finally {
+      setTogglingUserId(null);
+      setExpandedUserId(null);
+    }
+  };
+
   const handleApprove = async (application: Application) => {
     setBusyApplicationId(application.id);
     setAdmissionsMsg(null);
@@ -700,17 +1000,50 @@ function AdminPanel() {
     }
   };
 
-  const handleSaveCase = async (
-    service: Service,
-    updates: { mediatorAssigned?: string; status?: Service['status'] }
-  ) => {
-    setBusyServiceId(service.id);
+  const handleDeleteApplication = async (application: Application) => {
+    setBusyApplicationId(application.id);
+    setAdmissionsMsg(null);
     try {
-      await updateServiceRequest(service.id, updates);
+      await deleteApplication(application.id);
+      setAdmissionsMsg({ text: `Application for ${application.fullName || 'applicant'} has been deleted.`, kind: 'success' });
     } catch {
-      Alert.alert('Error', 'Could not update the ADR case right now. Please try again.');
+      setAdmissionsMsg({ text: 'Could not delete the application. Please try again.', kind: 'error' });
     } finally {
-      setBusyServiceId(null);
+      setBusyApplicationId(null);
+    }
+  };
+
+  const handleAssignMediator = async (service: Service, name: string, note: string) => {
+    if (!name.trim()) { Alert.alert('Required', 'Enter a mediator name before assigning.'); return; }
+    setBusyAssignId(service.id);
+    try {
+      await assignMediator(service.id, name.trim(), note.trim(), service.userId);
+    } catch {
+      Alert.alert('Error', 'Could not assign mediator. Please try again.');
+    } finally {
+      setBusyAssignId(null);
+    }
+  };
+
+  const handleUpdateStatus = async (service: Service, status: Service['status'], resolution: string) => {
+    setBusyStatusId(service.id);
+    try {
+      await updateCaseStatus(service.id, status, resolution.trim(), service.userId);
+    } catch {
+      Alert.alert('Error', 'Could not update case status. Please try again.');
+    } finally {
+      setBusyStatusId(null);
+    }
+  };
+
+  const handleDeleteCase = async (service: Service) => {
+    setBusyDeleteId(service.id);
+    try {
+      await deleteService(service.id);
+    } catch {
+      Alert.alert('Error', 'Could not delete the case. Please try again.');
+    } finally {
+      setBusyDeleteId(null);
     }
   };
 
@@ -847,9 +1180,8 @@ function AdminPanel() {
     }
   };
 
-  const handleGradeTest = async (test: Test) => {
+  const handleGradeTest = async (test: AdminTest, userId: string) => {
     const score = parseInt(testScore, 10);
-    if (!testStudentId.trim()) { setTestMsg({ text: 'Student ID is required.', kind: 'error' }); return; }
     if (isNaN(score) || score < 0 || score > test.totalMarks) {
       setTestMsg({ text: `Score must be between 0 and ${test.totalMarks}.`, kind: 'error' });
       return;
@@ -857,13 +1189,35 @@ function AdminPanel() {
     setTestGradingSaving(true);
     setTestMsg(null);
     try {
-      await gradeTestSubmission(test.id, testStudentId.trim(), score, testFeedback.trim(), test.title, test.courseId, test.totalMarks, test.passMark);
-      setGradingTestKey(null); setTestStudentId(''); setTestScore(''); setTestFeedback('');
+      await gradeTestSubmission(test.id, userId, score, testFeedback.trim(), test.title, test.courseId, test.totalMarks, test.passMark);
+      setGradingTestKey(null); setTestScore(''); setTestFeedback('');
       setTestMsg({ text: 'Test graded and student notified.', kind: 'success' });
     } catch {
       setTestMsg({ text: 'Could not save grade. Please try again.', kind: 'error' });
     } finally {
       setTestGradingSaving(false);
+    }
+  };
+
+  const handleApproveDeletion = async (req: AccountDeletionRequest) => {
+    setBusyDeletionId(req.id);
+    try {
+      await approveAccountDeletionRequest(req.id);
+    } catch {
+      Alert.alert('Error', 'Could not approve the deletion request. Please try again.');
+    } finally {
+      setBusyDeletionId(null);
+    }
+  };
+
+  const handleRejectDeletion = async (req: AccountDeletionRequest) => {
+    setBusyDeletionId(req.id);
+    try {
+      await rejectAccountDeletionRequest(req.id);
+    } catch {
+      Alert.alert('Error', 'Could not reject the deletion request. Please try again.');
+    } finally {
+      setBusyDeletionId(null);
     }
   };
 
@@ -909,14 +1263,20 @@ function AdminPanel() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.content,
-          { paddingHorizontal: horizontalPadding, paddingBottom: 132 },
-        ]}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.safe}
+        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[
+            styles.content,
+            { paddingHorizontal: horizontalPadding, paddingBottom: 132 },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         <View style={styles.topBar}>
           <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backPill, pressed ? styles.pressed : null]}>
             <FontAwesome6 name="arrow-left" size={12} color={C.secondary} />
@@ -932,16 +1292,16 @@ function AdminPanel() {
           </Text>
 
           <View style={styles.statusRail}>
-            <StatusChip tone={getApplicationTone('approved')} />
-            <StatusChip tone={getApplicationTone('pending')} />
-            <StatusChip tone={getApplicationTone('rejected')} />
-            <StatusChip tone={getServiceTone('submitted')} />
+            <StatusChip tone={{ ...getApplicationTone('approved'), label: `${applicationCounts.approved} Approved` }} />
+            <StatusChip tone={{ ...getApplicationTone('pending'), label: `${applicationCounts.pending} Pending` }} />
+            <StatusChip tone={{ ...getApplicationTone('rejected'), label: `${applicationCounts.rejected} Rejected` }} />
+            <StatusChip tone={{ ...getServiceTone('submitted'), label: `${serviceCounts.total} ADR` }} />
           </View>
 
           <View style={styles.metaWrap}>
-            <MetaChip label={`${applicationCounts.total} applications`} />
-            <MetaChip label={`${serviceCounts.total} ADR requests`} />
-            <MetaChip label={`${announcements.length} announcements`} subtle />
+            <MetaChip label={`${applicationCounts.approved} enrolled student${applicationCounts.approved !== 1 ? 's' : ''}`} />
+            <MetaChip label={`${applicationCounts.pending} pending review`} subtle />
+            <MetaChip label={`${serviceCounts.total} ADR request${serviceCounts.total !== 1 ? 's' : ''}`} subtle />
             <MetaChip icon="shield-halved" label="Administrator" subtle />
           </View>
         </View>
@@ -956,7 +1316,7 @@ function AdminPanel() {
           />
           <SectionButton
             active={activeView === 'admissions'}
-            count={applicationCounts.pending}
+            count={applicationCounts.total > 0 ? applicationCounts.total : undefined}
             icon="user-graduate"
             label="Admissions"
             onPress={() => setActiveView('admissions')}
@@ -994,6 +1354,19 @@ function AdminPanel() {
             icon="clipboard-list"
             label="Tests"
             onPress={() => setActiveView('tests')}
+          />
+          <SectionButton
+            active={activeView === 'deletions'}
+            count={deletionRequests.length > 0 ? deletionRequests.length : undefined}
+            icon="trash"
+            label="Deletions"
+            onPress={() => setActiveView('deletions')}
+          />
+          <SectionButton
+            active={activeView === 'team'}
+            icon="users"
+            label="Team"
+            onPress={() => { setActiveView('team'); loadTeamUsers(); }}
           />
         </View>
 
@@ -1137,44 +1510,33 @@ function AdminPanel() {
           <>
             {/* Tab switcher */}
             <View style={styles.admissionsTabRow}>
-              <Pressable
-                onPress={() => setAdmissionsTab('pending')}
-                style={({ pressed }) => [
-                  styles.admissionsTabBtn,
-                  admissionsTab === 'pending' ? styles.admissionsTabBtnActive : null,
-                  pressed ? styles.pressed : null,
-                ]}
-              >
-                <Text style={[styles.admissionsTabText, admissionsTab === 'pending' ? styles.admissionsTabTextActive : null]}>
-                  Pending
-                </Text>
-                {applicationCounts.pending > 0 ? (
-                  <View style={[styles.admissionsTabBadge, admissionsTab === 'pending' ? styles.admissionsTabBadgeActive : null]}>
-                    <Text style={[styles.admissionsTabBadgeText, admissionsTab === 'pending' ? styles.admissionsTabBadgeTextActive : null]}>
-                      {applicationCounts.pending}
-                    </Text>
-                  </View>
-                ) : null}
-              </Pressable>
-              <Pressable
-                onPress={() => setAdmissionsTab('decided')}
-                style={({ pressed }) => [
-                  styles.admissionsTabBtn,
-                  admissionsTab === 'decided' ? styles.admissionsTabBtnActive : null,
-                  pressed ? styles.pressed : null,
-                ]}
-              >
-                <Text style={[styles.admissionsTabText, admissionsTab === 'decided' ? styles.admissionsTabTextActive : null]}>
-                  Decided
-                </Text>
-                {decidedApplications.length > 0 ? (
-                  <View style={[styles.admissionsTabBadge, admissionsTab === 'decided' ? styles.admissionsTabBadgeActive : null]}>
-                    <Text style={[styles.admissionsTabBadgeText, admissionsTab === 'decided' ? styles.admissionsTabBadgeTextActive : null]}>
-                      {decidedApplications.length}
-                    </Text>
-                  </View>
-                ) : null}
-              </Pressable>
+              {([
+                { key: 'enrolled', label: 'Enrolled', count: enrolledApplications.length },
+                { key: 'pending', label: 'Pending', count: applicationCounts.pending },
+                { key: 'rejected', label: 'Rejected', count: rejectedApplications.length },
+                { key: 'withdrawn', label: 'Withdrawn', count: withdrawnApplications.length },
+              ] as const).map((tab) => (
+                <Pressable
+                  key={tab.key}
+                  onPress={() => setAdmissionsTab(tab.key)}
+                  style={({ pressed }) => [
+                    styles.admissionsTabBtn,
+                    admissionsTab === tab.key ? styles.admissionsTabBtnActive : null,
+                    pressed ? styles.pressed : null,
+                  ]}
+                >
+                  <Text style={[styles.admissionsTabText, admissionsTab === tab.key ? styles.admissionsTabTextActive : null]}>
+                    {tab.label}
+                  </Text>
+                  {tab.count > 0 ? (
+                    <View style={[styles.admissionsTabBadge, admissionsTab === tab.key ? styles.admissionsTabBadgeActive : null]}>
+                      <Text style={[styles.admissionsTabBadgeText, admissionsTab === tab.key ? styles.admissionsTabBadgeTextActive : null]}>
+                        {tab.count}
+                      </Text>
+                    </View>
+                  ) : null}
+                </Pressable>
+              ))}
             </View>
 
             {admissionsMsg ? (
@@ -1185,7 +1547,28 @@ function AdminPanel() {
               </View>
             ) : null}
 
-            {admissionsTab === 'pending' ? (
+            {admissionsTab === 'enrolled' ? (
+              enrolledApplications.length > 0 ? (
+                <View style={styles.stack}>
+                  {enrolledApplications.map((application) => (
+                    <ApplicationCard
+                      key={application.id}
+                      application={application}
+                      busy={busyApplicationId === application.id}
+                      onApprove={() => {}}
+                      onReject={() => {}}
+                      onDelete={() => handleDeleteApplication(application)}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <EmptyState
+                  icon="user-graduate"
+                  title="No enrolled students yet"
+                  body="Approved applicants will appear here. Go to Pending to review new applications."
+                />
+              )
+            ) : admissionsTab === 'pending' ? (
               pendingApplications.length > 0 ? (
                 <View style={styles.stack}>
                   {pendingApplications.map((application) => (
@@ -1195,6 +1578,7 @@ function AdminPanel() {
                       busy={busyApplicationId === application.id}
                       onApprove={() => handleApprove(application)}
                       onReject={(feedback) => handleReject(application, feedback)}
+                      onDelete={() => handleDeleteApplication(application)}
                     />
                   ))}
                 </View>
@@ -1205,98 +1589,106 @@ function AdminPanel() {
                   body="No pending applications. All submitted applications have been reviewed."
                 />
               )
-            ) : (
-              <>
-                {/* Filter dropdown */}
-                <View>
-                  <Pressable
-                    onPress={() => setDecidedDropdownOpen((v) => !v)}
-                    style={({ pressed }) => [styles.filterTrigger, pressed ? styles.pressed : null]}
-                  >
-                    <FontAwesome6 name="filter" size={13} color={C.secondary} />
-                    <Text style={styles.filterTriggerText}>
-                      {decidedFilter === 'all' ? 'All decisions' : decidedFilter === 'approved' ? 'Approved only' : 'Rejected only'}
-                    </Text>
-                    <FontAwesome6 name={decidedDropdownOpen ? 'chevron-up' : 'chevron-down'} size={11} color={C.textMuted} />
-                  </Pressable>
-                  {decidedDropdownOpen ? (
-                    <View style={styles.filterDropdown}>
-                      {([
-                        { value: 'all', label: 'All decisions' },
-                        { value: 'approved', label: 'Approved only' },
-                        { value: 'rejected', label: 'Rejected only' },
-                      ] as const).map((opt) => (
-                        <Pressable
-                          key={opt.value}
-                          onPress={() => { setDecidedFilter(opt.value); setDecidedDropdownOpen(false); }}
-                          style={({ pressed }) => [
-                            styles.filterOption,
-                            decidedFilter === opt.value ? styles.filterOptionActive : null,
-                            pressed ? styles.pressed : null,
-                          ]}
-                        >
-                          <Text style={[styles.filterOptionText, decidedFilter === opt.value ? styles.filterOptionTextActive : null]}>
-                            {opt.label}
-                          </Text>
-                          {decidedFilter === opt.value ? (
-                            <FontAwesome6 name="check" size={12} color={C.secondary} />
-                          ) : null}
-                        </Pressable>
-                      ))}
-                    </View>
-                  ) : null}
-                </View>
-
-                {(() => {
-                  const filtered = decidedFilter === 'all'
-                    ? decidedApplications
-                    : decidedApplications.filter((a) => a.status === decidedFilter);
-                  return filtered.length > 0 ? (
-                    <View style={styles.stack}>
-                      {filtered.map((application) => (
-                        <ApplicationCard
-                          key={application.id}
-                          application={application}
-                          busy={busyApplicationId === application.id}
-                          onApprove={() => handleApprove(application)}
-                          onReject={(feedback) => handleReject(application, feedback)}
-                        />
-                      ))}
-                    </View>
-                  ) : (
-                    <EmptyState
-                      icon="folder-open"
-                      title={decidedFilter === 'all' ? 'No decided applications yet' : `No ${decidedFilter} applications`}
-                      body={decidedFilter === 'all'
-                        ? 'Approved and rejected applications will appear here once you action them.'
-                        : `Switch to "All decisions" to see other outcomes.`}
+            ) : admissionsTab === 'rejected' ? (
+              rejectedApplications.length > 0 ? (
+                <View style={styles.stack}>
+                  {rejectedApplications.map((application) => (
+                    <ApplicationCard
+                      key={application.id}
+                      application={application}
+                      busy={busyApplicationId === application.id}
+                      onApprove={() => {}}
+                      onReject={() => {}}
+                      onDelete={() => handleDeleteApplication(application)}
                     />
-                  );
-                })()}
-              </>
+                  ))}
+                </View>
+              ) : (
+                <EmptyState
+                  icon="folder-open"
+                  title="No rejected applications"
+                  body="Rejected applications will appear here once you action them from the Pending tab."
+                />
+              )
+            ) : (
+              withdrawnApplications.length > 0 ? (
+                <View style={styles.stack}>
+                  {withdrawnApplications.map((application) => (
+                    <ApplicationCard
+                      key={application.id}
+                      application={application}
+                      busy={busyApplicationId === application.id}
+                      onApprove={() => {}}
+                      onReject={() => {}}
+                      onDelete={() => handleDeleteApplication(application)}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <EmptyState
+                  icon="right-from-bracket"
+                  title="No withdrawals"
+                  body="Applications withdrawn by students will appear here."
+                />
+              )
             )}
           </>
         ) : null}
 
         {activeView === 'cases' ? (
-          actionableCases.length > 0 ? (
-            <View style={styles.stack}>
-              {actionableCases.map((service) => (
-                <CaseCard
-                  key={service.id}
-                  service={service}
-                  busy={busyServiceId === service.id}
-                  onSave={(updates) => handleSaveCase(service, updates)}
-                />
-              ))}
+          <>
+            <View style={styles.tabRow}>
+              <Pressable
+                onPress={() => setCasesTab('unassigned')}
+                style={[styles.tabBtn, casesTab === 'unassigned' ? styles.tabBtnActive : null]}
+              >
+                <Text style={[styles.tabBtnText, casesTab === 'unassigned' ? styles.tabBtnTextActive : null]}>
+                  Unassigned ({services.filter((s) => !s.mediatorName).length})
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setCasesTab('assigned')}
+                style={[styles.tabBtn, casesTab === 'assigned' ? styles.tabBtnActive : null]}
+              >
+                <Text style={[styles.tabBtnText, casesTab === 'assigned' ? styles.tabBtnTextActive : null]}>
+                  Assigned ({services.filter((s) => !!s.mediatorName).length})
+                </Text>
+              </Pressable>
             </View>
-          ) : (
-            <EmptyState
-              icon="scale-balanced"
-              title="No active ADR work"
-              body="All ADR requests are completed or no service requests have been submitted yet."
-            />
-          )
+            {(() => {
+              const base = casesTab === 'unassigned'
+                ? services.filter((s) => !s.mediatorName)
+                : services.filter((s) => !!s.mediatorName);
+              // Bring the notification-tapped case to the top
+              const filtered = openCaseId
+                ? [...base.filter((s) => s.id === openCaseId), ...base.filter((s) => s.id !== openCaseId)]
+                : base;
+              return filtered.length > 0 ? (
+                <View style={styles.stack}>
+                  {filtered.map((service) => (
+                    <CaseCard
+                      key={service.id}
+                      service={service}
+                      busyAssign={busyAssignId === service.id}
+                      busyStatus={busyStatusId === service.id}
+                      busyDelete={busyDeleteId === service.id}
+                      onAssignMediator={(name, note) => handleAssignMediator(service, name, note)}
+                      onMarkComplete={(resolution) => handleUpdateStatus(service, 'completed', resolution)}
+                      onDelete={() => handleDeleteCase(service)}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <EmptyState
+                  icon="scale-balanced"
+                  title={casesTab === 'unassigned' ? 'No unassigned cases' : 'No assigned cases'}
+                  body={casesTab === 'unassigned'
+                    ? 'All submitted cases have been assigned a mediator.'
+                    : 'Assign a mediator to a case and it will appear here.'}
+                />
+              );
+            })()}
+          </>
         ) : null}
 
         {activeView === 'materials' ? (
@@ -1498,7 +1890,8 @@ function AdminPanel() {
                             <View key={sub.userId} style={styles.subCard}>
                               <View style={styles.subHeaderRow}>
                                 <View style={{ flex: 1, gap: 2 }}>
-                                  <Text style={styles.subUserId}>Student: {sub.userId}</Text>
+                                  <Text style={styles.subUserId}>{sub.studentName?.trim() || 'Student submission'}</Text>
+                                  <Text style={styles.subMeta}>{sub.studentEmail?.trim() || sub.userId}</Text>
                                   <Text style={styles.subMeta}>{formatDate(sub.submittedAt)} · {sub.status === 'graded' ? `Graded: ${sub.grade}/${asn.maxGrade}` : 'Awaiting grade'}</Text>
                                 </View>
                                 {sub.status !== 'graded' ? (
@@ -1514,6 +1907,13 @@ function AdminPanel() {
                                   <Text style={styles.noteLabel}>Submission</Text>
                                   <Text style={styles.noteBody}>{sub.text}</Text>
                                 </View>
+                              ) : null}
+
+                              {sub.attachmentLink ? (
+                                <Pressable onPress={() => Linking.openURL(sub.attachmentLink!)} style={styles.subTextCard}>
+                                  <Text style={styles.noteLabel}>Attached file link</Text>
+                                  <Text style={styles.noteBody}>{sub.attachmentLink}</Text>
+                                </Pressable>
                               ) : null}
 
                               {sub.feedback ? (
@@ -1630,7 +2030,6 @@ function AdminPanel() {
               ) : (
                 <View style={styles.stack}>
                   {adminTests.map((test) => {
-                    const isGrading = gradingTestKey === test.id;
                     return (
                       <View key={test.id} style={styles.panelCard}>
                         <View style={styles.panelHeaderRow}>
@@ -1651,35 +2050,78 @@ function AdminPanel() {
                           </View>
                         ) : null}
 
-                        {isGrading ? (
-                          <View style={styles.gradeForm}>
-                            <View style={styles.fieldGroup}>
-                              <Text style={styles.fieldLabel}>Student UID</Text>
-                              <TextInput value={testStudentId} onChangeText={setTestStudentId} placeholder="Firebase user ID" placeholderTextColor={C.textMuted} style={styles.input} autoCapitalize="none" />
-                            </View>
-                            <View style={styles.fieldGroup}>
-                              <Text style={styles.fieldLabel}>Score (0–{test.totalMarks})</Text>
-                              <TextInput value={testScore} onChangeText={setTestScore} keyboardType="numeric" placeholder="e.g. 78" placeholderTextColor={C.textMuted} style={styles.input} />
-                            </View>
-                            <View style={styles.fieldGroup}>
-                              <Text style={styles.fieldLabel}>Feedback</Text>
-                              <TextInput value={testFeedback} onChangeText={setTestFeedback} placeholder="Optional feedback for the student..." placeholderTextColor={C.textMuted} multiline textAlignVertical="top" style={styles.textArea} />
-                            </View>
-                            <View style={styles.buttonRow}>
-                              <Pressable onPress={() => setGradingTestKey(null)} style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null]}>
-                                <Text style={styles.secondaryButtonText}>Cancel</Text>
-                              </Pressable>
-                              <Pressable onPress={() => handleGradeTest(test)} disabled={testGradingSaving}
-                                style={({ pressed }) => [styles.primaryButton, (testGradingSaving || pressed) ? styles.pressed : null]}>
-                                {testGradingSaving ? <ActivityIndicator size="small" color={C.textInverse} /> : <Text style={styles.primaryButtonText}>Save Grade</Text>}
-                              </Pressable>
-                            </View>
+                        {test.submissions.length === 0 ? (
+                          <View style={[styles.banner, { backgroundColor: C.surfaceAlt }]}>
+                            <Text style={[styles.bannerText, { color: C.textMuted }]}>No student test submissions yet.</Text>
                           </View>
                         ) : (
-                          <Pressable onPress={() => { setGradingTestKey(test.id); setTestStudentId(''); setTestScore(''); setTestFeedback(''); }}
-                            style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null]}>
-                            <Text style={styles.secondaryButtonText}>Grade a Student</Text>
-                          </Pressable>
+                          test.submissions.map((sub) => {
+                            const key = `${test.id}__${sub.userId}`;
+                            const isGrading = gradingTestKey === key;
+                            return (
+                              <View key={sub.userId} style={styles.subCard}>
+                                <View style={styles.subHeaderRow}>
+                                  <View style={{ flex: 1, gap: 2 }}>
+                                    <Text style={styles.subUserId}>{sub.studentName?.trim() || 'Student submission'}</Text>
+                                    <Text style={styles.subMeta}>{sub.studentEmail?.trim() || sub.userId}</Text>
+                                    <Text style={styles.subMeta}>
+                                      {formatDate(sub.submittedAt)} · {sub.status === 'graded' ? `Graded: ${sub.grade}/${test.totalMarks}` : 'Awaiting grade'}
+                                    </Text>
+                                  </View>
+                                  {sub.status !== 'graded' ? (
+                                    <Pressable
+                                      onPress={() => { setGradingTestKey(key); setTestScore(''); setTestFeedback(''); }}
+                                      style={({ pressed }) => [styles.gradeBtn, pressed ? styles.pressed : null]}>
+                                      <Text style={styles.gradeBtnText}>Grade</Text>
+                                    </Pressable>
+                                  ) : null}
+                                </View>
+
+                                {sub.text ? (
+                                  <View style={styles.subTextCard}>
+                                    <Text style={styles.noteLabel}>Submission</Text>
+                                    <Text style={styles.noteBody}>{sub.text}</Text>
+                                  </View>
+                                ) : null}
+
+                                {sub.attachmentLink ? (
+                                  <Pressable onPress={() => Linking.openURL(sub.attachmentLink!)} style={styles.subTextCard}>
+                                    <Text style={styles.noteLabel}>Attached file link</Text>
+                                    <Text style={styles.noteBody}>{sub.attachmentLink}</Text>
+                                  </Pressable>
+                                ) : null}
+
+                                {sub.feedback ? (
+                                  <View style={[styles.subTextCard, { backgroundColor: C.successSoft }]}>
+                                    <Text style={[styles.noteLabel, { color: C.success }]}>Feedback given</Text>
+                                    <Text style={styles.noteBody}>{sub.feedback}</Text>
+                                  </View>
+                                ) : null}
+
+                                {isGrading ? (
+                                  <View style={styles.gradeForm}>
+                                    <View style={styles.fieldGroup}>
+                                      <Text style={styles.fieldLabel}>Score (0–{test.totalMarks})</Text>
+                                      <TextInput value={testScore} onChangeText={setTestScore} keyboardType="numeric" placeholder="e.g. 78" placeholderTextColor={C.textMuted} style={styles.input} />
+                                    </View>
+                                    <View style={styles.fieldGroup}>
+                                      <Text style={styles.fieldLabel}>Feedback</Text>
+                                      <TextInput value={testFeedback} onChangeText={setTestFeedback} placeholder="Optional feedback for the student..." placeholderTextColor={C.textMuted} multiline textAlignVertical="top" style={styles.textArea} />
+                                    </View>
+                                    <View style={styles.buttonRow}>
+                                      <Pressable onPress={() => setGradingTestKey(null)} style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null]}>
+                                        <Text style={styles.secondaryButtonText}>Cancel</Text>
+                                      </Pressable>
+                                      <Pressable onPress={() => handleGradeTest(test, sub.userId)} disabled={testGradingSaving}
+                                        style={({ pressed }) => [styles.primaryButton, (testGradingSaving || pressed) ? styles.pressed : null]}>
+                                        {testGradingSaving ? <ActivityIndicator size="small" color={C.textInverse} /> : <Text style={styles.primaryButtonText}>Save Grade</Text>}
+                                      </Pressable>
+                                    </View>
+                                  </View>
+                                ) : null}
+                              </View>
+                            );
+                          })
                         )}
                       </View>
                     );
@@ -1688,6 +2130,163 @@ function AdminPanel() {
               )
             )}
           </>
+        ) : null}
+
+        {activeView === 'deletions' ? (
+          deletionRequests.length > 0 ? (
+            <View style={styles.stack}>
+              {deletionRequests.map((req) => (
+                <View key={req.id} style={styles.panelCard}>
+                  <View style={styles.panelHeaderRow}>
+                    <View style={styles.panelHeaderCopy}>
+                      <Text style={styles.panelTitle}>{req.fullName?.trim() || 'Unknown user'}</Text>
+                      <Text style={styles.panelSubtitle}>{req.email}</Text>
+                    </View>
+                    <View style={[styles.statusChip, { backgroundColor: C.dangerSoft }]}>
+                      <View style={[styles.statusDot, { backgroundColor: C.danger }]} />
+                      <Text style={[styles.statusChipText, { color: C.danger }]}>Pending</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.metaWrap}>
+                    <MetaChip label={req.role || 'Member'} />
+                    <MetaChip icon="calendar" label={`Requested ${formatDate(req.requestedAt)}`} subtle />
+                  </View>
+
+                  <View style={styles.detailsCard}>
+                    <Text style={styles.noteLabel}>Reason</Text>
+                    <Text style={styles.noteBody}>{req.reason?.trim() || 'No reason provided.'}</Text>
+                  </View>
+
+                  <View style={styles.buttonRow}>
+                    <Pressable
+                      onPress={() => handleApproveDeletion(req)}
+                      disabled={busyDeletionId === req.id}
+                      style={({ pressed }) => [styles.dangerButton, (pressed || busyDeletionId === req.id) ? styles.pressed : null]}
+                    >
+                      {busyDeletionId === req.id
+                        ? <ActivityIndicator size="small" color={C.textInverse} />
+                        : <Text style={styles.dangerButtonText}>Approve &amp; Delete</Text>
+                      }
+                    </Pressable>
+                    <Pressable
+                      onPress={() => handleRejectDeletion(req)}
+                      disabled={busyDeletionId === req.id}
+                      style={({ pressed }) => [styles.secondaryButton, (pressed || busyDeletionId === req.id) ? styles.pressed : null]}
+                    >
+                      <Text style={styles.secondaryButtonText}>Reject</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <EmptyState
+              icon="trash"
+              title="No deletion requests"
+              body="Account deletion requests from users will appear here for your review."
+            />
+          )
+        ) : null}
+
+        {activeView === 'team' ? (
+          <View style={styles.stack}>
+            <View style={styles.panelCard}>
+              <Text style={styles.workspaceTitle}>Manage Team</Text>
+              <Text style={styles.workspaceBody}>
+                Promote users to admin or remove admin access. Changes take effect the next time the user opens the app.
+              </Text>
+              {teamMsg ? (
+                <View style={[styles.banner, { backgroundColor: teamMsg.kind === 'success' ? C.successSoft : C.dangerSoft, marginTop: 8 }]}>
+                  <Text style={[styles.bannerText, { color: teamMsg.kind === 'success' ? C.success : C.danger }]}>{teamMsg.text}</Text>
+                </View>
+              ) : null}
+              <Pressable
+                onPress={loadTeamUsers}
+                disabled={teamLoading}
+                style={({ pressed }) => [styles.secondaryButton, { marginTop: 12 }, (pressed || teamLoading) && styles.pressed]}
+              >
+                {teamLoading
+                  ? <ActivityIndicator size="small" color={C.secondary} />
+                  : <Text style={styles.secondaryButtonText}>Refresh List</Text>
+                }
+              </Pressable>
+            </View>
+
+            {teamLoading && teamUsers.length === 0 ? (
+              <View style={[styles.panelCard, { alignItems: 'center', paddingVertical: 32 }]}>
+                <ActivityIndicator size="large" color={C.secondary} />
+              </View>
+            ) : teamUsers.length === 0 ? (
+              <EmptyState icon="users" title="No users yet" body="Registered users will appear here." />
+            ) : (
+              teamUsers.map((user) => {
+                const isAdmin = user.role === 'admin';
+                const isBusy = togglingUserId === user.id;
+                const isExpanded = expandedUserId === user.id;
+                const isSelf = user.id === auth.currentUser?.uid;
+                return (
+                  <View key={user.id} style={styles.panelCard}>
+                    <Pressable
+                      onPress={() => setExpandedUserId(isExpanded ? null : user.id)}
+                      style={({ pressed }) => [
+                        styles.teamDropdownHeader,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <View style={styles.panelHeaderCopy}>
+                        <Text style={styles.panelTitle}>{user.fullName?.trim() || 'No name'}</Text>
+                        <Text style={styles.panelSubtitle}>{user.email}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={[styles.statusChip, { backgroundColor: isAdmin ? C.warningSoft : C.successSoft }]}>
+                          <View style={[styles.statusDot, { backgroundColor: isAdmin ? C.warning : C.success }]} />
+                          <Text style={[styles.statusChipText, { color: isAdmin ? C.warning : C.success }]}>
+                            {isAdmin ? 'Admin' : user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          </Text>
+                        </View>
+                        <FontAwesome6
+                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                          size={13}
+                          color={C.textSecondary}
+                        />
+                      </View>
+                    </Pressable>
+                    {isExpanded ? (
+                      <View style={styles.teamDropdownBody}>
+                        {user.phone ? (
+                          <View style={[styles.metaWrap, { marginBottom: 10 }]}>
+                            <MetaChip icon="phone" label={user.phone} subtle />
+                          </View>
+                        ) : null}
+                        {isSelf ? (
+                          <Text style={[styles.panelSubtitle, { fontStyle: 'italic' }]}>
+                            This is you — you cannot change your own role.
+                          </Text>
+                        ) : (
+                          <Pressable
+                            onPress={() => handleToggleAdmin(user)}
+                            disabled={isBusy}
+                            style={({ pressed }) => [
+                              isAdmin ? styles.dangerButton : styles.primaryButton,
+                              (pressed || isBusy) && styles.pressed,
+                            ]}
+                          >
+                            {isBusy
+                              ? <ActivityIndicator size="small" color={C.textInverse} />
+                              : <Text style={isAdmin ? styles.dangerButtonText : styles.primaryButtonText}>
+                                  {isAdmin ? 'Remove Admin Access' : 'Make Admin'}
+                                </Text>
+                            }
+                          </Pressable>
+                        )}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })
+            )}
+          </View>
         ) : null}
 
         {activeView === 'announcements' ? (
@@ -1782,7 +2381,8 @@ function AdminPanel() {
             </View>
           </View>
         ) : null}
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -2232,6 +2832,34 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sansBold,
     color: C.textInverse,
   },
+  outlineButton: {
+    minHeight: 44,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: C.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  outlineButtonText: {
+    fontSize: 14,
+    fontFamily: Fonts.sansBold,
+    color: C.textSecondary,
+  },
+  teamDropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  teamDropdownBody: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+    gap: 8,
+  },
   outcomeBar: {
     borderRadius: 16,
     backgroundColor: C.surfaceAlt,
@@ -2242,6 +2870,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: Fonts.sansSemiBold,
     color: C.textSecondary,
+  },
+  deleteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    alignSelf: 'flex-start',
+  },
+  deleteRowText: {
+    fontSize: 13,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.danger,
   },
   emptyState: {
     backgroundColor: C.surface,
@@ -2628,6 +3268,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  confirmRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+  },
+  confirmText: {
+    flex: 1, fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.danger,
+  },
   subCard: {
     backgroundColor: C.surfaceAlt,
     borderRadius: 18,
@@ -2721,6 +3367,25 @@ const styles = StyleSheet.create({
   },
   materialUrlInput: {
     width: '100%',
+  },
+  chatDivider: { height: 1, backgroundColor: C.border, marginVertical: 4 },
+  chatMessages: { gap: 8 },
+  chatBubble: { borderRadius: 12, padding: 10, gap: 2, maxWidth: '90%' },
+  chatBubbleAdmin: { backgroundColor: C.primarySoft, alignSelf: 'flex-end' },
+  chatBubbleClient: { backgroundColor: C.surfaceAlt, borderWidth: 1, borderColor: C.border, alignSelf: 'flex-start' },
+  chatSender: { fontSize: 11, fontFamily: Fonts.sansSemiBold, color: C.textMuted },
+  chatText: { fontSize: 13, fontFamily: Fonts.sans, color: C.textPrimary, lineHeight: 19 },
+  chatTime: { fontSize: 10, fontFamily: Fonts.sans, color: C.textMuted },
+  chatEmpty: { fontSize: 13, fontFamily: Fonts.sans, color: C.textMuted },
+  chatInputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
+  chatInput: {
+    flex: 1, backgroundColor: C.surfaceAlt, borderWidth: 1, borderColor: C.border,
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
+    fontSize: 13, fontFamily: Fonts.sans, color: C.textPrimary, maxHeight: 100, textAlignVertical: 'top',
+  },
+  chatSendBtn: {
+    width: 40, height: 40, borderRadius: 10, backgroundColor: C.primary,
+    alignItems: 'center', justifyContent: 'center',
   },
   pickedFilePill: {
     flex: 1,

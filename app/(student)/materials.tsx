@@ -1,11 +1,10 @@
 import { Fonts } from '@/constants/theme';
 import { auth } from '@/services/firebase';
 import {
-  Course,
   Material,
   getApprovedApplications,
-  getMaterials,
   resolveCourseFromReference,
+  subscribeMaterials,
 } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -54,7 +53,7 @@ const TYPE_COLORS: Record<string, string> = {
 
 interface EnrolledCourse {
   courseId: string;
-  course: Course | null;
+  courseLabel: string;
 }
 
 function groupByModule(materials: Material[]): Record<string, Material[]> {
@@ -85,7 +84,7 @@ export default function MaterialsScreen() {
         const approved = await getApprovedApplications(user.uid);
         const courses = approved.map((app) => ({
           courseId: app.courseId,
-          course: resolveCourseFromReference(app.courseId),
+          courseLabel: resolveCourseFromReference(app.courseId)?.program ?? app.courseId.toUpperCase(),
         }));
         if (active) {
           setEnrolledCourses(courses);
@@ -99,27 +98,19 @@ export default function MaterialsScreen() {
     return () => { active = false; };
   }, [user?.uid]);
 
-  // Load materials when selectedCourseId changes
+  // Real-time materials listener
   useEffect(() => {
     if (!selectedCourseId) return;
-    let active = true;
     setLoadingMaterials(true);
-    getMaterials(selectedCourseId).then((data) => {
-      if (active) { setMaterials(data); setLoadingMaterials(false); }
+    const unsub = subscribeMaterials(selectedCourseId, (data) => {
+      setMaterials(data);
+      setLoadingMaterials(false);
     });
-    return () => { active = false; };
+    return unsub;
   }, [selectedCourseId]);
-
-  const selectedCourse = useMemo(
-    () => enrolledCourses.find((e) => e.courseId === selectedCourseId),
-    [enrolledCourses, selectedCourseId]
-  );
 
   const grouped = useMemo(() => groupByModule(materials), [materials]);
   const moduleGroups = Object.entries(grouped);
-
-  // Fallback: show course content array as placeholder modules
-  const placeholderModules = selectedCourse?.course?.content ?? [];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -163,7 +154,7 @@ export default function MaterialsScreen() {
                   ]}
                   numberOfLines={1}
                 >
-                  {ec.course?.program ?? ec.courseId.toUpperCase()}
+                  {ec.courseLabel}
                 </Text>
               </Pressable>
             ))}
@@ -188,7 +179,6 @@ export default function MaterialsScreen() {
             <Text style={styles.loadingText}>Loading materials…</Text>
           </View>
         ) : moduleGroups.length > 0 ? (
-          // Real materials from Firestore
           <View style={styles.modulesContainer}>
             {moduleGroups.map(([moduleTitle, mats]) => (
               <View key={moduleTitle} style={styles.moduleSection}>
@@ -221,30 +211,6 @@ export default function MaterialsScreen() {
                     </View>
                   );
                 })}
-              </View>
-            ))}
-          </View>
-        ) : placeholderModules.length > 0 ? (
-          // Fallback: show course curriculum as placeholder
-          <View style={styles.modulesContainer}>
-            <View style={styles.noticeCard}>
-              <FontAwesome6 name="circle-info" size={14} color={C.secondary} />
-              <Text style={styles.noticeText}>
-                Your instructor has not uploaded materials yet. Here is your program curriculum:
-              </Text>
-            </View>
-            {placeholderModules.map((topic, i) => (
-              <View key={i} style={styles.materialCard}>
-                <View style={[styles.materialIcon, { backgroundColor: C.secondarySoft }]}>
-                  <Text style={styles.moduleNumber}>{String(i + 1).padStart(2, '0')}</Text>
-                </View>
-                <View style={styles.materialInfo}>
-                  <Text style={styles.materialTitle}>{topic}</Text>
-                  <Text style={styles.materialType}>Curriculum Topic</Text>
-                </View>
-                <View style={styles.unavailableTag}>
-                  <Text style={styles.unavailableText}>Pending</Text>
-                </View>
               </View>
             ))}
           </View>

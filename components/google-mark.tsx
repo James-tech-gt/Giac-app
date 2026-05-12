@@ -1,68 +1,19 @@
+import { Image } from 'expo-image';
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
 
 type GoogleMarkProps = {
   size?: number;
 };
 
-export function GoogleMark({ size = 18 }: GoogleMarkProps) {
-  const stroke = Math.max(2, Math.round(size * 0.16));
+const GOOGLE_G_URI =
+  'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MzMuNSA1NDQuMyI+PHBhdGggZD0iTTUzMy41IDI3OC40YzAtMTguNS0xLjUtMzcuMS00LjctNTUuM0gyNzIuMXYxMDQuOGgxNDdjLTYuMSAzMy44LTI1LjcgNjMuNy01NC40IDgyLjd2NjhoODcuN2M1MS41LTQ3LjQgODEuMS0xMTcuNCA4MS4xLTIwMC4yeiIgZmlsbD0iIzQyODVGNCIvPjxwYXRoIGQ9Ik0yNzIuMSA1NDQuM2M3My40IDAgMTM1LjMtMjQuMSAxODAuNC02NS43bC04Ny43LTY4Yy0yNC40IDE2LjYtNTUuOSAyNi05Mi42IDI2LTcxIDAtMTMxLjItNDcuOS0xNTIuOC0xMTIuM0gyOC45djcwLjFjNDYuMiA5MS45IDE0MC4zIDE0OS45IDI0My4yIDE0OS45eiIgZmlsbD0iIzM0QTg1MyIvPjxwYXRoIGQ9Ik0xMTkuMyAzMjQuM2MtMTEuNC0zMy44LTExLjQtNzAuNCAwLTEwNC4yVjE1MEgyOC45Yy0zOC42IDc2LjktMzguNiAxNjcuNSAwIDI0NC40bDkwLjQtNzAuMXoiIGZpbGw9IiNGQkJDMDQiLz48cGF0aCBkPSJNMjcyLjEgMTA3LjdjMzguOC0uNiA3Ni4zIDE0IDEwNC40IDQwLjhsNzcuNy03Ny43QzQwNSAyNC42IDMzOS43LS44IDI3Mi4xIDAgMTY5LjIgMCA3NS4xIDU4IDI4LjkgMTUwbDkwLjQgNzAuMWMyMS41LTY0LjUgODEuOC0xMTIuNCAxNTIuOC0xMTIuNHoiIGZpbGw9IiNFQTQzMzUiLz48L3N2Zz4=';
 
+export function GoogleMark({ size = 20 }: GoogleMarkProps) {
   return (
-    <View style={[styles.root, { width: size, height: size }]}>
-      <View
-        style={[
-          styles.ring,
-          {
-            borderRadius: size / 2,
-            borderWidth: stroke,
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.cutout,
-          {
-            top: stroke * 0.7,
-            right: 0,
-            bottom: stroke * 0.7,
-            width: size * 0.34,
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.bar,
-          {
-            top: size * 0.47,
-            right: 0,
-            width: size * 0.4,
-            height: stroke,
-            borderRadius: stroke / 2,
-          },
-        ]}
-      />
-    </View>
+    <Image
+      source={{ uri: GOOGLE_G_URI }}
+      style={{ width: size, height: size }}
+      contentFit="contain"
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    position: 'relative',
-  },
-  ring: {
-    ...StyleSheet.absoluteFillObject,
-    borderTopColor: '#4285F4',
-    borderRightColor: '#34A853',
-    borderBottomColor: '#FBBC04',
-    borderLeftColor: '#EA4335',
-  },
-  cutout: {
-    position: 'absolute',
-    backgroundColor: '#FFFFFF',
-  },
-  bar: {
-    position: 'absolute',
-    backgroundColor: '#4285F4',
-  },
-});

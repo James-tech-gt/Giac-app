@@ -1,8 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserProfile } from '@/services/auth';
 import {
   AccessRequirement,
   AccessSnapshot,
-  UserRole,
   hasAccess,
 } from '@/services/access';
 import { auth } from '@/services/firebase';
@@ -11,6 +11,23 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { Href, Redirect } from 'expo-router';
 import React, { ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+
+const snapshotCacheKey = (uid: string) => `@giac:access:${uid}`;
+
+async function loadCachedSnapshot(uid: string): Promise<AccessSnapshot | null> {
+  try {
+    const raw = await AsyncStorage.getItem(snapshotCacheKey(uid));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveSnapshotCache(uid: string, snapshot: AccessSnapshot) {
+  try {
+    await AsyncStorage.setItem(snapshotCacheKey(uid), JSON.stringify(snapshot));
+  } catch {}
+}
 
 function requiresProfile(requirement: AccessRequirement) {
   return requirement !== 'authenticated';
@@ -73,19 +90,20 @@ export function AccessGate({
 
         if (!active) return;
 
-        setSnapshot({
+        const newSnapshot: AccessSnapshot = {
           approvedApplicationCount: approvedApplications.length,
           role: profile?.role ?? null,
           serviceCount: services.length,
-        });
+        };
+        setSnapshot(newSnapshot);
+        saveSnapshotCache(currentUserId, newSnapshot);
       } catch {
         if (!active) return;
 
-        setSnapshot({
-          approvedApplicationCount: 0,
-          role: null,
-          serviceCount: 0,
-        });
+        // Firestore unavailable (offline) — use last-known snapshot so the user
+        // stays on their screen rather than being bounced to the guest home page.
+        const cached = await loadCachedSnapshot(currentUserId);
+        setSnapshot(cached ?? { approvedApplicationCount: 0, role: null, serviceCount: 0 });
       } finally {
         if (active) {
           setLoadingAccess(false);

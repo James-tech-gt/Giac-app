@@ -13,6 +13,7 @@ import { Tabs } from 'expo-router';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useMemo, useState } from 'react';
 import { useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const C = {
   bg: '#F8FAFD',
@@ -26,6 +27,7 @@ const C = {
 export default function MainLayout() {
   const { width } = useWindowDimensions();
   const isCompact = width < 390;
+  const insets = useSafeAreaInsets();
   const [currentUserId, setCurrentUserId] = useState<string | null>(auth.currentUser?.uid ?? null);
   const [profileRole, setProfileRole] = useState<UserRole | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -96,7 +98,7 @@ export default function MainLayout() {
 
   const isAdmin = resolvedRole === 'admin';
   const isStudent = resolvedRole === 'student';
-  const isClient = resolvedRole === 'client';
+  const hasServices = services.length > 0;
 
   return (
     <Tabs
@@ -105,9 +107,9 @@ export default function MainLayout() {
         tabBarStyle: {
           backgroundColor: C.surface,
           borderTopColor: C.border,
-          height: isCompact ? 64 : 72,
+          height: (isCompact ? 64 : 72) + insets.bottom,
           paddingTop: isCompact ? 6 : 8,
-          paddingBottom: isCompact ? 6 : 10,
+          paddingBottom: (isCompact ? 6 : 10) + insets.bottom,
         },
         tabBarActiveTintColor: C.secondary,
         tabBarInactiveTintColor: C.textMuted,
@@ -133,7 +135,7 @@ export default function MainLayout() {
         name="explore"
         options={{
           title: 'Explore',
-          href: roleReady ? (isAdmin || isStudent || isClient ? null : '/(main)/explore') : null,
+          href: roleReady ? (isAdmin || isStudent || hasServices ? null : '/(main)/explore') : null,
           tabBarIcon: ({ color, size }) => (
             <FontAwesome6 name="compass" size={size} color={color} />
           ),
@@ -152,8 +154,8 @@ export default function MainLayout() {
       <Tabs.Screen
         name="cases"
         options={{
-          title: 'Cases',
-          href: roleReady && isClient ? '/(main)/cases' : null,
+          title: 'My Cases',
+          href: roleReady && hasServices ? '/(main)/cases' : null,
           tabBarIcon: ({ color, size }) => (
             <FontAwesome6 name="scale-balanced" size={size} color={color} />
           ),

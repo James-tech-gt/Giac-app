@@ -1,15 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Fonts } from '@/constants/theme';
+import { getUserProfile } from '@/services/auth';
 import { auth } from '@/services/firebase';
 import {
+  AdminNotification,
   Announcement,
+  markAdminNotificationsRead,
   StudentNotification,
+  subscribeAdminNotifications,
   markStudentNotificationsRead,
   subscribeAnnouncements,
   subscribeStudentNotifications,
 } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { onAuthStateChanged } from 'firebase/auth';
 import React, { useEffect, useState } from 'react';
 import {
   Pressable,
@@ -81,39 +86,128 @@ function AnnouncementItem({ item, isNew }: { item: Announcement; isNew: boolean 
   );
 }
 
-function PersonalNotifItem({ item }: { item: StudentNotification }) {
-  const isApproved = item.type === 'application_approved';
-  const isRejected = item.type === 'application_rejected';
-  const isAssignment = item.type === 'assignment_graded';
+function navigateForNotif(item: StudentNotification) {
+  switch (item.type) {
+    case 'case_message':
+    case 'case_assigned':
+    case 'case_updated':
+    case 'case_completed':
+      router.push({ pathname: '/(main)/cases', params: { openCaseId: item.referenceId } } as any);
+      break;
+    case 'application_approved':
+    case 'application_rejected':
+      router.push('/(main)/application-status' as any);
+      break;
+    case 'material_posted':
+      router.push('/(student)/materials' as any);
+      break;
+    case 'assignment_posted':
+    case 'assignment_graded':
+      router.push('/(student)/assignments' as any);
+      break;
+    case 'test_posted':
+    case 'test_graded':
+      router.push('/(student)/tests' as any);
+      break;
+  }
+}
 
+function hasPersonalNavTarget(item: StudentNotification): boolean {
+  return (
+    item.type === 'case_message' || item.type === 'case_assigned' ||
+    item.type === 'case_updated' || item.type === 'case_completed' ||
+    item.type === 'application_approved' || item.type === 'application_rejected' ||
+    item.type === 'material_posted' || item.type === 'assignment_posted' ||
+    item.type === 'assignment_graded' || item.type === 'test_posted' ||
+    item.type === 'test_graded'
+  );
+}
+
+function PersonalNotifItem({ item }: { item: StudentNotification }) {
   let dotColor = C.secondary;
   let tagLabel = 'Update';
   let tagBg = '#E9EEF8';
   let tagColor = C.secondary;
   let rowStyle = styles.gradeItem;
 
-  if (isApproved) {
-    dotColor = C.success;
-    tagLabel = 'Approved';
-    tagBg = C.successSoft;
-    tagColor = C.success;
-    rowStyle = styles.approvedItem;
-  } else if (isRejected) {
-    dotColor = C.danger;
-    tagLabel = 'Not Approved';
-    tagBg = C.dangerSoft;
-    tagColor = C.danger;
-    rowStyle = styles.rejectedItem;
-  } else if (isAssignment) {
-    tagLabel = 'Assignment';
-  } else {
-    tagLabel = 'Test';
-    tagBg = C.warningSoft;
-    tagColor = C.warning;
+  switch (item.type) {
+    case 'application_approved':
+      dotColor = C.success;
+      tagLabel = 'Approved';
+      tagBg = C.successSoft;
+      tagColor = C.success;
+      rowStyle = styles.approvedItem;
+      break;
+    case 'application_rejected':
+      dotColor = C.danger;
+      tagLabel = 'Not Approved';
+      tagBg = C.dangerSoft;
+      tagColor = C.danger;
+      rowStyle = styles.rejectedItem;
+      break;
+    case 'material_posted':
+      tagLabel = 'Material';
+      tagBg = '#EAF0F8';
+      tagColor = '#2E4A8A';
+      rowStyle = styles.courseItem;
+      break;
+    case 'assignment_posted':
+      tagLabel = 'Assignment';
+      tagBg = '#EAF0F8';
+      tagColor = '#2E4A8A';
+      rowStyle = styles.courseItem;
+      break;
+    case 'test_posted':
+      tagLabel = 'Test';
+      tagBg = C.warningSoft;
+      tagColor = C.warning;
+      rowStyle = styles.courseItem;
+      break;
+    case 'assignment_graded':
+      tagLabel = 'Graded';
+      break;
+    case 'test_graded':
+      tagLabel = 'Graded';
+      tagBg = C.warningSoft;
+      tagColor = C.warning;
+      break;
+    case 'case_assigned':
+      dotColor = '#2E4A8A';
+      tagLabel = 'Case Update';
+      tagBg = '#E9EEF8';
+      tagColor = '#2E4A8A';
+      rowStyle = styles.caseItem;
+      break;
+    case 'case_updated':
+      dotColor = C.warning;
+      tagLabel = 'Case Update';
+      tagBg = C.warningSoft;
+      tagColor = C.warning;
+      rowStyle = styles.caseItem;
+      break;
+    case 'case_message':
+      dotColor = '#2E4A8A';
+      tagLabel = 'New Message';
+      tagBg = '#E9EEF8';
+      tagColor = '#2E4A8A';
+      rowStyle = styles.caseItem;
+      break;
+    case 'case_completed':
+      dotColor = C.success;
+      tagLabel = 'Case Resolved';
+      tagBg = C.successSoft;
+      tagColor = C.success;
+      rowStyle = styles.caseItem;
+      break;
   }
 
+  const tappable = hasPersonalNavTarget(item);
+
   return (
-    <View style={[styles.item, rowStyle]}>
+    <Pressable
+      style={({ pressed }) => [styles.item, rowStyle, pressed && { opacity: 0.85 }]}
+      onPress={tappable ? () => navigateForNotif(item) : undefined}
+    >
       <View style={styles.itemTop}>
         <View style={styles.itemLeft}>
           <View style={[styles.dot, { backgroundColor: dotColor }]} />
@@ -128,20 +222,69 @@ function PersonalNotifItem({ item }: { item: StudentNotification }) {
           <View style={[styles.urgentPill, { backgroundColor: tagBg }]}>
             <Text style={[styles.urgentPillText, { color: tagColor }]}>{tagLabel}</Text>
           </View>
+          {tappable && (
+            <FontAwesome6 name="chevron-right" size={10} color={C.textMuted} />
+          )}
         </View>
       </View>
       {item.createdAt ? (
         <Text style={styles.itemDate}>{formatDate(item.createdAt)}</Text>
       ) : null}
-    </View>
+    </Pressable>
+  );
+}
+
+function AdminNotifItem({ item }: { item: AdminNotification }) {
+  const tappable = item.type === 'service' || item.type === 'application';
+
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.item, styles.courseItem, pressed && { opacity: 0.85 }]}
+      onPress={tappable
+        ? () => router.push(item.type === 'application'
+            ? { pathname: '/admin', params: { openAdmissions: '1' } } as any
+            : { pathname: '/admin', params: { openCaseId: item.referenceId } } as any)
+        : undefined}
+    >
+      <View style={styles.itemTop}>
+        <View style={styles.itemLeft}>
+          <View style={[styles.dot, { backgroundColor: C.secondary }]} />
+          <Text style={styles.itemTitle}>{item.message}</Text>
+        </View>
+        <View style={styles.itemMeta}>
+          {!item.read && (
+            <View style={styles.newPill}>
+              <Text style={styles.newPillText}>New</Text>
+            </View>
+          )}
+          <View style={[styles.urgentPill, { backgroundColor: '#E9EEF8' }]}>
+            <Text style={[styles.urgentPillText, { color: C.secondary }]}>Admin</Text>
+          </View>
+          {tappable && (
+            <FontAwesome6 name="chevron-right" size={10} color={C.textMuted} />
+          )}
+        </View>
+      </View>
+      {item.createdAt ? (
+        <Text style={styles.itemDate}>{formatDate(item.createdAt)}</Text>
+      ) : null}
+    </Pressable>
   );
 }
 
 export default function NotificationsScreen() {
-  const user = auth.currentUser;
+  const [user, setUser] = useState(auth.currentUser);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [personalNotifs, setPersonalNotifs] = useState<StudentNotification[]>([]);
+  // displayPersonalNotifs / displayAdminNotifs are snapshots taken the moment the
+  // screen opens — they don't update when Firestore marks items read, so the list
+  // stays visible while the user is reading.
+  const [displayPersonalNotifs, setDisplayPersonalNotifs] = useState<StudentNotification[]>([]);
+  const [displayAdminNotifs, setDisplayAdminNotifs] = useState<AdminNotification[]>([]);
   const [lastSeenMs, setLastSeenMs] = useState<number | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const snapped = React.useRef(false);
+
+  useEffect(() => onAuthStateChanged(auth, setUser), []);
 
   useEffect(() => {
     AsyncStorage.getItem(LAST_SEEN_KEY).then((val) => {
@@ -152,13 +295,73 @@ export default function NotificationsScreen() {
   }, []);
 
   useEffect(() => {
-    if (!user?.uid) return;
-    const unsub = subscribeStudentNotifications(user.uid, (notifs) => {
-      setPersonalNotifs(notifs);
-      const unread = notifs.filter((n) => !n.read).map((n) => n.id);
-      if (unread.length > 0) markStudentNotificationsRead(unread).catch(() => {});
-    });
-    return unsub;
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    snapped.current = false;
+
+    async function loadNotificationSource() {
+      if (!user?.uid) {
+        if (active) {
+          setIsAdmin(false);
+          setDisplayPersonalNotifs([]);
+          setDisplayAdminNotifs([]);
+        }
+        return;
+      }
+
+      try {
+        const profile = await getUserProfile(user.uid);
+        const admin = profile?.role === 'admin';
+        if (!active) return;
+        setIsAdmin(admin);
+        unsubscribe = admin
+          ? subscribeAdminNotifications((notifs) => {
+              if (!active) return;
+              if (!snapped.current) {
+                // Skip empty cache hits — wait for a real server result
+                if (notifs.length === 0) return;
+                const unread = notifs.filter((n) => !n.read);
+                setDisplayAdminNotifs(unread);
+                snapped.current = true;
+                const ids = unread.map((n) => n.id);
+                if (ids.length > 0) markAdminNotificationsRead(ids).catch(() => {});
+              }
+            })
+          : subscribeStudentNotifications(user.uid, (notifs) => {
+              if (!active) return;
+              if (!snapped.current) {
+                // Skip empty cache hits — wait for a real server result
+                if (notifs.length === 0) return;
+                const unread = notifs.filter((n) => !n.read);
+                setDisplayPersonalNotifs(unread);
+                snapped.current = true;
+                const ids = unread.map((n) => n.id);
+                if (ids.length > 0) markStudentNotificationsRead(ids).catch(() => {});
+              }
+            });
+      } catch {
+        if (!active || !user?.uid) return;
+        setIsAdmin(false);
+        unsubscribe = subscribeStudentNotifications(user.uid, (notifs) => {
+          if (!active) return;
+          if (!snapped.current) {
+            if (notifs.length === 0) return;
+            const unread = notifs.filter((n) => !n.read);
+            setDisplayPersonalNotifs(unread);
+            snapped.current = true;
+            const ids = unread.map((n) => n.id);
+            if (ids.length > 0) markStudentNotificationsRead(ids).catch(() => {});
+          }
+        });
+      }
+    }
+
+    loadNotificationSource();
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
   }, [user?.uid]);
 
   function isNew(ann: Announcement): boolean {
@@ -171,14 +374,20 @@ export default function NotificationsScreen() {
     return !isNaN(d) && d > lastSeenMs;
   }
 
-  const applicationNotifs = personalNotifs.filter(
+  const applicationNotifs = displayPersonalNotifs.filter(
     (n) => n.type === 'application_approved' || n.type === 'application_rejected'
   );
-  const gradeNotifs = personalNotifs.filter(
+  const gradeNotifs = displayPersonalNotifs.filter(
     (n) => n.type === 'assignment_graded' || n.type === 'test_graded'
   );
+  const courseUpdateNotifs = displayPersonalNotifs.filter(
+    (n) => n.type === 'material_posted' || n.type === 'assignment_posted' || n.type === 'test_posted'
+  );
+  const caseNotifs = displayPersonalNotifs.filter(
+    (n) => n.type === 'case_assigned' || n.type === 'case_updated' || n.type === 'case_completed' || n.type === 'case_message'
+  );
 
-  const hasContent = announcements.length > 0 || personalNotifs.length > 0;
+  const hasContent = announcements.length > 0 || displayPersonalNotifs.length > 0 || displayAdminNotifs.length > 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -196,7 +405,7 @@ export default function NotificationsScreen() {
         <View style={styles.hero}>
           <Text style={styles.eyebrow}>Updates</Text>
           <Text style={styles.title}>Notifications</Text>
-          <Text style={styles.subtitle}>Application updates, grades, and announcements from GIAC.</Text>
+          <Text style={styles.subtitle}>Application updates, course content, grades, and announcements from GIAC.</Text>
         </View>
 
         {!hasContent ? (
@@ -207,10 +416,34 @@ export default function NotificationsScreen() {
           </View>
         ) : (
           <View style={styles.list}>
+            {isAdmin && displayAdminNotifs.length > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>Admin Alerts</Text>
+                {displayAdminNotifs.map((n) => (
+                  <AdminNotifItem key={n.id} item={n} />
+                ))}
+              </>
+            )}
             {applicationNotifs.length > 0 && (
               <>
                 <Text style={styles.sectionLabel}>Application Updates</Text>
                 {applicationNotifs.map((n) => (
+                  <PersonalNotifItem key={n.id} item={n} />
+                ))}
+              </>
+            )}
+            {courseUpdateNotifs.length > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>Course Updates</Text>
+                {courseUpdateNotifs.map((n) => (
+                  <PersonalNotifItem key={n.id} item={n} />
+                ))}
+              </>
+            )}
+            {caseNotifs.length > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>Case Updates</Text>
+                {caseNotifs.map((n) => (
                   <PersonalNotifItem key={n.id} item={n} />
                 ))}
               </>
@@ -283,6 +516,14 @@ const styles = StyleSheet.create({
   gradeItem: {
     borderColor: '#D0DAF0',
     backgroundColor: '#F4F7FD',
+  },
+  courseItem: {
+    borderColor: '#C8D8EE',
+    backgroundColor: '#F0F5FB',
+  },
+  caseItem: {
+    borderColor: '#C0D0E8',
+    backgroundColor: '#EEF4FA',
   },
   itemTop: {
     flexDirection: 'row',

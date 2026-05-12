@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -41,6 +42,7 @@ export default function SignupScreen() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showSignInHint, setShowSignInHint] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
@@ -95,16 +97,24 @@ export default function SignupScreen() {
     if (err) { setError(err); shake(); return; }
     setLoading(true);
     setError('');
+    setShowSignInHint(false);
     try {
       await signUp(email.trim(), password, { fullName: fullName.trim(), phone: phone.trim(), role: 'applicant' });
       sendVerificationEmail().catch(() => {});
       router.replace('/(main)/home');
     } catch (e: any) {
+      const emailTaken = e.code === 'auth/email-already-in-use';
       const msg =
-        e.code === 'auth/email-already-in-use' ? 'An account with this email already exists.' :
-        e.code === 'auth/invalid-email'        ? 'Please enter a valid email address.' :
-        e.code === 'auth/weak-password'        ? 'Password is too weak. Use at least 6 characters.' :
-        'Something went wrong. Please try again.';
+        ['auth/network-request-failed', 'auth/internal-error'].includes(e.code)
+          ? 'No internet connection. Check your connection and try again.'
+          : emailTaken
+          ? 'An account already exists for this email address.'
+          : e.code === 'auth/invalid-email'
+          ? 'Please enter a valid email address.'
+          : e.code === 'auth/weak-password'
+          ? 'Password is too weak. Use at least 6 characters.'
+          : 'Something went wrong. Please try again.';
+      setShowSignInHint(emailTaken);
       setError(msg);
       shake();
     } finally {
@@ -129,7 +139,14 @@ export default function SignupScreen() {
       }
       router.replace('/(main)/home');
     } catch (e: any) {
-      setError(e.message || 'Google sign-up failed. Please try again.');
+      const msg =
+        ['auth/network-request-failed', 'auth/internal-error'].includes(e.code)
+          ? 'No internet connection. Check your connection and try again.'
+          : e.code === 'auth/account-exists-with-different-credential'
+          ? 'An account already exists for this email. Try signing in instead.'
+          : 'Google sign-up failed. Please try again.';
+      setShowSignInHint(e.code === 'auth/account-exists-with-different-credential');
+      setError(msg);
       shake();
     } finally {
       setLoading(false);
@@ -160,10 +177,11 @@ export default function SignupScreen() {
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
 
-          <View style={styles.seal}>
-            <View style={styles.sealInnerRing} />
-            <FontAwesome6 name="scale-balanced" size={24} color={C.accent} />
-          </View>
+          <Image
+            source={require('../../assets/images/giac-bg.jpg')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <Text style={styles.overline}>Global Institute of ADR Center</Text>
           <Text style={styles.title}>Create your account</Text>
           <Text style={styles.lead}>Fill in your details to get started with GIAC.</Text>
@@ -173,7 +191,14 @@ export default function SignupScreen() {
         {error ? (
           <Animated.View style={[styles.errorBanner, { transform: [{ translateX: shakeAnim }] }]}>
             <View style={styles.errorDot} />
-            <Text style={styles.errorText}>{error}</Text>
+            <View style={{ flex: 1, gap: 6 }}>
+              <Text style={styles.errorText}>{error}</Text>
+              {showSignInHint && (
+                <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+                  <Text style={styles.errorSignInLink}>Sign in to your existing account →</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </Animated.View>
         ) : null}
 
@@ -220,7 +245,6 @@ export default function SignupScreen() {
           <View style={styles.field}>
             <View style={styles.labelRow}>
               <Text style={styles.label}>Phone number</Text>
-              <Text style={styles.optionalTag}>Optional</Text>
             </View>
             <TextInput
               style={inputStyle('phone')}
@@ -388,16 +412,11 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start', marginBottom: 16,
   },
   backText: { fontSize: 13, fontFamily: Fonts.sans, color: C.secondary },
-  seal: {
-    width: 60, height: 60, borderRadius: 30,
-    backgroundColor: C.primary,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 4, overflow: 'hidden',
-  },
-  sealInnerRing: {
-    position: 'absolute',
-    width: 52, height: 52, borderRadius: 26,
-    borderWidth: 1.5, borderColor: C.accent,
+  logoImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 4,
   },
   overline: {
     fontSize: 11, fontFamily: Fonts.sansBold,
@@ -423,7 +442,8 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
   },
   errorDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.danger },
-  errorText: { fontSize: 13, fontFamily: Fonts.sans, color: C.danger, flex: 1, lineHeight: 19 },
+  errorText: { fontSize: 13, fontFamily: Fonts.sans, color: C.danger, lineHeight: 19 },
+  errorSignInLink: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.secondary },
 
   // ── Card ─────────────────────────────────────────────────────
   card: {

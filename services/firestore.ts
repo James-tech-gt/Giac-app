@@ -3,6 +3,7 @@ import {
     collection,
     deleteDoc,
     doc,
+    getDoc,
     getDocs,
     limit,
     onSnapshot,
@@ -14,7 +15,7 @@ import {
     writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { UserRole } from './access';
+import { normalizeUserRole, type UserRole } from './access';
 
 const COLLECTIONS = {
   announcements: 'Announcements',
@@ -59,7 +60,7 @@ export interface AnnouncementInput {
 
 export interface AdminNotification {
   id: string;
-  type: 'application' | 'service';
+  type: 'application' | 'service' | 'account';
   message: string;
   referenceId: string;
   userId: string;
@@ -77,11 +78,12 @@ export interface Application {
   fullName?: string;
   email?: string;
   phone?: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'withdrawn';
   documents: string[];
   feedback: string;
   submittedAt: any;
   decidedAt?: any;
+  withdrawnAt?: any;
 }
 
 export interface ApplicationInput {
@@ -93,24 +95,52 @@ export interface ApplicationInput {
   fullName: string;
   email: string;
   phone: string;
+  whatsapp?: string;
+  location?: string;
+  educationLevel?: string;
+  certificateLink?: string;
+  areaOfStudy?: string;
+  occupation?: string;
+  organization?: string;
+  motivation?: string;
+  paymentMode?: string;
   message?: string;
 }
 
 export interface Service {
   id: string;
   userId: string;
+  clientName?: string;
+  clientEmail?: string;
   serviceType: 'mediation' | 'arbitration';
   category: string;
   caseDetails: string;
   documents: string[];
   status: 'submitted' | 'in-progress' | 'completed';
   mediatorAssigned: string;
+  mediatorName?: string;
+  mediatorNote?: string;
+  scheduledDate?: any;
+  resolution?: string;
+  statusUpdatedAt?: any;
   createdAt: any;
   updatedAt: any;
 }
 
+export interface CaseMessage {
+  id: string;
+  caseId: string;
+  senderId: string;
+  senderName: string;
+  senderType: 'client' | 'admin';
+  text: string;
+  createdAt: any;
+}
+
 export interface ServiceInput {
   userId: string;
+  clientName?: string;
+  clientEmail?: string;
   serviceType: 'mediation' | 'arbitration';
   category: string;
   caseDetails: string;
@@ -136,6 +166,7 @@ const CURATED_COURSES: Course[] = [
     level: 'Certificate',
     duration: '4 weeks',
     modules: 7,
+    fees: 3200,
     schedule: 'Mondays, Wednesdays, and Fridays | 5:30 PM - 8:30 PM',
     platform: 'Virtual (Google Meet/Zoom)',
     practicalSessions: 'In-person sessions at Kasoa',
@@ -161,6 +192,7 @@ const CURATED_COURSES: Course[] = [
     level: "Master's",
     duration: '3 months',
     modules: 8,
+    fees: 6300,
     schedule: 'Mondays, Wednesdays, and Fridays | 5:30 PM - 8:30 PM',
     platform: 'Virtual (Google Meet/Zoom)',
     idealFor:
@@ -221,8 +253,8 @@ function isCurrentApplicationRecord(application: Application) {
 }
 
 // ─── Internal helpers ───────────────────────────────────────────────────────
-async function createAdminNotification(data: {
-  type: 'application' | 'service';
+export async function createAdminNotification(data: {
+  type: 'application' | 'service' | 'account';
   message: string;
   referenceId: string;
   userId: string;
@@ -232,6 +264,102 @@ async function createAdminNotification(data: {
     read: false,
     createdAt: serverTimestamp(),
   });
+}
+
+export interface AccountDeletionRequestInput {
+  userId: string;
+  email: string;
+  fullName?: string;
+  role?: string;
+  reason?: string;
+}
+
+export interface AccountDeletionRequest {
+  id: string;
+  userId: string;
+  email: string;
+  fullName: string;
+  role: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: any;
+  decidedAt?: any;
+}
+
+export async function createAccountDeletionRequest(
+  input: AccountDeletionRequestInput
+): Promise<void> {
+  const fullName = input.fullName?.trim() || '';
+  const email = input.email.trim();
+  const role = input.role?.trim() || '';
+  const reason = input.reason?.trim() || '';
+  const docRef = await addDoc(collection(db, 'AccountDeletionRequests'), {
+    userId: input.userId,
+    email,
+    fullName,
+    role,
+    reason,
+    status: 'pending',
+    requestedAt: serverTimestamp(),
+  });
+
+  await createAdminNotification({
+    type: 'account',
+    message: `${fullName || email} requested account deletion.`,
+    referenceId: docRef.id,
+    userId: input.userId,
+  });
+}
+
+export function subscribeAccountDeletionRequests(
+  callback: (requests: AccountDeletionRequest[]) => void
+): () => void {
+  const q = query(
+    collection(db, 'AccountDeletionRequests'),
+    where('status', '==', 'pending')
+  );
+  return onSnapshot(q, (snap) => {
+    const requests = snap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    } as AccountDeletionRequest));
+    requests.sort((a, b) => {
+      const aTime = typeof a.requestedAt?.toDate === 'function' ? a.requestedAt.toDate().getTime() : 0;
+      const bTime = typeof b.requestedAt?.toDate === 'function' ? b.requestedAt.toDate().getTime() : 0;
+      return bTime - aTime;
+    });
+    callback(requests);
+  });
+}
+
+export async function approveAccountDeletionRequest(requestId: string): Promise<void> {
+  await updateDoc(doc(db, 'AccountDeletionRequests', requestId), {
+    status: 'approved',
+    decidedAt: serverTimestamp(),
+  });
+}
+
+export async function rejectAccountDeletionRequest(requestId: string): Promise<void> {
+  await updateDoc(doc(db, 'AccountDeletionRequests', requestId), {
+    status: 'rejected',
+    decidedAt: serverTimestamp(),
+  });
+}
+
+export async function hasPendingAccountDeletionRequest(userId: string): Promise<boolean> {
+  try {
+    const q = query(
+      collection(db, 'AccountDeletionRequests'),
+      where('userId', '==', userId),
+      where('status', '==', 'pending'),
+      limit(1)
+    );
+    const snapshot = await getDocs(q);
+    return !snapshot.empty;
+  } catch (error) {
+    console.warn('hasPendingAccountDeletionRequest failed:', error);
+    return false;
+  }
 }
 
 // ─── Courses ────────────────────────────────────────────────────────────────
@@ -492,6 +620,15 @@ export async function createApplication(input: ApplicationInput): Promise<void> 
       fullName: input.fullName.trim(),
       email: input.email.trim(),
       phone: input.phone.trim(),
+      whatsapp: input.whatsapp?.trim() ?? '',
+      location: input.location?.trim() ?? '',
+      educationLevel: input.educationLevel?.trim() ?? '',
+      certificateLink: input.certificateLink?.trim() ?? '',
+      areaOfStudy: input.areaOfStudy?.trim() ?? '',
+      occupation: input.occupation?.trim() ?? '',
+      organization: input.organization?.trim() ?? '',
+      motivation: input.motivation?.trim() ?? '',
+      paymentMode: input.paymentMode?.trim() ?? '',
       status: 'pending',
       documents: [],
       feedback: input.message?.trim() ?? '',
@@ -509,9 +646,33 @@ export async function createApplication(input: ApplicationInput): Promise<void> 
   }
 }
 
+export async function deleteApplication(applicationId: string): Promise<void> {
+  await deleteDoc(doc(db, COLLECTIONS.applications, applicationId));
+}
+
 export async function withdrawApplication(applicationId: string): Promise<void> {
   const applicationDoc = doc(db, COLLECTIONS.applications, applicationId);
-  await deleteDoc(applicationDoc);
+  const applicationSnap = await getDoc(applicationDoc);
+
+  if (!applicationSnap.exists()) return;
+
+  const data = applicationSnap.data();
+  const fullName = pickField<string>(data, 'fullName', 'FullName')?.trim() || 'An applicant';
+  const courseTitle = pickField<string>(data, 'courseTitle', 'CourseTitle')?.trim() || 'a course';
+  const userId = pickField<string>(data, 'userId', 'UserId') ?? '';
+
+  // Mark as withdrawn so admin can still see it in the Admissions panel
+  await updateDoc(applicationDoc, {
+    status: 'withdrawn',
+    withdrawnAt: serverTimestamp(),
+  });
+
+  await createAdminNotification({
+    type: 'application',
+    message: `${fullName} withdrew their application for ${courseTitle}.`,
+    referenceId: applicationId,
+    userId,
+  });
 }
 
 // ─── Services ───────────────────────────────────────────────────────────────
@@ -589,6 +750,11 @@ export function subscribeUserServices(
             documents: pickField<string[]>(data, 'documents', 'Documents') ?? [],
             status: pickField<Service['status']>(data, 'status', 'Status') ?? 'submitted',
             mediatorAssigned: pickField<string>(data, 'mediatorAssigned', 'MediatorAssigned') ?? '',
+            mediatorName: pickField<string>(data, 'mediatorName') ?? '',
+            mediatorNote: pickField<string>(data, 'mediatorNote') ?? '',
+            scheduledDate: pickField<any>(data, 'scheduledDate'),
+            resolution: pickField<string>(data, 'resolution') ?? '',
+            statusUpdatedAt: pickField<any>(data, 'statusUpdatedAt'),
             createdAt: pickField<any>(data, 'createdAt', 'CreatedAt'),
             updatedAt: pickField<any>(data, 'updatedAt', 'UpdatedAt'),
           };
@@ -664,6 +830,8 @@ export async function createService(input: ServiceInput): Promise<void> {
     const servicesCollection = collection(db, COLLECTIONS.services);
     const docRef = await addDoc(servicesCollection, {
       userId: input.userId,
+      clientName: input.clientName ?? '',
+      clientEmail: input.clientEmail ?? '',
       serviceType: input.serviceType,
       category: input.category.trim(),
       caseDetails: input.caseDetails.trim(),
@@ -734,6 +902,39 @@ export interface Material {
   order: number;
 }
 
+export function subscribeMaterials(
+  courseId: string,
+  callback: (materials: Material[]) => void
+): () => void {
+  const q = query(
+    collection(db, 'Materials'),
+    where('courseId', '==', courseId)
+  );
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const materials: Material[] = snapshot.docs
+        .map((docSnap) => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            courseId: data.courseId ?? '',
+            moduleId: data.moduleId ?? '',
+            moduleTitle: data.moduleTitle ?? '',
+            title: data.title ?? '',
+            type: data.type ?? 'link',
+            fileUrl: data.fileUrl ?? '',
+            uploadDate: data.uploadDate,
+            order: data.order ?? 0,
+          };
+        })
+        .sort((a, b) => a.order - b.order);
+      callback(materials);
+    },
+    () => callback([])
+  );
+}
+
 export async function getMaterials(courseId: string): Promise<Material[]> {
   try {
     const col = collection(db, 'Materials');
@@ -771,6 +972,7 @@ export interface Assignment {
   maxGrade: number;
   submittedAt?: any;
   submissionText?: string;
+  attachmentLink?: string;
   grade?: number;
   feedback?: string;
   status: 'pending' | 'submitted' | 'graded';
@@ -780,7 +982,51 @@ export interface AssignmentSubmissionInput {
   assignmentId: string;
   userId: string;
   courseId: string;
-  submissionText: string;
+  submissionText?: string;
+  attachmentLink?: string;
+  studentName?: string;
+  studentEmail?: string;
+}
+
+export function subscribeAssignments(
+  userId: string,
+  courseId: string,
+  callback: (assignments: Assignment[]) => void
+): () => void {
+  const q = query(
+    collection(db, 'Assignments'),
+    where('courseId', '==', courseId)
+  );
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const assignments: Assignment[] = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        const userSub = data[`sub_${userId}`];
+        return {
+          id: docSnap.id,
+          courseId: data.courseId ?? '',
+          title: data.title ?? '',
+          description: data.description ?? '',
+          deadline: data.deadline,
+          maxGrade: data.maxGrade ?? 100,
+          submittedAt: userSub?.submittedAt,
+          submissionText: userSub?.text,
+          attachmentLink: userSub?.attachmentLink,
+          grade: userSub?.grade,
+          feedback: userSub?.feedback,
+          status: userSub?.grade != null ? 'graded' : userSub ? 'submitted' : 'pending',
+        };
+      });
+      assignments.sort((a, b) => {
+        const at = typeof a.deadline?.toDate === 'function' ? a.deadline.toDate().getTime() : 0;
+        const bt = typeof b.deadline?.toDate === 'function' ? b.deadline.toDate().getTime() : 0;
+        return at - bt;
+      });
+      callback(assignments);
+    },
+    () => callback([])
+  );
 }
 
 export async function getAssignments(userId: string, courseId: string): Promise<Assignment[]> {
@@ -801,6 +1047,7 @@ export async function getAssignments(userId: string, courseId: string): Promise<
         maxGrade: data.maxGrade ?? 100,
         submittedAt: userSub?.submittedAt,
         submissionText: userSub?.text,
+        attachmentLink: userSub?.attachmentLink,
         grade: userSub?.grade,
         feedback: userSub?.feedback,
         status: userSub?.grade != null ? 'graded' : userSub ? 'submitted' : 'pending',
@@ -814,18 +1061,26 @@ export async function getAssignments(userId: string, courseId: string): Promise<
 }
 
 export async function submitAssignment(input: AssignmentSubmissionInput): Promise<void> {
+  const submissionText = input.submissionText?.trim() || '';
+  const attachmentLink = input.attachmentLink?.trim() || '';
   const col = collection(db, 'AssignmentSubmissions');
   await addDoc(col, {
     assignmentId: input.assignmentId,
     userId: input.userId,
     courseId: input.courseId,
-    submissionText: input.submissionText.trim(),
+    submissionText,
+    attachmentLink,
+    studentName: input.studentName?.trim() || '',
+    studentEmail: input.studentEmail?.trim() || '',
     submittedAt: serverTimestamp(),
     status: 'submitted',
   });
   await updateDoc(doc(db, 'Assignments', input.assignmentId), {
     [`sub_${input.userId}`]: {
-      text: input.submissionText.trim(),
+      text: submissionText,
+      attachmentLink,
+      studentName: input.studentName?.trim() || '',
+      studentEmail: input.studentEmail?.trim() || '',
       submittedAt: serverTimestamp(),
     },
   });
@@ -841,8 +1096,73 @@ export interface Test {
   durationMinutes: number;
   totalMarks: number;
   passMark: number;
+  submittedAt?: any;
+  submissionText?: string;
+  attachmentLink?: string;
+  feedback?: string;
   score?: number;
-  status: 'upcoming' | 'completed' | 'missed';
+  status: 'upcoming' | 'submitted' | 'graded' | 'completed' | 'missed';
+}
+
+export interface TestSubmissionInput {
+  testId: string;
+  userId: string;
+  courseId: string;
+  submissionText?: string;
+  attachmentLink?: string;
+  studentName?: string;
+  studentEmail?: string;
+}
+
+export function subscribeTests(
+  userId: string,
+  courseId: string,
+  callback: (tests: Test[]) => void
+): () => void {
+  const q = query(
+    collection(db, 'Tests'),
+    where('courseId', '==', courseId)
+  );
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const tests: Test[] = snapshot.docs
+        .map((docSnap) => {
+          const data = docSnap.data();
+          const userSub = data[`sub_${userId}`];
+          const baseStatus = data.status ?? 'upcoming';
+          const status =
+            userSub?.score != null
+              ? 'graded'
+              : userSub
+              ? 'submitted'
+              : baseStatus;
+          return {
+            id: docSnap.id,
+            courseId: data.courseId ?? '',
+            title: data.title ?? '',
+            description: data.description ?? '',
+            scheduledDate: data.scheduledDate,
+            durationMinutes: data.durationMinutes ?? 60,
+            totalMarks: data.totalMarks ?? 100,
+            passMark: data.passMark ?? 50,
+            submittedAt: userSub?.submittedAt,
+            submissionText: userSub?.text,
+            attachmentLink: userSub?.attachmentLink,
+            feedback: userSub?.feedback,
+            score: userSub?.score ?? data.score,
+            status,
+          };
+        })
+        .sort((a, b) => {
+          const at = typeof a.scheduledDate?.toDate === 'function' ? a.scheduledDate.toDate().getTime() : 0;
+          const bt = typeof b.scheduledDate?.toDate === 'function' ? b.scheduledDate.toDate().getTime() : 0;
+          return at - bt;
+        });
+      callback(tests);
+    },
+    () => callback([])
+  );
 }
 
 export async function getTests(courseId: string): Promise<Test[]> {
@@ -871,6 +1191,31 @@ export async function getTests(courseId: string): Promise<Test[]> {
     console.error('getTests failed:', error);
     return [];
   }
+}
+
+export async function submitTest(input: TestSubmissionInput): Promise<void> {
+  const text = input.submissionText?.trim() || '';
+  const attachmentLink = input.attachmentLink?.trim() || '';
+  await addDoc(collection(db, 'TestSubmissions'), {
+    testId: input.testId,
+    userId: input.userId,
+    courseId: input.courseId,
+    submissionText: text,
+    attachmentLink,
+    studentName: input.studentName?.trim() || '',
+    studentEmail: input.studentEmail?.trim() || '',
+    submittedAt: serverTimestamp(),
+    status: 'submitted',
+  });
+  await updateDoc(doc(db, 'Tests', input.testId), {
+    [`sub_${input.userId}`]: {
+      text,
+      attachmentLink,
+      studentName: input.studentName?.trim() || '',
+      studentEmail: input.studentEmail?.trim() || '',
+      submittedAt: serverTimestamp(),
+    },
+  });
 }
 
 // ─── Student: Certificates ───────────────────────────────────────────────────
@@ -918,6 +1263,30 @@ export async function getApprovedApplications(userId: string): Promise<Applicati
 }
 
 // ─── Admin ───────────────────────────────────────────────────────────────────
+
+export interface UserRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  role: UserRole;
+  phone?: string;
+  createdAt: any;
+}
+
+export async function getAllUsers(): Promise<UserRecord[]> {
+  const snapshot = await getDocs(collection(db, COLLECTIONS.users));
+  return snapshot.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      fullName: data.fullName ?? '',
+      email: data.email ?? '',
+      role: normalizeUserRole(data.role),
+      phone: data.phone ?? '',
+      createdAt: data.createdAt,
+    };
+  });
+}
 
 export function getAllPendingApplications(
   callback: (applications: Application[]) => void
@@ -1012,12 +1381,19 @@ export function subscribeAllServices(
           return {
             id: docSnap.id,
             userId: pickField<string>(data, 'userId', 'UserId') ?? '',
+            clientName: data.clientName ?? '',
+            clientEmail: data.clientEmail ?? '',
             serviceType: pickField<Service['serviceType']>(data, 'serviceType', 'ServiceType') ?? 'mediation',
             category: pickField<string>(data, 'category', 'Category') ?? '',
             caseDetails: pickField<string>(data, 'caseDetails', 'CaseDetails') ?? '',
             documents: pickField<string[]>(data, 'documents', 'Documents') ?? [],
             status: pickField<Service['status']>(data, 'status', 'Status') ?? 'submitted',
             mediatorAssigned: pickField<string>(data, 'mediatorAssigned', 'MediatorAssigned') ?? '',
+            mediatorName: pickField<string>(data, 'mediatorName') ?? '',
+            mediatorNote: pickField<string>(data, 'mediatorNote') ?? '',
+            scheduledDate: pickField<any>(data, 'scheduledDate'),
+            resolution: pickField<string>(data, 'resolution') ?? '',
+            statusUpdatedAt: pickField<any>(data, 'statusUpdatedAt'),
             createdAt: pickField<any>(data, 'createdAt', 'CreatedAt'),
             updatedAt: pickField<any>(data, 'updatedAt', 'UpdatedAt'),
           };
@@ -1136,36 +1512,170 @@ export async function updateServiceRequest(
   serviceId: string,
   updates: {
     mediatorAssigned?: string;
+    mediatorName?: string;
+    mediatorNote?: string;
+    scheduledDate?: string;
+    resolution?: string;
     status?: Service['status'];
   }
 ): Promise<void> {
   const payload: Record<string, unknown> = {
     updatedAt: serverTimestamp(),
   };
-
-  if (updates.mediatorAssigned !== undefined) {
-    payload.mediatorAssigned = updates.mediatorAssigned.trim();
-  }
-
-  if (updates.status !== undefined) {
-    payload.status = updates.status;
-  }
-
+  if (updates.mediatorAssigned !== undefined) payload.mediatorAssigned = updates.mediatorAssigned.trim();
+  if (updates.mediatorName !== undefined) payload.mediatorName = updates.mediatorName.trim();
+  if (updates.mediatorNote !== undefined) payload.mediatorNote = updates.mediatorNote.trim();
+  if (updates.scheduledDate !== undefined) payload.scheduledDate = updates.scheduledDate;
+  if (updates.resolution !== undefined) payload.resolution = updates.resolution.trim();
+  if (updates.status !== undefined) { payload.status = updates.status; payload.statusUpdatedAt = serverTimestamp(); }
   await updateDoc(doc(db, COLLECTIONS.services, serviceId), payload);
 }
+
+export async function deleteService(serviceId: string): Promise<void> {
+  // Delete the service document
+  await deleteDoc(doc(db, COLLECTIONS.services, serviceId));
+
+  // Delete all chat messages for this case
+  const messagesSnap = await getDocs(
+    query(collection(db, 'CaseMessages'), where('caseId', '==', serviceId))
+  );
+  if (!messagesSnap.empty) {
+    const batch = writeBatch(db);
+    messagesSnap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+
+  // Delete any student notifications that referenced this case
+  const notifsSnap = await getDocs(
+    query(collection(db, 'StudentNotifications'), where('referenceId', '==', serviceId))
+  );
+  if (!notifsSnap.empty) {
+    const batch = writeBatch(db);
+    notifsSnap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+}
+
+export async function assignMediator(
+  serviceId: string,
+  mediatorName: string,
+  mediatorNote: string,
+  clientUserId: string
+): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.services, serviceId), {
+    mediatorName: mediatorName.trim(),
+    mediatorAssigned: mediatorName.trim(),
+    mediatorNote: mediatorNote.trim(),
+    status: 'in-progress',
+    statusUpdatedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  createStudentNotification(
+    clientUserId,
+    `A mediator has been assigned to your case: ${mediatorName.trim()}`,
+    'case_assigned',
+    serviceId
+  ).catch(() => {});
+}
+
+export async function updateCaseStatus(
+  serviceId: string,
+  status: Service['status'],
+  resolution: string,
+  clientUserId: string
+): Promise<void> {
+  const payload: Record<string, unknown> = {
+    status,
+    statusUpdatedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  if (resolution.trim()) payload.resolution = resolution.trim();
+  await updateDoc(doc(db, COLLECTIONS.services, serviceId), payload);
+
+  const type = status === 'completed' ? 'case_completed' : 'case_updated';
+  const message =
+    status === 'completed'
+      ? 'Your case has been resolved. View your resolution summary.'
+      : 'Your case status has been updated by the admin.';
+  createStudentNotification(clientUserId, message, type, serviceId).catch(() => {});
+}
+
+export async function sendCaseMessage(
+  caseId: string,
+  senderId: string,
+  senderName: string,
+  senderType: CaseMessage['senderType'],
+  text: string
+): Promise<void> {
+  await addDoc(collection(db, 'CaseMessages'), {
+    caseId,
+    senderId,
+    senderName,
+    senderType,
+    text: text.trim(),
+    createdAt: serverTimestamp(),
+  });
+}
+
+export function subscribeCaseMessages(
+  caseId: string,
+  callback: (messages: CaseMessage[]) => void
+): () => void {
+  const q = query(
+    collection(db, 'CaseMessages'),
+    where('caseId', '==', caseId)
+  );
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const messages: CaseMessage[] = snapshot.docs
+        .map((docSnap) => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            caseId: data.caseId ?? '',
+            senderId: data.senderId ?? '',
+            senderName: data.senderName ?? '',
+            senderType: data.senderType ?? 'client',
+            text: data.text ?? '',
+            createdAt: data.createdAt,
+          };
+        })
+        .sort((a, b) => {
+          const at = typeof a.createdAt?.toDate === 'function' ? a.createdAt.toDate().getTime() : 0;
+          const bt = typeof b.createdAt?.toDate === 'function' ? b.createdAt.toDate().getTime() : 0;
+          return at - bt;
+        });
+      callback(messages);
+    },
+    () => callback([])
+  );
+}
+
 
 // ─── Student Notifications ───────────────────────────────────────────────────
 export interface StudentNotification {
   id: string;
   userId: string;
-  type: 'assignment_graded' | 'test_graded' | 'application_approved' | 'application_rejected';
+  type:
+    | 'assignment_graded'
+    | 'test_graded'
+    | 'application_approved'
+    | 'application_rejected'
+    | 'material_posted'
+    | 'assignment_posted'
+    | 'test_posted'
+    | 'case_assigned'
+    | 'case_updated'
+    | 'case_completed'
+    | 'case_message';
   message: string;
   referenceId: string;
   read: boolean;
   createdAt: any;
 }
 
-async function createStudentNotification(
+export async function createStudentNotification(
   userId: string,
   message: string,
   type: StudentNotification['type'],
@@ -1231,6 +1741,24 @@ export interface MaterialInput {
   order: number;
 }
 
+async function notifyEnrolledStudents(
+  courseId: string,
+  message: string,
+  type: StudentNotification['type'],
+  referenceId: string
+): Promise<void> {
+  const q = query(
+    collection(db, COLLECTIONS.applications),
+    where('courseId', '==', courseId),
+    where('status', '==', 'approved')
+  );
+  const snap = await getDocs(q);
+  const userIds = [...new Set(snap.docs.map((d) => d.data().userId as string).filter(Boolean))];
+  await Promise.all(
+    userIds.map((uid) => createStudentNotification(uid, message, type, referenceId))
+  );
+}
+
 export async function createMaterial(input: MaterialInput): Promise<Material> {
   const moduleTitle = input.moduleTitle.trim();
   const title = input.title.trim();
@@ -1247,6 +1775,12 @@ export async function createMaterial(input: MaterialInput): Promise<Material> {
     order: input.order,
     uploadDate: serverTimestamp(),
   });
+  notifyEnrolledStudents(
+    input.courseId,
+    `New material posted: "${title}"`,
+    'material_posted',
+    docRef.id
+  ).catch(() => {});
   return {
     id: docRef.id,
     courseId: input.courseId,
@@ -1303,7 +1837,10 @@ export interface CreateAssignmentInput {
 
 export interface AdminSubmission {
   userId: string;
+  studentName?: string;
+  studentEmail?: string;
   text: string;
+  attachmentLink?: string;
   submittedAt: any;
   grade?: number;
   feedback?: string;
@@ -1321,14 +1858,21 @@ export interface AdminAssignment {
 }
 
 export async function createAdminAssignment(input: CreateAssignmentInput): Promise<void> {
-  await addDoc(collection(db, 'Assignments'), {
+  const title = input.title.trim();
+  const docRef = await addDoc(collection(db, 'Assignments'), {
     courseId: input.courseId,
-    title: input.title.trim(),
+    title,
     description: input.description.trim(),
     deadline: new Date(input.deadlineIso),
     maxGrade: input.maxGrade,
     createdAt: serverTimestamp(),
   });
+  notifyEnrolledStudents(
+    input.courseId,
+    `New assignment posted: "${title}"`,
+    'assignment_posted',
+    docRef.id
+  ).catch(() => {});
 }
 
 export function subscribeAdminAssignments(
@@ -1346,7 +1890,10 @@ export function subscribeAdminAssignments(
             const sub = data[key] as Record<string, any>;
             submissions.push({
               userId,
+              studentName: sub.studentName ?? '',
+              studentEmail: sub.studentEmail ?? '',
               text: sub.text ?? '',
+              attachmentLink: sub.attachmentLink ?? '',
               submittedAt: sub.submittedAt,
               grade: sub.grade,
               feedback: sub.feedback,
@@ -1420,10 +1967,36 @@ export interface TestGrade {
   gradedAt: any;
 }
 
+export interface AdminTestSubmission {
+  userId: string;
+  studentName?: string;
+  studentEmail?: string;
+  text: string;
+  attachmentLink?: string;
+  submittedAt: any;
+  grade?: number;
+  feedback?: string;
+  status: 'submitted' | 'graded';
+}
+
+export interface AdminTest {
+  id: string;
+  courseId: string;
+  title: string;
+  description: string;
+  scheduledDate: any;
+  durationMinutes: number;
+  totalMarks: number;
+  passMark: number;
+  status: 'upcoming' | 'submitted' | 'graded' | 'completed' | 'missed';
+  submissions: AdminTestSubmission[];
+}
+
 export async function createAdminTest(input: CreateTestInput): Promise<void> {
-  await addDoc(collection(db, 'Tests'), {
+  const title = input.title.trim();
+  const docRef = await addDoc(collection(db, 'Tests'), {
     courseId: input.courseId,
-    title: input.title.trim(),
+    title,
     description: input.description.trim(),
     scheduledDate: new Date(input.scheduledDateIso),
     durationMinutes: input.durationMinutes,
@@ -1432,16 +2005,40 @@ export async function createAdminTest(input: CreateTestInput): Promise<void> {
     status: 'upcoming',
     createdAt: serverTimestamp(),
   });
+  notifyEnrolledStudents(
+    input.courseId,
+    `New test scheduled: "${title}"`,
+    'test_posted',
+    docRef.id
+  ).catch(() => {});
 }
 
 export function subscribeAdminTests(
-  callback: (tests: Test[]) => void
+  callback: (tests: AdminTest[]) => void
 ): () => void {
   return onSnapshot(
     collection(db, 'Tests'),
     (snapshot) => {
-      const tests: Test[] = snapshot.docs.map((docSnap) => {
+      const tests: AdminTest[] = snapshot.docs.map((docSnap) => {
         const data = docSnap.data();
+        const submissions: AdminTestSubmission[] = [];
+        for (const key of Object.keys(data)) {
+          if (key.startsWith('sub_')) {
+            const userId = key.slice(4);
+            const sub = data[key] as Record<string, any>;
+            submissions.push({
+              userId,
+              studentName: sub.studentName ?? '',
+              studentEmail: sub.studentEmail ?? '',
+              text: sub.text ?? '',
+              attachmentLink: sub.attachmentLink ?? '',
+              submittedAt: sub.submittedAt,
+              grade: sub.score,
+              feedback: sub.feedback,
+              status: sub.score != null ? 'graded' : 'submitted',
+            });
+          }
+        }
         return {
           id: docSnap.id,
           courseId: data.courseId ?? '',
@@ -1451,8 +2048,8 @@ export function subscribeAdminTests(
           durationMinutes: data.durationMinutes ?? 60,
           totalMarks: data.totalMarks ?? 100,
           passMark: data.passMark ?? 50,
-          score: data.score,
           status: data.status ?? 'upcoming',
+          submissions,
         };
       });
       callback(tests);
@@ -1493,6 +2090,11 @@ export async function gradeTestSubmission(
   } else {
     await updateDoc(doc(db, 'TestGrades', snap.docs[0].id), gradeData);
   }
+  await updateDoc(doc(db, 'Tests', testId), {
+    [`sub_${userId}.score`]: score,
+    [`sub_${userId}.feedback`]: feedback.trim(),
+    [`sub_${userId}.gradedAt`]: serverTimestamp(),
+  });
   await createStudentNotification(
     userId,
     `Your test "${testTitle}" has been graded. Score: ${score}/${totalMarks}`,

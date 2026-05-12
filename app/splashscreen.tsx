@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Fonts } from '@/constants/theme';
 import { auth } from '@/services/firebase';
 import { router } from 'expo-router';
@@ -19,7 +20,7 @@ const useNativeDriver = Platform.OS !== 'web';
 export default function SplashScreen() {
   const { width, height } = useWindowDimensions();
   const [animationFinished, setAnimationFinished] = useState(false);
-  const [targetRoute, setTargetRoute] = useState<'/(main)/home' | '/(auth)/login' | null>(null);
+  const [targetRoute, setTargetRoute] = useState<'/(main)/home' | '/(auth)/login' | '/onboarding' | null>(null);
 
   const logoScale       = useRef(new Animated.Value(0.6)).current;
   const logoOpacity     = useRef(new Animated.Value(0)).current;
@@ -48,8 +49,13 @@ export default function SplashScreen() {
       setAnimationFinished(true);
     });
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setTargetRoute(user ? '/(main)/home' : '/(auth)/login');
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setTargetRoute('/(main)/home');
+      } else {
+        const onboarded = await AsyncStorage.getItem('@giac:onboarded');
+        setTargetRoute(onboarded ? '/(auth)/login' : '/onboarding');
+      }
     });
 
     return unsubscribe;

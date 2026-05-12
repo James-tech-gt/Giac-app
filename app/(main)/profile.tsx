@@ -1,5 +1,5 @@
 import { Fonts } from '@/constants/theme';
-import { getUserProfile, logOut, UserProfile } from '@/services/auth';
+import { getUserProfile, UserProfile } from '@/services/auth';
 import { getDisplayRole } from '@/services/access';
 import { auth } from '@/services/firebase';
 import { Application, Service, getUserApplications, getUserServices } from '@/services/firestore';
@@ -7,7 +7,6 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -129,15 +128,6 @@ export default function ProfileScreen() {
   const displayEmail = profile?.email || user?.email || 'No email available';
   const displayRole = getDisplayRole({ applications, profileRole: profile?.role, services });
 
-  const handleLogout = async () => {
-    try {
-      await logOut();
-      router.replace('/(auth)/login');
-    } catch {
-      Alert.alert('Logout failed', 'Please try again.');
-    }
-  };
-
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScrollView
@@ -210,12 +200,6 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        <Pressable
-          onPress={handleLogout}
-          style={({ pressed }) => [styles.dangerButton, pressed ? styles.pressed : null]}
-        >
-          <Text style={styles.dangerButtonText}>Logout</Text>
-        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -363,18 +347,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontFamily: Fonts.sans,
     color: C.textSecondary,
-  },
-  dangerButton: {
-    backgroundColor: '#7A2E2E',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dangerButtonText: {
-    fontSize: 14,
-    fontFamily: Fonts.sansBold,
-    color: '#FFFFFF',
   },
   pressed: {
     opacity: 0.92,

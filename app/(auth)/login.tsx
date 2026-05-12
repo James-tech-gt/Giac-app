@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -38,6 +39,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resetSent, setResetSent] = useState(false);
+  const [showSignUpHint, setShowSignUpHint] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
 
@@ -69,16 +71,21 @@ export default function LoginScreen() {
     }
     setLoading(true);
     setError('');
+    setShowSignUpHint(false);
     try {
       await signIn(email.trim(), password);
       router.replace('/(main)/home');
     } catch (err: any) {
-      const msg =
-        ['auth/user-not-found', 'auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(err.code)
-          ? 'No account found or wrong password. Please check your details or sign up.'
-          : err.code === 'auth/too-many-requests'
-          ? 'Too many attempts. Please try again later.'
-          : 'Something went wrong. Please try again.';
+      const isNetwork = ['auth/network-request-failed', 'auth/internal-error'].includes(err.code) || err.message?.toLowerCase().includes('network');
+      const isCredential = ['auth/user-not-found', 'auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(err.code);
+      const msg = isNetwork
+        ? 'No internet connection. Check your connection and try again.'
+        : isCredential
+        ? "No account found for this email, or the password is incorrect."
+        : err.code === 'auth/too-many-requests'
+        ? 'Too many attempts. Please try again later.'
+        : 'Something went wrong. Please try again.';
+      setShowSignUpHint(isCredential);
       setError(msg);
       shake();
     } finally {
@@ -97,8 +104,12 @@ export default function LoginScreen() {
     try {
       await resetPassword(email.trim());
       setResetSent(true);
-    } catch {
-      setError('Could not send reset email. Check the address and try again.');
+    } catch (err: any) {
+      const msg =
+        ['auth/network-request-failed', 'auth/internal-error'].includes(err.code)
+          ? 'No internet connection. Check your connection and try again.'
+          : 'Could not send reset email. Check the address and try again.';
+      setError(msg);
       shake();
     } finally {
       setLoading(false);
@@ -122,9 +133,12 @@ export default function LoginScreen() {
       }
       router.replace('/(main)/home');
     } catch (err: any) {
-      const msg = err.code === 'auth/no-account'
-        ? 'No account found. Please sign up first.'
-        : err.message || 'Google sign-in failed. Please try again.';
+      const msg =
+        ['auth/network-request-failed', 'auth/internal-error'].includes(err.code)
+          ? 'No internet connection. Check your connection and try again.'
+          : err.code === 'auth/no-account'
+          ? 'No account found. Please sign up first.'
+          : 'Google sign-in failed. Please try again.';
       setError(msg);
       shake();
     } finally {
@@ -149,10 +163,11 @@ export default function LoginScreen() {
       >
         {/* ── Brand header ── */}
         <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <View style={styles.seal}>
-            <View style={styles.sealInnerRing} />
-            <FontAwesome6 name="scale-balanced" size={26} color={C.accent} />
-          </View>
+          <Image
+            source={require('../../assets/images/giac-bg.jpg')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <Text style={styles.overline}>Global Institute of ADR Center</Text>
           <Text style={styles.title}>Welcome back.</Text>
           <Text style={styles.lead}>
@@ -164,7 +179,14 @@ export default function LoginScreen() {
         {error ? (
           <Animated.View style={[styles.errorBanner, { transform: [{ translateX: shakeAnim }] }]}>
             <View style={styles.errorDot} />
-            <Text style={styles.errorText}>{error}</Text>
+            <View style={{ flex: 1, gap: 6 }}>
+              <Text style={styles.errorText}>{error}</Text>
+              {showSignUpHint && (
+                <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
+                  <Text style={styles.errorSignUpLink}>Don't have an account? Sign up →</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </Animated.View>
         ) : null}
 
@@ -298,23 +320,11 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingBottom: 8,
   },
-  seal: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: C.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoImage: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     marginBottom: 6,
-    overflow: 'hidden',
-  },
-  sealInnerRing: {
-    position: 'absolute',
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    borderWidth: 1.5,
-    borderColor: C.accent,
   },
   overline: {
     fontSize: 11,
@@ -362,8 +372,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: Fonts.sans,
     color: C.danger,
-    flex: 1,
     lineHeight: 19,
+  },
+  errorSignUpLink: {
+    fontSize: 13,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.secondary,
   },
 
   // ── Card ─────────────────────────────────────────────────────
