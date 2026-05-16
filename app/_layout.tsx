@@ -1,5 +1,7 @@
 import { auth } from '@/services/firebase';
 import { configureGoogleSignIn } from '@/services/google-signin';
+import { registerForPushNotifications, setupNotificationHandlers } from '@/services/notifications';
+import * as Notifications from 'expo-notifications';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { router, Stack, useSegments } from 'expo-router';
@@ -13,6 +15,7 @@ import '../global.css';
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { OfflineBanner } from '@/components/offline-banner';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -21,7 +24,8 @@ export default function RootLayout() {
   const segments = useSegments();
   const segmentsRef = useRef(segments);
   useEffect(() => { segmentsRef.current = segments; }, [segments]);
-  const [fontsLoaded] = useFonts({
+  const registeredUidRef = useRef<string | null>(null);
+  const [fontsLoaded, fontError] = useFonts({
     'CormorantGaramond-Regular': require('../assets/fonts/CormorantGaramond-Regular.ttf'),
     'CormorantGaramond-SemiBold': require('../assets/fonts/CormorantGaramond-SemiBold.ttf'),
     'CormorantGaramond-Bold': require('../assets/fonts/CormorantGaramond-Bold.ttf'),
@@ -57,18 +61,30 @@ export default function RootLayout() {
       if (rootSegment === 'splashscreen' || rootSegment === 'onboarding') return;
       if (user && inAuthGroup) { router.replace('/(main)/home'); return; }
       if (!user && inProtectedGroup) { router.replace('/(auth)/login'); }
+
+      if (user && registeredUidRef.current !== user.uid) {
+        registeredUidRef.current = user.uid;
+        // Defer so it doesn't block the navigation/render on startup
+        setTimeout(() => registerForPushNotifications(user.uid).catch(() => {}), 3000);
+      }
+      if (!user) registeredUidRef.current = null;
     });
 
     return unsubscribe;
   }, []);
 
   useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
+    Notifications.setBadgeCountAsync(0).catch(() => {});
+    return setupNotificationHandlers();
+  }, []);
 
-  if (!fontsLoaded) {
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
     return null;
   }
 
@@ -92,6 +108,7 @@ export default function RootLayout() {
           <Stack.Screen name="admin" />
         </Stack>
         <StatusBar style="dark" backgroundColor={Colors.light.background} />
+        <OfflineBanner />
       </ThemeProvider>
     </GestureHandlerRootView>
   );

@@ -120,6 +120,7 @@ export default function LoginScreen() {
     setLoading(true);
     setError('');
     try {
+      configureGoogleSignIn();
       if (!canUseNativeGoogleSignIn()) {
         await signInWithGoogle('');
       } else {

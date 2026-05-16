@@ -1,5 +1,6 @@
 import { Fonts } from '@/constants/theme';
-import { Course, getCourses } from '@/services/firestore';
+import { auth } from '@/services/firebase';
+import { Course, CourseRegistration, getCourses, subscribeUserRegistration } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -171,9 +172,18 @@ export default function ExploreScreen() {
   const { width } = useWindowDimensions();
   const isCompact = width < 390;
   const horizontalPadding = width < 380 ? 16 : 20;
+  const user = auth.currentUser;
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [registration, setRegistration] = useState<CourseRegistration | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!user?.uid) { setRegistration(null); return; }
+    return subscribeUserRegistration(user.uid, setRegistration);
+  }, [user?.uid]);
+
+  const canApply = registration?.status === 'accepted';
 
   useEffect(() => {
     let active = true;
@@ -267,10 +277,14 @@ export default function ExploreScreen() {
                     <Text style={styles.secondaryBtnText}>View Details</Text>
                   </Pressable>
                   <Pressable
-                    onPress={() => router.push({ pathname: '/(main)/application', params: { courseId: course.id } })}
-                    style={({ pressed }) => [styles.brassBtn, pressed ? styles.pressed : null]}
+                    onPress={() => canApply
+                      ? router.push({ pathname: '/(main)/application', params: { courseId: course.id } })
+                      : null}
+                    style={({ pressed }) => [styles.brassBtn, !canApply && styles.brassBtnDisabled, canApply && pressed ? styles.pressed : null]}
                   >
-                    <Text style={styles.brassBtnText}>Apply Now</Text>
+                    <Text style={[styles.brassBtnText, !canApply && { opacity: 0.5 }]}>
+                      {canApply ? 'Apply Now' : 'Register First'}
+                    </Text>
                   </Pressable>
                 </View>
               </View>
@@ -672,6 +686,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#8C6A1F',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  brassBtnDisabled: {
+    backgroundColor: '#C4B89A',
   },
   brassBtnText: {
     fontSize: 13,

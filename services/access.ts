@@ -33,7 +33,9 @@ export function normalizeUserRole(value: unknown): UserRole {
 }
 
 export function getApprovedApplicationCount(applications: Application[] = []) {
-  return applications.filter((application) => application.status === 'approved').length;
+  return applications.filter(
+    (application) => application.status === 'approved' || application.status === 'completed'
+  ).length;
 }
 
 export function getEffectiveRole({
@@ -55,11 +57,16 @@ export function getDisplayRole({
 }: RoleSignals) {
   const role = getEffectiveRole({ applications, profileRole, services });
 
+  if (role === 'student') {
+    const hasActiveEnrolment = applications.some((a) => a.status === 'approved');
+    const hasCompleted = applications.some((a) => a.status === 'completed');
+    if (!hasActiveEnrolment && hasCompleted) return 'Graduate';
+    return 'Student';
+  }
+
   switch (role) {
     case 'admin':
       return 'Admin';
-    case 'student':
-      return 'Student';
     case 'client':
       return 'Client';
     case 'applicant':

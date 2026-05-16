@@ -373,7 +373,7 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.safe}
-        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
         <ScrollView
@@ -545,6 +545,13 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>About</Text>
           <View style={styles.card}>
+            <SettingRow
+              icon="shield"
+              title="Privacy Policy"
+              subtitle="How we collect, use, and protect your data."
+              onPress={() => router.push('/(main)/privacy-policy')}
+            />
+            <View style={styles.cardDivider} />
             <View style={styles.settingRow}>
               <View style={styles.settingIcon}>
                 <FontAwesome6 name="circle-info" size={14} color={C.secondary} />

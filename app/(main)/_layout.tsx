@@ -55,7 +55,8 @@ export default function MainLayout() {
       return;
     }
 
-    setRoleReady(false);
+    // Show tabs immediately with a default role, then update when profile loads
+    setRoleReady(true);
 
     const loadProfile = async () => {
       try {
@@ -65,10 +66,6 @@ export default function MainLayout() {
       } catch {
         if (!active) return;
         setProfileRole('applicant');
-      } finally {
-        if (active) {
-          setRoleReady(true);
-        }
       }
     };
 
@@ -190,6 +187,8 @@ export default function MainLayout() {
       <Tabs.Screen name="edit-profile" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
+      <Tabs.Screen name="privacy-policy" options={{ href: null }} />
+      <Tabs.Screen name="course-registration" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -1,4 +1,5 @@
 import { AccessGate } from '@/components/access-gate';
+import { DatePickerField } from '@/components/date-picker-field';
 import { C, Fonts } from '@/constants/theme';
 import { auth } from '@/services/firebase';
 import {
@@ -41,8 +42,31 @@ import {
   subscribeCaseMessages,
   updateCaseStatus,
   updateUserRole,
+  markCourseComplete,
+  setStudentProgress,
+  createSession,
+  subscribeAdminSessions,
+  deleteSession,
+  createPersonalSession,
+  deletePersonalSession,
+  deleteAssignment,
+  deleteTest,
+  CourseRegistration,
+  subscribePendingRegistrations,
+  subscribeAllRegistrations,
+  sendAdmissionLetter,
+  rejectRegistration,
+  issueCertificate,
+  deleteCertificate,
+  updatePaymentStatus,
+  toggleAccessLock,
+  isPaymentLocked,
+  type Session,
+  type CreateSessionInput,
 } from '@/services/firestore';
+import { uploadFile, deleteFile } from '@/services/storage';
 import { FontAwesome6 } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -50,6 +74,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Linking,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -62,7 +87,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type AdminView = 'overview' | 'admissions' | 'cases' | 'announcements' | 'materials' | 'assignments' | 'tests' | 'deletions' | 'team';
+type AdminView = 'overview' | 'admissions' | 'cases' | 'announcements' | 'materials' | 'assignments' | 'tests' | 'deletions' | 'team' | 'registrations';
 
 type StatusTone = {
   bg: string;
@@ -70,6 +95,12 @@ type StatusTone = {
   dot: string;
   label: string;
 };
+
+function getOutcomeLabel(grade: number): string {
+  if (grade >= 90) return 'Excellent';
+  if (grade >= 70) return 'Satisfactory';
+  return 'Needs Revision';
+}
 
 function formatDate(timestamp: unknown) {
   if (!timestamp) return '—';
@@ -313,7 +344,73 @@ function ApplicationCard({
           <Text style={styles.detailLabel}>Phone</Text>
           <Text style={styles.detailValue}>{application.phone?.trim() || '—'}</Text>
         </View>
+        {application.whatsapp?.trim() ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>WhatsApp</Text>
+            <Text style={styles.detailValue}>{application.whatsapp.trim()}</Text>
+          </View>
+        ) : null}
+        {application.location?.trim() ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Location</Text>
+            <Text style={styles.detailValue}>{application.location.trim()}</Text>
+          </View>
+        ) : null}
+        {application.educationLevel?.trim() ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Education</Text>
+            <Text style={styles.detailValue}>{application.educationLevel.trim()}</Text>
+          </View>
+        ) : null}
+        {application.areaOfStudy?.trim() ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Area of Study</Text>
+            <Text style={styles.detailValue}>{application.areaOfStudy.trim()}</Text>
+          </View>
+        ) : null}
+        {application.occupation?.trim() ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Occupation</Text>
+            <Text style={styles.detailValue}>{application.occupation.trim()}</Text>
+          </View>
+        ) : null}
+        {application.organization?.trim() ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Organisation</Text>
+            <Text style={styles.detailValue}>{application.organization.trim()}</Text>
+          </View>
+        ) : null}
+        {application.paymentMode?.trim() ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Payment Mode</Text>
+            <Text style={styles.detailValue}>{application.paymentMode.trim()}</Text>
+          </View>
+        ) : null}
+        {application.transactionRef?.trim() ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Transaction Ref</Text>
+            <Text style={[styles.detailValue, { fontWeight: '700' }]}>{application.transactionRef.trim()}</Text>
+          </View>
+        ) : null}
+        {application.receiptLink?.trim() ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Receipt Link</Text>
+            <Text style={[styles.detailValue, { color: '#2A3F66', textDecorationLine: 'underline' }]} numberOfLines={2}>{application.receiptLink.trim()}</Text>
+          </View>
+        ) : null}
+        {application.certificateLink?.trim() ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Certificate Link</Text>
+            <Text style={styles.detailValue} numberOfLines={2}>{application.certificateLink.trim()}</Text>
+          </View>
+        ) : null}
       </View>
+      {application.motivation?.trim() ? (
+        <View style={styles.noteBlock}>
+          <Text style={styles.noteLabel}>Motivation</Text>
+          <Text style={styles.noteBody}>{application.motivation.trim()}</Text>
+        </View>
+      ) : null}
 
       {application.feedback?.trim() ? (
         <View style={styles.noteBlock}>
@@ -738,9 +835,13 @@ function AdminPanel() {
   const isCompactMaterialsLayout = width < 720;
 
   const [activeView, setActiveView] = useState<AdminView>('overview');
-  const { openCaseId, openAdmissions } = useLocalSearchParams<{ openCaseId?: string; openAdmissions?: string }>();
+  const { openCaseId, openAdmissions, openRegistrations } = useLocalSearchParams<{ openCaseId?: string; openAdmissions?: string; openRegistrations?: string }>();
   const openCaseFired = useRef(false);
   const openAdmissionsFired = useRef(false);
+  const openRegistrationsFired = useRef(false);
+  const admissionsMsgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionMsgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const teamMsgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -750,6 +851,27 @@ function AdminPanel() {
   const [markingRead, setMarkingRead] = useState(false);
   const [admissionsMsg, setAdmissionsMsg] = useState<{ text: string; kind: 'success' | 'error' } | null>(null);
   const [admissionsTab, setAdmissionsTab] = useState<'enrolled' | 'pending' | 'rejected' | 'withdrawn'>('enrolled');
+  const [expandedEnrolledId, setExpandedEnrolledId] = useState<string | null>(null);
+  const [generatingCertId, setGeneratingCertId] = useState<string | null>(null);
+  const [deletingCertId, setDeletingCertId] = useState<string | null>(null);
+  const [markingCompleteId, setMarkingCompleteId] = useState<string | null>(null);
+  const [confirmDeleteCertId, setConfirmDeleteCertId] = useState<string | null>(null);
+  const [confirmDeleteEnrollId, setConfirmDeleteEnrollId] = useState<string | null>(null);
+  const [certSuccessApp, setCertSuccessApp] = useState<Application | null>(null);
+  const [pendingCertFile, setPendingCertFile] = useState<{ appId: string; asset: DocumentPicker.DocumentPickerAsset } | null>(null);
+  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
+  const [lockingId, setLockingId] = useState<string | null>(null);
+  const [progressEditing, setProgressEditing] = useState<Record<string, string>>({});
+  const [savingProgressId, setSavingProgressId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionCourseIds, setSessionCourseIds] = useState<string[]>([]);
+  const [sessionTitle, setSessionTitle] = useState('');
+  const [sessionDate, setSessionDate] = useState('');
+  const [sessionLink, setSessionLink] = useState('');
+  const [sessionSaving, setSessionSaving] = useState(false);
+  const [sessionMsg, setSessionMsg] = useState<{ text: string; kind: 'success' | 'error' } | null>(null);
+  const [personalSessionInputs, setPersonalSessionInputs] = useState<Record<string, { title: string; date: string; link: string }>>({});
+  const [personalSessionSavingId, setPersonalSessionSavingId] = useState<string | null>(null);
 
   // Team
   const [teamUsers, setTeamUsers] = useState<UserRecord[]>([]);
@@ -757,6 +879,7 @@ function AdminPanel() {
   const [teamMsg, setTeamMsg] = useState<{ text: string; kind: 'success' | 'error' } | null>(null);
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [confirmingUserId, setConfirmingUserId] = useState<string | null>(null);
 
   // Materials
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -765,40 +888,47 @@ function AdminPanel() {
   const [matCourse, setMatCourse] = useState('pecadr');
   const [matType, setMatType] = useState<Material['type']>('link');
   const [matUrl, setMatUrl] = useState('');
+  const [matFileName, setMatFileName] = useState('');
+  const [matUploading, setMatUploading] = useState(false);
+  const [matUploadProgress, setMatUploadProgress] = useState(0);
   const [matSaving, setMatSaving] = useState(false);
   const [matMsg, setMatMsg] = useState<{ text: string; kind: 'success' | 'error' } | null>(null);
 
   // Assignments
   const [adminAssignments, setAdminAssignments] = useState<AdminAssignment[]>([]);
-  const [asnTab, setAsnTab] = useState<'create' | 'grade'>('create');
+  const [asnTab, setAsnTab] = useState<'create' | 'submissions'>('create');
   const [asnTitle, setAsnTitle] = useState('');
   const [asnDesc, setAsnDesc] = useState('');
   const [asnDeadline, setAsnDeadline] = useState('');
-  const [asnMaxGrade, setAsnMaxGrade] = useState('100');
   const [asnCourse, setAsnCourse] = useState('pecadr');
   const [asnSaving, setAsnSaving] = useState(false);
   const [asnMsg, setAsnMsg] = useState<{ text: string; kind: 'success' | 'error' } | null>(null);
+  const [asnFileUrl, setAsnFileUrl] = useState('');
+  const [asnFileName, setAsnFileName] = useState('');
+  const [asnUploading, setAsnUploading] = useState(false);
+  const [asnUploadProgress, setAsnUploadProgress] = useState(0);
   const [gradingKey, setGradingKey] = useState<string | null>(null);
-  const [gradeValue, setGradeValue] = useState('');
-  const [gradeFeedback, setGradeFeedback] = useState('');
+  const [selectedOutcome, setSelectedOutcome] = useState<'needs_revision' | 'satisfactory' | 'excellent' | null>(null);
+  const [reviewFeedback, setReviewFeedback] = useState('');
   const [gradingSaving, setGradingSaving] = useState(false);
 
   // Tests
   const [adminTests, setAdminTests] = useState<AdminTest[]>([]);
-  const [testTab, setTestTab] = useState<'create' | 'grade'>('create');
   const [testTitle, setTestTitle] = useState('');
   const [testDesc, setTestDesc] = useState('');
   const [testDate, setTestDate] = useState('');
   const [testDuration, setTestDuration] = useState('60');
-  const [testTotal, setTestTotal] = useState('100');
-  const [testPass, setTestPass] = useState('50');
-  const [testCourse, setTestCourse] = useState('pecadr');
+  const [testCourse, setTestCourse] = useState<'pecadr' | 'pemadr'>('pecadr');
   const [testSaving, setTestSaving] = useState(false);
   const [testMsg, setTestMsg] = useState<{ text: string; kind: 'success' | 'error' } | null>(null);
-  const [gradingTestKey, setGradingTestKey] = useState<string | null>(null);
-  const [testScore, setTestScore] = useState('');
-  const [testFeedback, setTestFeedback] = useState('');
-  const [testGradingSaving, setTestGradingSaving] = useState(false);
+  const [testFileUrl, setTestFileUrl] = useState('');
+  const [testFileName, setTestFileName] = useState('');
+  const [testUploading, setTestUploading] = useState(false);
+  const [testUploadProgress, setTestUploadProgress] = useState(0);
+  const [reviewingTestKey, setReviewingTestKey] = useState<string | null>(null);
+  const [selectedTestOutcome, setSelectedTestOutcome] = useState<'needs_revision' | 'satisfactory' | 'excellent' | null>(null);
+  const [testReviewFeedback, setTestReviewFeedback] = useState('');
+  const [testReviewSaving, setTestReviewSaving] = useState(false);
 
   const [casesTab, setCasesTab] = useState<'unassigned' | 'assigned'>('unassigned');
   const [busyApplicationId, setBusyApplicationId] = useState<string | null>(null);
@@ -812,10 +942,33 @@ function AdminPanel() {
   const [announcementError, setAnnouncementError] = useState('');
   const [announcementSuccess, setAnnouncementSuccess] = useState('');
 
+  const showAdmissionsMsg = (msg: { text: string; kind: 'success' | 'error' } | null) => {
+    if (admissionsMsgTimer.current) clearTimeout(admissionsMsgTimer.current);
+    setAdmissionsMsg(msg);
+    if (msg?.kind === 'success') {
+      admissionsMsgTimer.current = setTimeout(() => showAdmissionsMsg(null), 5000);
+    }
+  };
+  const showSessionMsg = (msg: { text: string; kind: 'success' | 'error' } | null) => {
+    if (sessionMsgTimer.current) clearTimeout(sessionMsgTimer.current);
+    setSessionMsg(msg);
+    if (msg?.kind === 'success') {
+      sessionMsgTimer.current = setTimeout(() => showSessionMsg(null), 5000);
+    }
+  };
+  const showTeamMsg = (msg: { text: string; kind: 'success' | 'error' } | null) => {
+    if (teamMsgTimer.current) clearTimeout(teamMsgTimer.current);
+    setTeamMsg(msg);
+    if (msg?.kind === 'success') {
+      teamMsgTimer.current = setTimeout(() => showTeamMsg(null), 5000);
+    }
+  };
+
   useEffect(() => subscribeAllApplications(setApplications), []);
   useEffect(() => subscribeAllServices(setServices), []);
   useEffect(() => subscribeAnnouncements(setAnnouncements), []);
   useEffect(() => subscribeAdminNotifications(setAdminNotifications), []);
+  useEffect(() => subscribeAdminSessions(setSessions), []);
 
   // Navigate straight to the Cases view when arriving from a notification tap
   useEffect(() => {
@@ -834,6 +987,13 @@ function AdminPanel() {
     }
   }, [openAdmissions]);
 
+  useEffect(() => {
+    if (openRegistrations && !openRegistrationsFired.current) {
+      openRegistrationsFired.current = true;
+      setActiveView('registrations');
+    }
+  }, [openRegistrations]);
+
   // Once services load, switch to whichever tab contains the target case
   useEffect(() => {
     if (!openCaseId || services.length === 0) return;
@@ -848,9 +1008,18 @@ function AdminPanel() {
   const [busyDeletionId, setBusyDeletionId] = useState<string | null>(null);
   useEffect(() => subscribeAccountDeletionRequests(setDeletionRequests), []);
 
+  const [registrations, setRegistrations] = useState<CourseRegistration[]>([]);
+  const [studentNumberInputs, setStudentNumberInputs] = useState<Record<string, string>>({});
+  const [letterFileUrls, setLetterFileUrls] = useState<Record<string, string>>({});
+  const [letterFileNames, setLetterFileNames] = useState<Record<string, string>>({});
+  const [uploadingLetterId, setUploadingLetterId] = useState<string | null>(null);
+  const [letterUploadProgress, setLetterUploadProgress] = useState(0);
+  const [busyRegId, setBusyRegId] = useState<string | null>(null);
+  useEffect(() => subscribeAllRegistrations(setRegistrations), []);
+
   const applicationCounts = useMemo(() => {
     return {
-      approved: applications.filter((item) => item.status === 'approved').length,
+      approved: applications.filter((item) => item.status === 'approved' || item.status === 'completed').length,
       pending: applications.filter((item) => item.status === 'pending').length,
       rejected: applications.filter((item) => item.status === 'rejected').length,
       withdrawn: applications.filter((item) => item.status === 'withdrawn').length,
@@ -875,7 +1044,7 @@ function AdminPanel() {
   const enrolledApplications = useMemo(
     () =>
       applications
-        .filter((a) => a.status === 'approved')
+        .filter((a) => a.status === 'approved' || a.status === 'completed')
         .sort((a, b) => {
           const aTime = typeof a.decidedAt?.toDate === 'function' ? a.decidedAt.toDate().getTime() : new Date(a.decidedAt ?? 0).getTime();
           const bTime = typeof b.decidedAt?.toDate === 'function' ? b.decidedAt.toDate().getTime() : new Date(b.decidedAt ?? 0).getTime();
@@ -937,21 +1106,169 @@ function AdminPanel() {
 
   const loadTeamUsers = async () => {
     setTeamLoading(true);
-    setTeamMsg(null);
+    showTeamMsg(null);
     try {
       const users = await getAllUsers();
       setTeamUsers(users.sort((a, b) => a.fullName.localeCompare(b.fullName)));
     } catch {
-      setTeamMsg({ text: 'Could not load users. Try again.', kind: 'error' });
+      showTeamMsg({ text: 'Could not load users. Try again.', kind: 'error' });
     } finally {
       setTeamLoading(false);
+    }
+  };
+
+  const handlePickCertFile = async (application: Application) => {
+    const result = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true });
+    if (result.canceled || !result.assets?.[0]) return;
+    setPendingCertFile({ appId: application.id, asset: result.assets[0] });
+  };
+
+  const handleUploadCert = async (application: Application) => {
+    if (!pendingCertFile || pendingCertFile.appId !== application.id) return;
+    const { asset } = pendingCertFile;
+    setGeneratingCertId(application.id);
+    setPendingCertFile(null);
+    try {
+      const storagePath = `certificates/${application.userId}/${Date.now()}.pdf`;
+      const downloadUrl = await uploadFile(storagePath, asset.uri);
+      if (!application.courseCompleted) {
+        await markCourseComplete(application.id, application.userId, application.courseId, application.courseTitle || 'the course');
+      }
+      await issueCertificate({
+        applicationId: application.id,
+        userId: application.userId,
+        courseId: application.courseId,
+        courseTitle: application.courseTitle || 'GIAC Programme',
+        program: application.courseProgram || '',
+        studentName: application.fullName?.trim() || 'Student',
+        certificateUrl: downloadUrl,
+      });
+      setCertSuccessApp(application);
+    } catch {
+      Alert.alert('Error', 'Could not upload certificate. Please try again.');
+    } finally {
+      setGeneratingCertId(null);
+    }
+  };
+
+  const handleMarkComplete = async (application: Application) => {
+    setMarkingCompleteId(application.id);
+    try {
+      await markCourseComplete(application.id, application.userId, application.courseId, application.courseTitle || 'the course');
+    } catch {
+      Alert.alert('Error', 'Could not mark as complete. Please try again.');
+    } finally {
+      setMarkingCompleteId(null);
+    }
+  };
+
+  const handleDeleteCertificate = async (application: Application) => {
+    setConfirmDeleteCertId(null);
+    setDeletingCertId(application.id);
+    try {
+      if (application.certificateUrl) {
+        await deleteFile(application.certificateUrl);
+      }
+      await deleteCertificate(application.id, application.userId, application.courseId);
+    } catch {
+      Alert.alert('Error', 'Could not delete certificate. Please try again.');
+    } finally {
+      setDeletingCertId(null);
+    }
+  };
+
+  const handleMarkFullPayment = async (application: Application) => {
+    setMarkingPaidId(application.id);
+    try {
+      await updatePaymentStatus(application.id, 'full');
+      showAdmissionsMsg({ text: `Full payment confirmed for ${application.fullName?.trim() || 'student'}. Access restored if it was locked.`, kind: 'success' });
+    } catch {
+      showAdmissionsMsg({ text: 'Could not update payment status. Try again.', kind: 'error' });
+    } finally {
+      setMarkingPaidId(null);
+    }
+  };
+
+  const handleToggleLock = async (application: Application) => {
+    const willLock = !application.accessLocked;
+    setLockingId(application.id);
+    try {
+      await toggleAccessLock(application.id, willLock);
+      showAdmissionsMsg({
+        text: willLock
+          ? `Access locked for ${application.fullName?.trim() || 'student'}. They cannot view materials, assignments, or tests.`
+          : `Access restored for ${application.fullName?.trim() || 'student'}.`,
+        kind: willLock ? 'error' : 'success',
+      });
+    } catch {
+      showAdmissionsMsg({ text: 'Could not update access. Try again.', kind: 'error' });
+    } finally {
+      setLockingId(null);
+    }
+  };
+
+  const handleSaveProgress = async (application: Application) => {
+    const raw = progressEditing[application.id];
+    const pct = parseInt(raw ?? '', 10);
+    if (isNaN(pct)) return;
+    setSavingProgressId(application.id);
+    try {
+      await setStudentProgress(application.userId, application.courseId, pct);
+      setProgressEditing((prev) => { const next = { ...prev }; delete next[application.id]; return next; });
+    } catch {
+      showAdmissionsMsg({ text: 'Could not update progress. Try again.', kind: 'error' });
+    } finally {
+      setSavingProgressId(null);
+    }
+  };
+
+  const handleCreateSession = async () => {
+    if (sessionCourseIds.length === 0 || !sessionTitle.trim() || !sessionDate || !sessionLink.trim()) {
+      showSessionMsg({ text: 'Please select at least one course and fill in all fields.', kind: 'error' });
+      return;
+    }
+    setSessionSaving(true);
+    showSessionMsg(null);
+    try {
+      await Promise.all(
+        sessionCourseIds.map((courseId) =>
+          createSession({ courseId, title: sessionTitle, scheduledDateIso: sessionDate, zoomLink: sessionLink })
+        )
+      );
+      setSessionTitle('');
+      setSessionDate('');
+      setSessionLink('');
+      setSessionCourseIds([]);
+      showSessionMsg({ text: 'Session posted. Students have been notified.', kind: 'success' });
+    } catch {
+      showSessionMsg({ text: 'Could not post session. Try again.', kind: 'error' });
+    } finally {
+      setSessionSaving(false);
+    }
+  };
+
+  const handleCreatePersonalSession = async (application: Application) => {
+    const input = personalSessionInputs[application.id];
+    if (!input?.title?.trim() || !input?.date || !input?.link?.trim()) {
+      showAdmissionsMsg({ text: 'Please fill in title, date and link for the personal session.', kind: 'error' });
+      return;
+    }
+    setPersonalSessionSavingId(application.id);
+    try {
+      await createPersonalSession({ userId: application.userId, title: input.title, scheduledDateIso: input.date, zoomLink: input.link });
+      setPersonalSessionInputs((prev) => { const next = { ...prev }; delete next[application.id]; return next; });
+      showAdmissionsMsg({ text: `Session sent to ${application.fullName || 'student'}.`, kind: 'success' });
+    } catch {
+      showAdmissionsMsg({ text: 'Could not send personal session. Try again.', kind: 'error' });
+    } finally {
+      setPersonalSessionSavingId(null);
     }
   };
 
   const handleToggleAdmin = async (user: UserRecord) => {
     const newRole = user.role === 'admin' ? 'applicant' : 'admin';
     setTogglingUserId(user.id);
-    setTeamMsg(null);
+    showTeamMsg(null);
     try {
       await updateUserRole(user.id, newRole);
       setTeamUsers((prev) =>
@@ -964,24 +1281,24 @@ function AdminPanel() {
         kind: 'success',
       });
     } catch {
-      setTeamMsg({ text: 'Could not update role. Try again.', kind: 'error' });
+      showTeamMsg({ text: 'Could not update role. Try again.', kind: 'error' });
     } finally {
       setTogglingUserId(null);
-      setExpandedUserId(null);
+      setConfirmingUserId(null);
     }
   };
 
   const handleApprove = async (application: Application) => {
     setBusyApplicationId(application.id);
-    setAdmissionsMsg(null);
+    showAdmissionsMsg(null);
     try {
-      await approveApplication(application.id, application.userId, application.courseTitle);
+      await approveApplication(application.id, application.userId, application.courseTitle, application.courseId);
       setAdmissionsMsg({
         text: `${application.fullName || 'Applicant'} has been approved. Their account is now upgraded to student.`,
         kind: 'success',
       });
     } catch {
-      setAdmissionsMsg({ text: 'Could not approve the application. Please try again.', kind: 'error' });
+      showAdmissionsMsg({ text: 'Could not approve the application. Please try again.', kind: 'error' });
     } finally {
       setBusyApplicationId(null);
     }
@@ -989,12 +1306,12 @@ function AdminPanel() {
 
   const handleReject = async (application: Application, feedback: string) => {
     setBusyApplicationId(application.id);
-    setAdmissionsMsg(null);
+    showAdmissionsMsg(null);
     try {
       await rejectApplication(application.id, feedback, application.userId, application.courseTitle);
-      setAdmissionsMsg({ text: `Application has been rejected.`, kind: 'success' });
+      showAdmissionsMsg({ text: `Application has been rejected.`, kind: 'success' });
     } catch {
-      setAdmissionsMsg({ text: 'Could not reject the application. Please try again.', kind: 'error' });
+      showAdmissionsMsg({ text: 'Could not reject the application. Please try again.', kind: 'error' });
     } finally {
       setBusyApplicationId(null);
     }
@@ -1002,12 +1319,11 @@ function AdminPanel() {
 
   const handleDeleteApplication = async (application: Application) => {
     setBusyApplicationId(application.id);
-    setAdmissionsMsg(null);
+    showAdmissionsMsg(null);
     try {
       await deleteApplication(application.id);
-      setAdmissionsMsg({ text: `Application for ${application.fullName || 'applicant'} has been deleted.`, kind: 'success' });
     } catch {
-      setAdmissionsMsg({ text: 'Could not delete the application. Please try again.', kind: 'error' });
+      Alert.alert('Error', 'Could not delete the enrollment. Please try again.');
     } finally {
       setBusyApplicationId(null);
     }
@@ -1048,6 +1364,31 @@ function AdminPanel() {
   };
 
 
+  const handlePickMaterialFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: matType === 'pdf' ? 'application/pdf' : ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const file = result.assets[0];
+      setMatUploading(true);
+      setMatUploadProgress(0);
+      const path = `materials/${matCourse}/${Date.now()}_${file.name}`;
+      const url = await uploadFile(path, file.uri, setMatUploadProgress);
+      setMatUrl(url);
+      setMatFileName(file.name);
+    } catch (err: any) {
+      const msg = err?.code === 'storage/unauthorized'
+        ? 'Storage permission denied. Check your admin role.'
+        : 'Upload failed. Please try again.';
+      setMatMsg({ text: msg, kind: 'error' });
+      Alert.alert('Upload Failed', msg);
+    } finally {
+      setMatUploading(false);
+    }
+  };
+
   const handleCreateMaterial = async () => {
     if (!matTitle.trim() || !matModule.trim()) {
       setMatMsg({ text: 'Title and module are required.', kind: 'error' });
@@ -1055,7 +1396,7 @@ function AdminPanel() {
     }
     const normalizedUrl = matUrl.trim();
     if (!normalizedUrl) {
-      setMatMsg({ text: 'Paste a URL before saving.', kind: 'error' });
+      setMatMsg({ text: (matType === 'pdf' || matType === 'doc') ? 'Please upload a file before saving.' : 'Paste a URL before saving.', kind: 'error' });
       return;
     }
     if (!isValidHttpUrl(normalizedUrl)) {
@@ -1080,18 +1421,38 @@ function AdminPanel() {
         createdMaterial,
         ...prev.filter((item) => item.id !== createdMaterial.id),
       ]);
-      setMatTitle(''); setMatModule(''); setMatUrl(''); setMatType('link');
+      setMatTitle(''); setMatModule(''); setMatUrl(''); setMatType('link'); setMatFileName('');
       setMatMsg({ text: `"${createdMaterial.title}" published successfully and added below.`, kind: 'success' });
-    } catch {
-      setMatMsg({ text: 'Could not save material. Please try again.', kind: 'error' });
+    } catch (err: any) {
+      const msg = err?.code === 'permission-denied'
+        ? 'Permission denied. Make sure you are signed in as admin.'
+        : 'Could not save material. Please try again.';
+      setMatMsg({ text: msg, kind: 'error' });
+      Alert.alert('Save Failed', msg);
     } finally {
       setMatSaving(false);
     }
   };
 
-  const handleDeleteMaterial = async (id: string) => {
-    try { await deleteMaterial(id); }
-    catch { Alert.alert('Error', 'Could not delete material.'); }
+  const handleDeleteMaterial = async (id: string, fileUrl?: string) => {
+    try {
+      if (fileUrl) await deleteFile(fileUrl).catch(() => {});
+      await deleteMaterial(id);
+    } catch { Alert.alert('Error', 'Could not delete material.'); }
+  };
+
+  const handleDeleteAssignment = async (id: string, fileUrl?: string) => {
+    try {
+      if (fileUrl) await deleteFile(fileUrl).catch(() => {});
+      await deleteAssignment(id);
+    } catch { Alert.alert('Error', 'Could not delete assignment.'); }
+  };
+
+  const handleDeleteTest = async (id: string, fileUrl?: string) => {
+    try {
+      if (fileUrl) await deleteFile(fileUrl).catch(() => {});
+      await deleteTest(id);
+    } catch { Alert.alert('Error', 'Could not delete test.'); }
   };
 
   const handleOpenMaterialLink = async (url: string) => {
@@ -1102,18 +1463,76 @@ function AdminPanel() {
     }
   };
 
+  const handlePickLetterFile = async (regId: string) => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const file = result.assets[0];
+      setUploadingLetterId(regId);
+      setLetterUploadProgress(0);
+      const path = `admission-letters/${regId}/${Date.now()}_${file.name}`;
+      const url = await uploadFile(path, file.uri, setLetterUploadProgress);
+      setLetterFileUrls((prev) => ({ ...prev, [regId]: url }));
+      setLetterFileNames((prev) => ({ ...prev, [regId]: file.name }));
+    } catch {
+      Alert.alert('Upload failed', 'Could not upload the letter. Please try again.');
+    } finally {
+      setUploadingLetterId(null);
+    }
+  };
+
+  const handlePickAssignmentFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const file = result.assets[0];
+      setAsnUploading(true);
+      setAsnUploadProgress(0);
+      const path = `assignment-files/${asnCourse}/${Date.now()}_${file.name}`;
+      const url = await uploadFile(path, file.uri, setAsnUploadProgress);
+      setAsnFileUrl(url);
+      setAsnFileName(file.name);
+    } catch {
+      Alert.alert('Upload failed', 'Could not upload the file. Please try again.');
+    } finally {
+      setAsnUploading(false);
+    }
+  };
+
+  const handlePickTestFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const file = result.assets[0];
+      setTestUploading(true);
+      setTestUploadProgress(0);
+      const path = `test-files/${testCourse}/${Date.now()}_${file.name}`;
+      const url = await uploadFile(path, file.uri, setTestUploadProgress);
+      setTestFileUrl(url);
+      setTestFileName(file.name);
+    } catch {
+      Alert.alert('Upload failed', 'Could not upload the file. Please try again.');
+    } finally {
+      setTestUploading(false);
+    }
+  };
+
   const handleCreateAssignment = async () => {
     if (!asnTitle.trim() || !asnDesc.trim() || !asnDeadline.trim()) {
       setAsnMsg({ text: 'Title, description, and deadline are required.', kind: 'error' });
       return;
     }
-    if (!isValidDateInput(asnDeadline.trim())) {
-      setAsnMsg({ text: 'Deadline must be a real date in YYYY-MM-DD format.', kind: 'error' });
-      return;
-    }
-    const maxGrade = parseInt(asnMaxGrade, 10);
-    if (!Number.isInteger(maxGrade) || maxGrade <= 0) {
-      setAsnMsg({ text: 'Max grade must be a whole number greater than 0.', kind: 'error' });
+    if (!asnFileUrl) {
+      setAsnMsg({ text: 'Please upload the assignment file before creating.', kind: 'error' });
       return;
     }
     setAsnSaving(true);
@@ -1124,9 +1543,11 @@ function AdminPanel() {
         title: asnTitle.trim(),
         description: asnDesc.trim(),
         deadlineIso: asnDeadline.trim(),
-        maxGrade,
+        maxGrade: 100,
+        fileUrl: asnFileUrl || undefined,
       });
-      setAsnTitle(''); setAsnDesc(''); setAsnDeadline(''); setAsnMaxGrade('100');
+      setAsnTitle(''); setAsnDesc(''); setAsnDeadline('');
+      setAsnFileUrl(''); setAsnFileName('');
       setAsnMsg({ text: 'Assignment created successfully.', kind: 'success' });
     } catch {
       setAsnMsg({ text: 'Could not create assignment. Please try again.', kind: 'error' });
@@ -1136,27 +1557,52 @@ function AdminPanel() {
   };
 
   const handleGradeSubmission = async (assignment: AdminAssignment, userId: string) => {
-    const grade = parseInt(gradeValue, 10);
-    if (isNaN(grade) || grade < 0 || grade > assignment.maxGrade) {
-      setAsnMsg({ text: `Grade must be between 0 and ${assignment.maxGrade}.`, kind: 'error' });
+    if (!selectedOutcome) {
+      setAsnMsg({ text: 'Please select an outcome before submitting.', kind: 'error' });
       return;
     }
+    const scoreMap = { needs_revision: 60, satisfactory: 80, excellent: 100 };
+    const grade = scoreMap[selectedOutcome];
     setGradingSaving(true);
     setAsnMsg(null);
     try {
-      await gradeAssignmentSubmission(assignment.id, userId, grade, gradeFeedback.trim(), assignment.title);
-      setGradingKey(null); setGradeValue(''); setGradeFeedback('');
-      setAsnMsg({ text: 'Submission graded and student notified.', kind: 'success' });
+      await gradeAssignmentSubmission(assignment.id, userId, grade, reviewFeedback.trim(), assignment.title);
+      setGradingKey(null); setSelectedOutcome(null); setReviewFeedback('');
+      setAsnMsg({ text: 'Review submitted and student notified.', kind: 'success' });
     } catch {
-      setAsnMsg({ text: 'Could not save grade. Please try again.', kind: 'error' });
+      setAsnMsg({ text: 'Could not save review. Please try again.', kind: 'error' });
     } finally {
       setGradingSaving(false);
+    }
+  };
+
+  const handleReviewTest = async (test: AdminTest, userId: string) => {
+    if (!selectedTestOutcome) {
+      setTestMsg({ text: 'Please select an outcome before submitting.', kind: 'error' });
+      return;
+    }
+    const scoreMap = { needs_revision: 60, satisfactory: 80, excellent: 100 };
+    const score = scoreMap[selectedTestOutcome];
+    setTestReviewSaving(true);
+    setTestMsg(null);
+    try {
+      await gradeTestSubmission(test.id, userId, score, testReviewFeedback.trim(), test.title, test.courseId, test.totalMarks, test.passMark);
+      setReviewingTestKey(null); setSelectedTestOutcome(null); setTestReviewFeedback('');
+      setTestMsg({ text: 'Test reviewed and student notified.', kind: 'success' });
+    } catch {
+      setTestMsg({ text: 'Could not save review. Please try again.', kind: 'error' });
+    } finally {
+      setTestReviewSaving(false);
     }
   };
 
   const handleCreateTest = async () => {
     if (!testTitle.trim() || !testDesc.trim() || !testDate.trim()) {
       setTestMsg({ text: 'Title, description, and date are required.', kind: 'error' });
+      return;
+    }
+    if (!testFileUrl) {
+      setTestMsg({ text: 'Please upload the test paper before scheduling.', kind: 'error' });
       return;
     }
     setTestSaving(true);
@@ -1168,10 +1614,12 @@ function AdminPanel() {
         description: testDesc.trim(),
         scheduledDateIso: testDate.trim(),
         durationMinutes: parseInt(testDuration, 10) || 60,
-        totalMarks: parseInt(testTotal, 10) || 100,
-        passMark: parseInt(testPass, 10) || 50,
+        totalMarks: 100,
+        passMark: 60,
+        fileUrl: testFileUrl || undefined,
       });
       setTestTitle(''); setTestDesc(''); setTestDate('');
+      setTestFileUrl(''); setTestFileName('');
       setTestMsg({ text: 'Test scheduled successfully.', kind: 'success' });
     } catch {
       setTestMsg({ text: 'Could not create test. Please try again.', kind: 'error' });
@@ -1180,24 +1628,6 @@ function AdminPanel() {
     }
   };
 
-  const handleGradeTest = async (test: AdminTest, userId: string) => {
-    const score = parseInt(testScore, 10);
-    if (isNaN(score) || score < 0 || score > test.totalMarks) {
-      setTestMsg({ text: `Score must be between 0 and ${test.totalMarks}.`, kind: 'error' });
-      return;
-    }
-    setTestGradingSaving(true);
-    setTestMsg(null);
-    try {
-      await gradeTestSubmission(test.id, userId, score, testFeedback.trim(), test.title, test.courseId, test.totalMarks, test.passMark);
-      setGradingTestKey(null); setTestScore(''); setTestFeedback('');
-      setTestMsg({ text: 'Test graded and student notified.', kind: 'success' });
-    } catch {
-      setTestMsg({ text: 'Could not save grade. Please try again.', kind: 'error' });
-    } finally {
-      setTestGradingSaving(false);
-    }
-  };
 
   const handleApproveDeletion = async (req: AccountDeletionRequest) => {
     setBusyDeletionId(req.id);
@@ -1263,9 +1693,30 @@ function AdminPanel() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      {/* Certificate success overlay */}
+      <Modal visible={certSuccessApp !== null} transparent animationType="fade" onRequestClose={() => setCertSuccessApp(null)}>
+        <View style={styles.certOverlay}>
+          <View style={styles.certSuccessCard}>
+            <View style={[styles.certSuccessIconWrap]}>
+              <FontAwesome6 name="certificate" size={36} color={C.secondary} />
+            </View>
+            <Text style={styles.certSuccessTitle}>Certificate Issued!</Text>
+            <Text style={styles.certSuccessName}>{certSuccessApp?.fullName?.trim() || 'Student'}</Text>
+            <Text style={styles.certSuccessSub}>{certSuccessApp?.courseTitle}</Text>
+            <Text style={[styles.certSuccessSub, { color: C.textMuted, marginTop: 2 }]}>The student has been notified.</Text>
+            <Pressable
+              onPress={() => setCertSuccessApp(null)}
+              style={({ pressed }) => [styles.primaryButton, { width: '100%', marginTop: 8 }, pressed && styles.pressed]}
+            >
+              <Text style={styles.primaryButtonText}>Done</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       <KeyboardAvoidingView
         style={styles.safe}
-        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
         <ScrollView
@@ -1354,6 +1805,13 @@ function AdminPanel() {
             icon="clipboard-list"
             label="Tests"
             onPress={() => setActiveView('tests')}
+          />
+          <SectionButton
+            active={activeView === 'registrations'}
+            count={registrations.filter(r => r.status === 'pending').length > 0 ? registrations.filter(r => r.status === 'pending').length : undefined}
+            icon="id-card"
+            label="Registrations"
+            onPress={() => setActiveView('registrations')}
           />
           <SectionButton
             active={activeView === 'deletions'}
@@ -1550,16 +2008,466 @@ function AdminPanel() {
             {admissionsTab === 'enrolled' ? (
               enrolledApplications.length > 0 ? (
                 <View style={styles.stack}>
-                  {enrolledApplications.map((application) => (
-                    <ApplicationCard
-                      key={application.id}
-                      application={application}
-                      busy={busyApplicationId === application.id}
-                      onApprove={() => {}}
-                      onReject={() => {}}
-                      onDelete={() => handleDeleteApplication(application)}
-                    />
-                  ))}
+                  {enrolledApplications.map((application) => {
+                    const isSavingProgress = savingProgressId === application.id;
+                    const isCompleted = application.courseCompleted === true;
+                    const isLocked = isPaymentLocked(application);
+                    const isFullPaid = application.paymentStatus === 'full';
+                    const progressVal = progressEditing[application.id];
+                    const courseSessions = sessions.filter((s) => s.courseId === application.courseId);
+                    const isExpanded = expandedEnrolledId === application.id;
+                    return (
+                      <View key={application.id} style={styles.panelCard}>
+                        {/* Dropdown header */}
+                        <Pressable
+                          onPress={() => setExpandedEnrolledId(isExpanded ? null : application.id)}
+                          style={({ pressed }) => [styles.teamDropdownHeader, pressed && styles.pressed]}
+                        >
+                          <View style={styles.panelHeaderCopy}>
+                            <Text style={styles.panelTitle}>{application.fullName?.trim() || 'Student'}</Text>
+                            <Text style={styles.panelSubtitle}>{application.courseTitle || application.courseId}</Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            {isCompleted ? (
+                              <View style={[styles.statusChip, { backgroundColor: C.successSoft }]}>
+                                <View style={[styles.statusDot, { backgroundColor: C.success }]} />
+                                <Text style={[styles.statusChipText, { color: C.success }]}>Completed</Text>
+                              </View>
+                            ) : (
+                              <View style={[styles.statusChip, { backgroundColor: C.secondarySoft }]}>
+                                <View style={[styles.statusDot, { backgroundColor: C.secondary }]} />
+                                <Text style={[styles.statusChipText, { color: C.secondary }]}>Enrolled</Text>
+                              </View>
+                            )}
+                            {isLocked ? (
+                              <View style={[styles.statusChip, { backgroundColor: '#FFF3E0' }]}>
+                                <FontAwesome6 name="lock" size={9} color="#E65100" />
+                                <Text style={[styles.statusChipText, { color: '#E65100' }]}>Locked</Text>
+                              </View>
+                            ) : isFullPaid ? (
+                              <View style={[styles.statusChip, { backgroundColor: C.successSoft }]}>
+                                <FontAwesome6 name="circle-check" size={9} color={C.success} />
+                                <Text style={[styles.statusChipText, { color: C.success }]}>Paid</Text>
+                              </View>
+                            ) : null}
+                            <FontAwesome6 name={isExpanded ? 'chevron-up' : 'chevron-down'} size={13} color={C.textSecondary} />
+                          </View>
+                        </Pressable>
+
+                        {/* Expanded actions */}
+                        {isExpanded ? (
+                          <View style={styles.teamDropdownBody}>
+
+                            {/* ── Progress ── */}
+                            <Text style={styles.enrolledLabel}>Progress (%)</Text>
+                            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                              <Pressable
+                                onPress={() => {
+                                  const cur = parseInt(progressVal ?? '0', 10);
+                                  const next = Math.max(0, cur - 5);
+                                  setProgressEditing((prev) => ({ ...prev, [application.id]: String(next) }));
+                                }}
+                                style={({ pressed }) => [styles.enrolledNudge, pressed && styles.pressed]}
+                              >
+                                <Text style={styles.enrolledNudgeText}>−5</Text>
+                              </Pressable>
+                              <TextInput
+                                style={[styles.input, { flex: 1, textAlign: 'center' }]}
+                                keyboardType="numeric"
+                                maxLength={3}
+                                placeholder="0–100"
+                                value={progressVal ?? ''}
+                                onChangeText={(v) => setProgressEditing((prev) => ({ ...prev, [application.id]: v }))}
+                              />
+                              <Pressable
+                                onPress={() => {
+                                  const cur = parseInt(progressVal ?? '0', 10);
+                                  const next = Math.min(100, cur + 5);
+                                  setProgressEditing((prev) => ({ ...prev, [application.id]: String(next) }));
+                                }}
+                                style={({ pressed }) => [styles.enrolledNudge, pressed && styles.pressed]}
+                              >
+                                <Text style={styles.enrolledNudgeText}>+5</Text>
+                              </Pressable>
+                              <Pressable
+                                onPress={() => handleSaveProgress(application)}
+                                disabled={isSavingProgress || progressVal === undefined}
+                                style={({ pressed }) => [
+                                  styles.enrolledActionChip,
+                                  { backgroundColor: C.primary },
+                                  (pressed || isSavingProgress || progressVal === undefined) && styles.pressed,
+                                ]}
+                              >
+                                {isSavingProgress
+                                  ? <ActivityIndicator size="small" color={C.textInverse} />
+                                  : <Text style={[styles.enrolledChipText, { color: C.textInverse }]}>Save</Text>
+                                }
+                              </Pressable>
+                            </View>
+
+                            <View style={styles.enrolledDivider} />
+
+                            {/* ── Completion & Certificate ── */}
+                            {generatingCertId === application.id ? (
+                              <View style={[styles.enrolledFullButton, { opacity: 0.8 }]}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                  <ActivityIndicator size="small" color={C.textInverse} />
+                                  <Text style={[styles.enrolledChipText, { color: C.textInverse, fontSize: 14 }]}>Uploading certificate...</Text>
+                                </View>
+                              </View>
+                            ) : pendingCertFile?.appId === application.id ? (
+                              <View style={{ gap: 10 }}>
+                                <View style={[styles.enrolledRow, { backgroundColor: C.surfaceAlt, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10 }]}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                    <FontAwesome6 name="file-pdf" size={16} color={C.danger} />
+                                    <Text style={{ fontFamily: Fonts.sansSemiBold, fontSize: 13, color: C.textPrimary, flex: 1 }} numberOfLines={1}>
+                                      {pendingCertFile.asset.name}
+                                    </Text>
+                                  </View>
+                                  <Pressable onPress={() => setPendingCertFile(null)} style={({ pressed }) => [pressed && styles.pressed]}>
+                                    <FontAwesome6 name="xmark" size={14} color={C.textSecondary} />
+                                  </Pressable>
+                                </View>
+                                <Pressable
+                                  onPress={() => handleUploadCert(application)}
+                                  style={({ pressed }) => [styles.enrolledFullButton, pressed && styles.pressed]}
+                                >
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <FontAwesome6 name="upload" size={14} color={C.textInverse} />
+                                    <Text style={[styles.enrolledChipText, { color: C.textInverse, fontSize: 14 }]}>
+                                      {isCompleted ? 'Upload Certificate' : 'Mark Complete & Upload Certificate'}
+                                    </Text>
+                                  </View>
+                                </Pressable>
+                              </View>
+                            ) : isCompleted && application.certificateUrl ? (
+                              <View style={styles.enrolledRow}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                  <FontAwesome6 name="circle-check" size={14} color={C.success} />
+                                  <View>
+                                    <Text style={{ fontFamily: Fonts.sansBold, fontSize: 13, color: C.success }}>Completed</Text>
+                                    <Text style={{ fontFamily: Fonts.sans, fontSize: 12, color: C.success }}>Certificate issued</Text>
+                                  </View>
+                                </View>
+                                {confirmDeleteCertId === application.id ? (
+                                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                                    <Pressable
+                                      onPress={() => setConfirmDeleteCertId(null)}
+                                      style={({ pressed }) => [styles.enrolledActionChip, pressed && styles.pressed]}
+                                    >
+                                      <Text style={styles.enrolledChipText}>Cancel</Text>
+                                    </Pressable>
+                                    <Pressable
+                                      onPress={() => handleDeleteCertificate(application)}
+                                      style={({ pressed }) => [styles.enrolledActionChip, { backgroundColor: C.danger }, pressed && styles.pressed]}
+                                    >
+                                      <Text style={[styles.enrolledChipText, { color: C.textInverse }]}>Confirm Delete</Text>
+                                    </Pressable>
+                                  </View>
+                                ) : deletingCertId === application.id ? (
+                                  <ActivityIndicator size="small" color={C.danger} />
+                                ) : (
+                                  <Pressable
+                                    onPress={() => setConfirmDeleteCertId(application.id)}
+                                    style={({ pressed }) => [
+                                      styles.enrolledActionChip,
+                                      { backgroundColor: C.dangerSoft },
+                                      pressed && styles.pressed,
+                                    ]}
+                                  >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                      <FontAwesome6 name="trash" size={11} color={C.danger} />
+                                      <Text style={[styles.enrolledChipText, { color: C.danger }]}>Delete Certificate</Text>
+                                    </View>
+                                  </Pressable>
+                                )}
+                              </View>
+                            ) : isCompleted ? (
+                              <Pressable
+                                onPress={() => handlePickCertFile(application)}
+                                style={({ pressed }) => [styles.enrolledFullButton, pressed && styles.pressed]}
+                              >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                  <FontAwesome6 name="certificate" size={14} color={C.textInverse} />
+                                  <Text style={[styles.enrolledChipText, { color: C.textInverse, fontSize: 14 }]}>Upload Certificate</Text>
+                                </View>
+                              </Pressable>
+                            ) : (
+                              <View style={{ gap: 10 }}>
+                                <Pressable
+                                  onPress={() => handleMarkComplete(application)}
+                                  disabled={markingCompleteId === application.id}
+                                  style={({ pressed }) => [styles.enrolledFullButton, (pressed || markingCompleteId === application.id) && styles.pressed]}
+                                >
+                                  {markingCompleteId === application.id
+                                    ? <ActivityIndicator size="small" color={C.textInverse} />
+                                    : (
+                                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        <FontAwesome6 name="circle-check" size={14} color={C.textInverse} />
+                                        <Text style={[styles.enrolledChipText, { color: C.textInverse, fontSize: 14 }]}>Mark as Complete</Text>
+                                      </View>
+                                    )
+                                  }
+                                </Pressable>
+                                <Pressable
+                                  onPress={() => handlePickCertFile(application)}
+                                  style={({ pressed }) => [
+                                    styles.enrolledFullButton,
+                                    { backgroundColor: C.secondary },
+                                    pressed && styles.pressed,
+                                  ]}
+                                >
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <FontAwesome6 name="certificate" size={14} color={C.textInverse} />
+                                    <Text style={[styles.enrolledChipText, { color: C.textInverse, fontSize: 14 }]}>Select Certificate & Mark Complete</Text>
+                                  </View>
+                                </Pressable>
+                              </View>
+                            )}
+
+                            <View style={styles.enrolledDivider} />
+
+                            {/* ── Payment ── */}
+                            <View style={styles.enrolledRow}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <FontAwesome6 name="money-bill-wave" size={13} color={C.textSecondary} />
+                                <Text style={styles.enrolledLabel}>Payment</Text>
+                              </View>
+                              {isFullPaid ? (
+                                <View style={[styles.enrolledActionChip, { backgroundColor: C.successSoft }]}>
+                                  <FontAwesome6 name="circle-check" size={11} color={C.success} />
+                                  <Text style={[styles.enrolledChipText, { color: C.success }]}>Full — Paid</Text>
+                                </View>
+                              ) : (
+                                <View style={[styles.enrolledActionChip, { backgroundColor: '#FFF8E1' }]}>
+                                  <FontAwesome6 name="clock" size={11} color="#E65100" />
+                                  <Text style={[styles.enrolledChipText, { color: '#E65100' }]}>Partial</Text>
+                                </View>
+                              )}
+                            </View>
+                            {!isFullPaid ? (
+                              <Pressable
+                                onPress={() => handleMarkFullPayment(application)}
+                                disabled={markingPaidId === application.id}
+                                style={({ pressed }) => [
+                                  styles.outlineButton,
+                                  (pressed || markingPaidId === application.id) && styles.pressed,
+                                ]}
+                              >
+                                {markingPaidId === application.id
+                                  ? <ActivityIndicator size="small" color={C.textSecondary} />
+                                  : (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                      <FontAwesome6 name="circle-check" size={13} color={C.success} />
+                                      <Text style={styles.outlineButtonText}>Confirm Full Payment Received</Text>
+                                    </View>
+                                  )
+                                }
+                              </Pressable>
+                            ) : null}
+
+                            {/* ── Access ── */}
+                            <View style={styles.enrolledRow}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <FontAwesome6 name={isLocked ? 'lock' : 'lock-open'} size={13} color={C.textSecondary} />
+                                <Text style={styles.enrolledLabel}>Access</Text>
+                              </View>
+                              <View style={[styles.enrolledActionChip, { backgroundColor: isLocked ? C.dangerSoft : C.successSoft }]}>
+                                <FontAwesome6 name={isLocked ? 'lock' : 'lock-open'} size={11} color={isLocked ? C.danger : C.success} />
+                                <Text style={[styles.enrolledChipText, { color: isLocked ? C.danger : C.success }]}>
+                                  {isLocked ? 'Locked' : 'Active'}
+                                </Text>
+                              </View>
+                            </View>
+                            <Pressable
+                              onPress={() => handleToggleLock(application)}
+                              disabled={lockingId === application.id}
+                              style={({ pressed }) => [
+                                styles.outlineButton,
+                                (pressed || lockingId === application.id) && styles.pressed,
+                              ]}
+                            >
+                              {lockingId === application.id
+                                ? <ActivityIndicator size="small" color={C.textSecondary} />
+                                : (
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <FontAwesome6 name={isLocked ? 'lock-open' : 'lock'} size={13} color={isLocked ? C.success : C.danger} />
+                                    <Text style={[styles.outlineButtonText, { color: isLocked ? C.success : C.danger }]}>
+                                      {isLocked ? 'Unlock Access' : 'Lock Access'}
+                                    </Text>
+                                  </View>
+                                )
+                              }
+                            </Pressable>
+
+                            <View style={styles.enrolledDivider} />
+
+                            {/* ── Sessions ── */}
+                            {courseSessions.length > 0 ? (
+                              <View style={{ gap: 6 }}>
+                                <Text style={styles.enrolledLabel}>Course Sessions</Text>
+                                {courseSessions.map((s) => (
+                                  <View key={s.id} style={styles.sessionRow}>
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={styles.panelTitle}>{s.title}</Text>
+                                      <Text style={styles.panelSubtitle}>
+                                        {s.scheduledDate?.toDate ? s.scheduledDate.toDate().toLocaleString() : String(s.scheduledDate)}
+                                      </Text>
+                                    </View>
+                                    <Pressable onPress={() => deleteSession(s.id)} style={({ pressed }) => [pressed && styles.pressed]}>
+                                      <FontAwesome6 name="trash" size={14} color={C.danger} />
+                                    </Pressable>
+                                  </View>
+                                ))}
+                              </View>
+                            ) : null}
+
+                            <View style={{ gap: 6 }}>
+                              <Text style={styles.enrolledLabel}>Send Personal Session</Text>
+                              <TextInput
+                                style={styles.input}
+                                placeholder="Session title"
+                                value={personalSessionInputs[application.id]?.title ?? ''}
+                                onChangeText={(v) => setPersonalSessionInputs((prev) => ({ ...prev, [application.id]: { ...prev[application.id], title: v } }))}
+                              />
+                              <DatePickerField
+                                value={personalSessionInputs[application.id]?.date ?? ''}
+                                onChange={(v) => setPersonalSessionInputs((prev) => ({ ...prev, [application.id]: { ...prev[application.id], date: v } }))}
+                                mode="datetime"
+                                placeholder="Select date and time"
+                              />
+                              <TextInput
+                                style={styles.input}
+                                placeholder="Zoom link"
+                                autoCapitalize="none"
+                                value={personalSessionInputs[application.id]?.link ?? ''}
+                                onChangeText={(v) => setPersonalSessionInputs((prev) => ({ ...prev, [application.id]: { ...prev[application.id], link: v } }))}
+                              />
+                              <Pressable
+                                onPress={() => handleCreatePersonalSession(application)}
+                                disabled={personalSessionSavingId === application.id}
+                                style={({ pressed }) => [
+                                  styles.outlineButton,
+                                  (pressed || personalSessionSavingId === application.id) && styles.pressed,
+                                ]}
+                              >
+                                {personalSessionSavingId === application.id
+                                  ? <ActivityIndicator size="small" color={C.textSecondary} />
+                                  : <Text style={styles.outlineButtonText}>Send to {application.fullName?.trim() || 'Student'}</Text>
+                                }
+                              </Pressable>
+                            </View>
+
+                            <View style={styles.enrolledDivider} />
+
+                            {/* ── Delete enrollment ── */}
+                            {confirmDeleteEnrollId === application.id ? (
+                              <View style={{ gap: 10 }}>
+                                <Text style={{ fontFamily: Fonts.sans, fontSize: 13, color: C.danger }}>
+                                  Remove {application.fullName?.trim() || 'this student'} from the course? This cannot be undone.
+                                </Text>
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                  <Pressable
+                                    onPress={() => setConfirmDeleteEnrollId(null)}
+                                    style={({ pressed }) => [styles.enrolledActionChip, pressed && styles.pressed]}
+                                  >
+                                    <Text style={styles.enrolledChipText}>Cancel</Text>
+                                  </Pressable>
+                                  <Pressable
+                                    onPress={() => {
+                                      setConfirmDeleteEnrollId(null);
+                                      handleDeleteApplication(application);
+                                    }}
+                                    disabled={busyApplicationId === application.id}
+                                    style={({ pressed }) => [
+                                      styles.enrolledActionChip,
+                                      { backgroundColor: C.danger },
+                                      (pressed || busyApplicationId === application.id) && styles.pressed,
+                                    ]}
+                                  >
+                                    {busyApplicationId === application.id
+                                      ? <ActivityIndicator size="small" color={C.textInverse} />
+                                      : <Text style={[styles.enrolledChipText, { color: C.textInverse }]}>Confirm Delete</Text>
+                                    }
+                                  </Pressable>
+                                </View>
+                              </View>
+                            ) : (
+                              <Pressable
+                                onPress={() => setConfirmDeleteEnrollId(application.id)}
+                                style={({ pressed }) => [styles.enrolledDangerRow, pressed && styles.pressed]}
+                              >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                  <FontAwesome6 name="trash" size={12} color={C.danger} />
+                                  <Text style={styles.enrolledDangerText}>Delete Enrollment</Text>
+                                </View>
+                              </Pressable>
+                            )}
+                          </View>
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                  {/* Add Session form */}
+                  <View style={styles.workspaceCard}>
+                    <Text style={styles.workspaceTitle}>Schedule a Virtual Session</Text>
+                    {sessionMsg ? (
+                      <View style={[styles.banner, { backgroundColor: sessionMsg.kind === 'success' ? C.successSoft : C.dangerSoft }]}>
+                        <Text style={[styles.bannerText, { color: sessionMsg.kind === 'success' ? C.success : C.danger }]}>{sessionMsg.text}</Text>
+                      </View>
+                    ) : null}
+                    <View style={styles.fieldGroup}>
+                      <Text style={styles.fieldLabel}>Course</Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                        {enrolledApplications
+                          .filter((a, i, arr) => arr.findIndex((x) => x.courseId === a.courseId) === i)
+                          .map((a) => {
+                            const selected = sessionCourseIds.includes(a.courseId);
+                            return (
+                              <Pressable
+                                key={a.courseId}
+                                onPress={() =>
+                                  setSessionCourseIds((prev) =>
+                                    selected ? prev.filter((id) => id !== a.courseId) : [...prev, a.courseId]
+                                  )
+                                }
+                                style={({ pressed }) => [
+                                  styles.courseChip,
+                                  selected && styles.courseChipActive,
+                                  pressed && styles.pressed,
+                                ]}
+                              >
+                                <Text style={[styles.courseChipText, selected && styles.courseChipTextActive]}>
+                                  {a.courseTitle || a.courseId}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                      </View>
+                    </View>
+                    <View style={styles.fieldGroup}>
+                      <Text style={styles.fieldLabel}>Session Title</Text>
+                      <TextInput style={styles.input} value={sessionTitle} onChangeText={setSessionTitle} placeholder="e.g. Week 3 — Live Q&A" />
+                    </View>
+                    <View style={styles.fieldGroup}>
+                      <Text style={styles.fieldLabel}>Date & Time</Text>
+                      <DatePickerField value={sessionDate} onChange={setSessionDate} mode="datetime" placeholder="Select date and time" />
+                    </View>
+                    <View style={styles.fieldGroup}>
+                      <Text style={styles.fieldLabel}>Zoom Link</Text>
+                      <TextInput style={styles.input} value={sessionLink} onChangeText={setSessionLink} placeholder="https://zoom.us/j/..." autoCapitalize="none" />
+                    </View>
+                    <Pressable
+                      onPress={handleCreateSession}
+                      disabled={sessionSaving}
+                      style={({ pressed }) => [styles.primaryButton, (pressed || sessionSaving) && styles.pressed]}
+                    >
+                      {sessionSaving
+                        ? <ActivityIndicator size="small" color={C.textInverse} />
+                        : <Text style={styles.primaryButtonText}>Post Session</Text>
+                      }
+                    </Pressable>
+                  </View>
                 </View>
               ) : (
                 <EmptyState
@@ -1728,7 +2636,7 @@ function AdminPanel() {
                 <Text style={styles.fieldLabel}>Type</Text>
                 <View style={styles.statusSelectorRow}>
                   {(['pdf', 'doc', 'video', 'link'] as Material['type'][]).map((t) => (
-                    <Pressable key={t} onPress={() => { setMatType(t); setMatUrl(''); }}
+                    <Pressable key={t} onPress={() => { setMatType(t); setMatUrl(''); setMatFileName(''); }}
                       style={({ pressed }) => [styles.selectorChip, matType === t ? { backgroundColor: C.primarySoft, borderColor: C.secondary } : null, pressed ? styles.pressed : null]}>
                       <Text style={[styles.selectorChipText, matType === t ? { color: C.secondary } : null]}>{t.toUpperCase()}</Text>
                     </Pressable>
@@ -1737,16 +2645,42 @@ function AdminPanel() {
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>URL</Text>
-                <TextInput
-                  value={matUrl}
-                  onChangeText={setMatUrl}
-                  placeholder="Paste a link (Google Drive, YouTube, Dropbox, website…)"
-                  placeholderTextColor={C.textMuted}
-                  style={[styles.input, styles.materialUrlInput]}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
+                <Text style={styles.fieldLabel}>{matType === 'pdf' || matType === 'doc' ? 'File' : 'URL'}</Text>
+                {matType === 'pdf' || matType === 'doc' ? (
+                  <Pressable
+                    onPress={handlePickMaterialFile}
+                    disabled={matUploading}
+                    style={({ pressed }) => [styles.uploadBtn, matUrl && styles.uploadBtnDone, pressed && styles.pressed]}
+                  >
+                    {matUploading ? (
+                      <View style={styles.uploadBtnInner}>
+                        <ActivityIndicator size="small" color={C.secondary} />
+                        <Text style={styles.uploadBtnText}>Uploading {Math.round(matUploadProgress * 100)}%…</Text>
+                      </View>
+                    ) : matUrl ? (
+                      <View style={styles.uploadBtnInner}>
+                        <FontAwesome6 name="circle-check" size={15} color={C.success} />
+                        <Text style={[styles.uploadBtnText, { color: C.success }]} numberOfLines={1}>{matFileName || 'File uploaded'}</Text>
+                        <FontAwesome6 name="arrow-rotate-right" size={12} color={C.textMuted} />
+                      </View>
+                    ) : (
+                      <View style={styles.uploadBtnInner}>
+                        <FontAwesome6 name="arrow-up-from-bracket" size={15} color={C.secondary} />
+                        <Text style={styles.uploadBtnText}>Choose {matType === 'pdf' ? 'PDF' : 'Word document'}</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                ) : (
+                  <TextInput
+                    value={matUrl}
+                    onChangeText={setMatUrl}
+                    placeholder={matType === 'video' ? 'Paste YouTube or Vimeo link…' : 'Paste a website or resource link…'}
+                    placeholderTextColor={C.textMuted}
+                    style={[styles.input, styles.materialUrlInput]}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                )}
               </View>
 
               <Pressable onPress={handleCreateMaterial} disabled={matSaving}
@@ -1783,7 +2717,7 @@ function AdminPanel() {
                             <FontAwesome6 name="arrow-up-right-from-square" size={12} color={C.secondary} />
                             <Text style={styles.materialActionBtnText}>Open</Text>
                           </Pressable>
-                          <Pressable onPress={() => handleDeleteMaterial(mat.id)} style={({ pressed }) => [styles.deleteBtn, pressed ? styles.pressed : null]}>
+                          <Pressable onPress={() => handleDeleteMaterial(mat.id, mat.fileUrl)} style={({ pressed }) => [styles.deleteBtn, pressed ? styles.pressed : null]}>
                             <FontAwesome6 name="trash" size={13} color={C.danger} />
                           </Pressable>
                         </View>
@@ -1810,10 +2744,8 @@ function AdminPanel() {
               <Pressable onPress={() => setAsnTab('create')} style={[styles.tabBtn, asnTab === 'create' ? styles.tabBtnActive : null]}>
                 <Text style={[styles.tabBtnText, asnTab === 'create' ? styles.tabBtnTextActive : null]}>Create</Text>
               </Pressable>
-              <Pressable onPress={() => setAsnTab('grade')} style={[styles.tabBtn, asnTab === 'grade' ? styles.tabBtnActive : null]}>
-                <Text style={[styles.tabBtnText, asnTab === 'grade' ? styles.tabBtnTextActive : null]}>
-                  Grade Submissions
-                </Text>
+              <Pressable onPress={() => setAsnTab('submissions')} style={[styles.tabBtn, asnTab === 'submissions' ? styles.tabBtnActive : null]}>
+                <Text style={[styles.tabBtnText, asnTab === 'submissions' ? styles.tabBtnTextActive : null]}>Submissions</Text>
               </Pressable>
             </View>
 
@@ -1823,7 +2755,7 @@ function AdminPanel() {
               </View>
             ) : null}
 
-            {asnTab === 'create' ? (
+            {asnTab !== 'submissions' ? (
               <View style={styles.workspaceCard}>
                 <Text style={styles.workspaceTitle}>New Assignment</Text>
 
@@ -1850,13 +2782,35 @@ function AdminPanel() {
                 </View>
 
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Deadline (YYYY-MM-DD)</Text>
-                  <TextInput value={asnDeadline} onChangeText={setAsnDeadline} placeholder="2025-12-31" placeholderTextColor={C.textMuted} style={styles.input} />
+                  <Text style={styles.fieldLabel}>Deadline</Text>
+                  <DatePickerField value={asnDeadline} onChange={setAsnDeadline} placeholder="Select deadline" />
                 </View>
 
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Max Grade</Text>
-                  <TextInput value={asnMaxGrade} onChangeText={setAsnMaxGrade} keyboardType="numeric" placeholder="100" placeholderTextColor={C.textMuted} style={styles.input} />
+                  <Text style={styles.fieldLabel}>Assignment File (PDF or document)</Text>
+                  <Pressable
+                    onPress={handlePickAssignmentFile}
+                    disabled={asnUploading}
+                    style={({ pressed }) => [styles.uploadBtn, asnFileUrl ? styles.uploadBtnDone : null, pressed ? styles.pressed : null]}
+                  >
+                    {asnUploading ? (
+                      <View style={styles.uploadBtnInner}>
+                        <ActivityIndicator size="small" color={C.secondary} />
+                        <Text style={styles.uploadBtnText}>Uploading {Math.round(asnUploadProgress * 100)}%…</Text>
+                      </View>
+                    ) : asnFileUrl ? (
+                      <View style={styles.uploadBtnInner}>
+                        <FontAwesome6 name="circle-check" size={14} color={C.success} />
+                        <Text style={[styles.uploadBtnText, { color: C.success }]} numberOfLines={1}>{asnFileName || 'File uploaded'}</Text>
+                        <FontAwesome6 name="arrow-rotate-right" size={11} color={C.textMuted} />
+                      </View>
+                    ) : (
+                      <View style={styles.uploadBtnInner}>
+                        <FontAwesome6 name="arrow-up-from-bracket" size={14} color={C.secondary} />
+                        <Text style={styles.uploadBtnText}>Upload PDF or document</Text>
+                      </View>
+                    )}
+                  </Pressable>
                 </View>
 
                 <Pressable onPress={handleCreateAssignment} disabled={asnSaving}
@@ -1874,9 +2828,26 @@ function AdminPanel() {
                       <View style={styles.panelHeaderRow}>
                         <View style={styles.panelHeaderCopy}>
                           <Text style={styles.panelTitle}>{asn.title}</Text>
-                          <Text style={styles.panelSubtitle}>{asn.courseId} · max {asn.maxGrade} pts · {asn.submissions.length} submission{asn.submissions.length !== 1 ? 's' : ''}</Text>
+                          <Text style={styles.panelSubtitle}>{asn.courseId.toUpperCase()} · {asn.submissions.length} submission{asn.submissions.length !== 1 ? 's' : ''}</Text>
                         </View>
+                        <Pressable
+                          onPress={() => handleDeleteAssignment(asn.id, asn.fileUrl)}
+                          style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}
+                        >
+                          <FontAwesome6 name="trash" size={13} color={C.danger} />
+                        </Pressable>
                       </View>
+
+                      {asn.fileUrl ? (
+                        <Pressable
+                          onPress={() => Linking.openURL(asn.fileUrl!)}
+                          style={({ pressed }) => [styles.fileChip, pressed && styles.pressed]}
+                        >
+                          <FontAwesome6 name="file-arrow-down" size={12} color={C.secondary} />
+                          <Text style={styles.fileChipText}>Assignment File Attached</Text>
+                          <FontAwesome6 name="arrow-up-right-from-square" size={11} color={C.textMuted} />
+                        </Pressable>
+                      ) : null}
 
                       {asn.submissions.length === 0 ? (
                         <View style={[styles.banner, { backgroundColor: C.surfaceAlt }]}>
@@ -1892,12 +2863,12 @@ function AdminPanel() {
                                 <View style={{ flex: 1, gap: 2 }}>
                                   <Text style={styles.subUserId}>{sub.studentName?.trim() || 'Student submission'}</Text>
                                   <Text style={styles.subMeta}>{sub.studentEmail?.trim() || sub.userId}</Text>
-                                  <Text style={styles.subMeta}>{formatDate(sub.submittedAt)} · {sub.status === 'graded' ? `Graded: ${sub.grade}/${asn.maxGrade}` : 'Awaiting grade'}</Text>
+                                  <Text style={styles.subMeta}>{formatDate(sub.submittedAt)} · {sub.status === 'graded' ? getOutcomeLabel(sub.grade ?? 0) : 'Pending Review'}</Text>
                                 </View>
                                 {sub.status !== 'graded' ? (
-                                  <Pressable onPress={() => { setGradingKey(key); setGradeValue(''); setGradeFeedback(''); }}
+                                  <Pressable onPress={() => { setGradingKey(key); setSelectedOutcome(null); setReviewFeedback(''); }}
                                     style={({ pressed }) => [styles.gradeBtn, pressed ? styles.pressed : null]}>
-                                    <Text style={styles.gradeBtnText}>Grade</Text>
+                                    <Text style={styles.gradeBtnText}>Review</Text>
                                   </Pressable>
                                 ) : null}
                               </View>
@@ -1910,9 +2881,13 @@ function AdminPanel() {
                               ) : null}
 
                               {sub.attachmentLink ? (
-                                <Pressable onPress={() => Linking.openURL(sub.attachmentLink!)} style={styles.subTextCard}>
-                                  <Text style={styles.noteLabel}>Attached file link</Text>
-                                  <Text style={styles.noteBody}>{sub.attachmentLink}</Text>
+                                <Pressable
+                                  onPress={() => Linking.openURL(sub.attachmentLink!)}
+                                  style={({ pressed }) => [styles.fileChip, { alignSelf: 'flex-start' }, pressed && styles.pressed]}
+                                >
+                                  <FontAwesome6 name="file-arrow-down" size={12} color={C.secondary} />
+                                  <Text style={styles.fileChipText}>Open {sub.studentName?.trim() || 'Student'}'s File</Text>
+                                  <FontAwesome6 name="arrow-up-right-from-square" size={11} color={C.textMuted} />
                                 </Pressable>
                               ) : null}
 
@@ -1926,20 +2901,45 @@ function AdminPanel() {
                               {isGrading ? (
                                 <View style={styles.gradeForm}>
                                   <View style={styles.fieldGroup}>
-                                    <Text style={styles.fieldLabel}>Grade (0–{asn.maxGrade})</Text>
-                                    <TextInput value={gradeValue} onChangeText={setGradeValue} keyboardType="numeric" placeholder="e.g. 85" placeholderTextColor={C.textMuted} style={styles.input} />
+                                    <Text style={styles.fieldLabel}>Outcome</Text>
+                                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                                      {(['needs_revision', 'satisfactory', 'excellent'] as const).map((outcome) => {
+                                        const cfg = {
+                                          needs_revision: { label: 'Needs Revision', color: C.warning, bg: C.warningSoft },
+                                          satisfactory: { label: 'Satisfactory', color: C.secondary, bg: C.secondarySoft },
+                                          excellent: { label: 'Excellent', color: C.success, bg: C.successSoft },
+                                        }[outcome];
+                                        const isSelected = selectedOutcome === outcome;
+                                        return (
+                                          <Pressable
+                                            key={outcome}
+                                            onPress={() => setSelectedOutcome(outcome)}
+                                            style={[{
+                                              paddingHorizontal: 16, paddingVertical: 9,
+                                              borderRadius: 20, borderWidth: 1.5,
+                                              borderColor: isSelected ? cfg.color : C.border,
+                                              backgroundColor: isSelected ? cfg.bg : 'transparent',
+                                            }]}
+                                          >
+                                            <Text style={{ fontSize: 13, fontFamily: Fonts.sansSemiBold, color: isSelected ? cfg.color : C.textMuted }}>
+                                              {cfg.label}
+                                            </Text>
+                                          </Pressable>
+                                        );
+                                      })}
+                                    </View>
                                   </View>
                                   <View style={styles.fieldGroup}>
-                                    <Text style={styles.fieldLabel}>Feedback</Text>
-                                    <TextInput value={gradeFeedback} onChangeText={setGradeFeedback} placeholder="Optional feedback for the student..." placeholderTextColor={C.textMuted} multiline textAlignVertical="top" style={styles.textArea} />
+                                    <Text style={styles.fieldLabel}>Feedback (optional)</Text>
+                                    <TextInput value={reviewFeedback} onChangeText={setReviewFeedback} placeholder="Add comments for the student..." placeholderTextColor={C.textMuted} multiline textAlignVertical="top" style={styles.textArea} />
                                   </View>
                                   <View style={styles.buttonRow}>
-                                    <Pressable onPress={() => setGradingKey(null)} style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null]}>
+                                    <Pressable onPress={() => { setGradingKey(null); setSelectedOutcome(null); setReviewFeedback(''); }} style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null]}>
                                       <Text style={styles.secondaryButtonText}>Cancel</Text>
                                     </Pressable>
                                     <Pressable onPress={() => handleGradeSubmission(asn, sub.userId)} disabled={gradingSaving}
                                       style={({ pressed }) => [styles.primaryButton, (gradingSaving || pressed) ? styles.pressed : null]}>
-                                      {gradingSaving ? <ActivityIndicator size="small" color={C.textInverse} /> : <Text style={styles.primaryButtonText}>Save Grade</Text>}
+                                      {gradingSaving ? <ActivityIndicator size="small" color={C.textInverse} /> : <Text style={styles.primaryButtonText}>Submit Review</Text>}
                                     </Pressable>
                                   </View>
                                 </View>
@@ -1958,32 +2958,22 @@ function AdminPanel() {
 
         {activeView === 'tests' ? (
           <>
-            <View style={styles.tabRow}>
-              <Pressable onPress={() => setTestTab('create')} style={[styles.tabBtn, testTab === 'create' ? styles.tabBtnActive : null]}>
-                <Text style={[styles.tabBtnText, testTab === 'create' ? styles.tabBtnTextActive : null]}>Schedule Test</Text>
-              </Pressable>
-              <Pressable onPress={() => setTestTab('grade')} style={[styles.tabBtn, testTab === 'grade' ? styles.tabBtnActive : null]}>
-                <Text style={[styles.tabBtnText, testTab === 'grade' ? styles.tabBtnTextActive : null]}>Grade Tests</Text>
-              </Pressable>
-            </View>
-
             {testMsg ? (
               <View style={[styles.banner, { backgroundColor: testMsg.kind === 'success' ? C.successSoft : C.dangerSoft }]}>
                 <Text style={[styles.bannerText, { color: testMsg.kind === 'success' ? C.success : C.danger }]}>{testMsg.text}</Text>
               </View>
             ) : null}
 
-            {testTab === 'create' ? (
-              <View style={styles.workspaceCard}>
+            <View style={styles.workspaceCard}>
                 <Text style={styles.workspaceTitle}>Schedule New Test</Text>
 
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>Course</Text>
                   <View style={styles.statusSelectorRow}>
-                    {(['pecadr', 'advanced', 'certificate'] as const).map((c) => (
-                      <Pressable key={c} onPress={() => setTestCourse(c)}
-                        style={({ pressed }) => [styles.selectorChip, testCourse === c ? { backgroundColor: C.primarySoft, borderColor: C.secondary } : null, pressed ? styles.pressed : null]}>
-                        <Text style={[styles.selectorChipText, testCourse === c ? { color: C.secondary } : null]}>{c.toUpperCase()}</Text>
+                    {([{ id: 'pecadr', label: 'PECADR' }, { id: 'pemadr', label: 'PEMADR' }] as const).map((c) => (
+                      <Pressable key={c.id} onPress={() => setTestCourse(c.id)}
+                        style={({ pressed }) => [styles.selectorChip, testCourse === c.id ? { backgroundColor: C.primarySoft, borderColor: C.secondary } : null, pressed ? styles.pressed : null]}>
+                        <Text style={[styles.selectorChipText, testCourse === c.id ? { color: C.secondary } : null]}>{c.label}</Text>
                       </Pressable>
                     ))}
                   </View>
@@ -2000,135 +2990,184 @@ function AdminPanel() {
                 </View>
 
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Date (YYYY-MM-DD)</Text>
-                  <TextInput value={testDate} onChangeText={setTestDate} placeholder="2025-12-31" placeholderTextColor={C.textMuted} style={styles.input} />
+                  <Text style={styles.fieldLabel}>Scheduled Date</Text>
+                  <DatePickerField value={testDate} onChange={setTestDate} placeholder="Select test date" />
                 </View>
 
-                <View style={[styles.buttonRow, { gap: 12 }]}>
-                  <View style={[styles.fieldGroup, { flex: 1 }]}>
-                    <Text style={styles.fieldLabel}>Duration (min)</Text>
-                    <TextInput value={testDuration} onChangeText={setTestDuration} keyboardType="numeric" placeholder="60" placeholderTextColor={C.textMuted} style={styles.input} />
-                  </View>
-                  <View style={[styles.fieldGroup, { flex: 1 }]}>
-                    <Text style={styles.fieldLabel}>Total Marks</Text>
-                    <TextInput value={testTotal} onChangeText={setTestTotal} keyboardType="numeric" placeholder="100" placeholderTextColor={C.textMuted} style={styles.input} />
-                  </View>
-                  <View style={[styles.fieldGroup, { flex: 1 }]}>
-                    <Text style={styles.fieldLabel}>Pass Mark</Text>
-                    <TextInput value={testPass} onChangeText={setTestPass} keyboardType="numeric" placeholder="50" placeholderTextColor={C.textMuted} style={styles.input} />
-                  </View>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>Test Paper (PDF or document)</Text>
+                  <Pressable
+                    onPress={handlePickTestFile}
+                    disabled={testUploading}
+                    style={({ pressed }) => [styles.uploadBtn, testFileUrl ? styles.uploadBtnDone : null, pressed ? styles.pressed : null]}
+                  >
+                    {testUploading ? (
+                      <View style={styles.uploadBtnInner}>
+                        <ActivityIndicator size="small" color={C.secondary} />
+                        <Text style={styles.uploadBtnText}>Uploading {Math.round(testUploadProgress * 100)}%…</Text>
+                      </View>
+                    ) : testFileUrl ? (
+                      <View style={styles.uploadBtnInner}>
+                        <FontAwesome6 name="circle-check" size={14} color={C.success} />
+                        <Text style={[styles.uploadBtnText, { color: C.success }]} numberOfLines={1}>{testFileName || 'File uploaded'}</Text>
+                        <FontAwesome6 name="arrow-rotate-right" size={11} color={C.textMuted} />
+                      </View>
+                    ) : (
+                      <View style={styles.uploadBtnInner}>
+                        <FontAwesome6 name="arrow-up-from-bracket" size={14} color={C.secondary} />
+                        <Text style={styles.uploadBtnText}>Upload PDF or document</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>Duration (min)</Text>
+                  <TextInput value={testDuration} onChangeText={setTestDuration} keyboardType="numeric" placeholder="60" placeholderTextColor={C.textMuted} style={styles.input} />
                 </View>
 
                 <Pressable onPress={handleCreateTest} disabled={testSaving}
                   style={({ pressed }) => [styles.primaryButton, (testSaving || pressed) ? styles.pressed : null]}>
                   {testSaving ? <ActivityIndicator size="small" color={C.textInverse} /> : <Text style={styles.primaryButtonText}>Schedule Test</Text>}
                 </Pressable>
-              </View>
-            ) : (
-              adminTests.length === 0 ? (
-                <EmptyState icon="clipboard-list" title="No tests yet" body="Schedule a test first, then you can grade students here." />
-              ) : (
-                <View style={styles.stack}>
-                  {adminTests.map((test) => {
-                    return (
-                      <View key={test.id} style={styles.panelCard}>
-                        <View style={styles.panelHeaderRow}>
-                          <View style={styles.panelHeaderCopy}>
-                            <Text style={styles.panelTitle}>{test.title}</Text>
-                            <Text style={styles.panelSubtitle}>{test.courseId} · {formatDate(test.scheduledDate)} · {test.totalMarks} marks</Text>
-                          </View>
-                          <View style={[styles.statusChip, { backgroundColor: test.status === 'upcoming' ? C.warningSoft : C.successSoft }]}>
-                            <View style={[styles.statusDot, { backgroundColor: test.status === 'upcoming' ? C.warning : C.success }]} />
-                            <Text style={[styles.statusChipText, { color: test.status === 'upcoming' ? C.warning : C.success }]}>{test.status}</Text>
-                          </View>
-                        </View>
+            </View>
 
-                        {test.description ? (
-                          <View style={styles.noteBlock}>
-                            <Text style={styles.noteLabel}>Instructions</Text>
-                            <Text style={styles.noteBody}>{test.description}</Text>
-                          </View>
-                        ) : null}
+            {adminTests.length > 0 ? (
+              <View style={styles.stack}>
+                {adminTests.map((test) => (
+                  <View key={test.id} style={styles.panelCard}>
+                    <View style={styles.panelHeaderRow}>
+                      <View style={styles.panelHeaderCopy}>
+                        <Text style={styles.panelTitle}>{test.title}</Text>
+                        <Text style={styles.panelSubtitle}>{test.courseId.toUpperCase()} · {formatDate(test.scheduledDate)} · {test.durationMinutes} min</Text>
+                      </View>
+                      <Pressable
+                        onPress={() => handleDeleteTest(test.id, test.fileUrl)}
+                        style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}
+                      >
+                        <FontAwesome6 name="trash" size={13} color={C.danger} />
+                      </Pressable>
+                    </View>
 
-                        {test.submissions.length === 0 ? (
-                          <View style={[styles.banner, { backgroundColor: C.surfaceAlt }]}>
-                            <Text style={[styles.bannerText, { color: C.textMuted }]}>No student test submissions yet.</Text>
-                          </View>
-                        ) : (
-                          test.submissions.map((sub) => {
-                            const key = `${test.id}__${sub.userId}`;
-                            const isGrading = gradingTestKey === key;
-                            return (
-                              <View key={sub.userId} style={styles.subCard}>
-                                <View style={styles.subHeaderRow}>
-                                  <View style={{ flex: 1, gap: 2 }}>
-                                    <Text style={styles.subUserId}>{sub.studentName?.trim() || 'Student submission'}</Text>
-                                    <Text style={styles.subMeta}>{sub.studentEmail?.trim() || sub.userId}</Text>
-                                    <Text style={styles.subMeta}>
-                                      {formatDate(sub.submittedAt)} · {sub.status === 'graded' ? `Graded: ${sub.grade}/${test.totalMarks}` : 'Awaiting grade'}
-                                    </Text>
-                                  </View>
-                                  {sub.status !== 'graded' ? (
-                                    <Pressable
-                                      onPress={() => { setGradingTestKey(key); setTestScore(''); setTestFeedback(''); }}
-                                      style={({ pressed }) => [styles.gradeBtn, pressed ? styles.pressed : null]}>
-                                      <Text style={styles.gradeBtnText}>Grade</Text>
-                                    </Pressable>
-                                  ) : null}
+                    {test.description ? (
+                      <View style={styles.noteBlock}>
+                        <Text style={styles.noteLabel}>Instructions</Text>
+                        <Text style={styles.noteBody}>{test.description}</Text>
+                      </View>
+                    ) : null}
+
+                    {test.fileUrl ? (
+                      <Pressable
+                        onPress={() => Linking.openURL(test.fileUrl!)}
+                        style={({ pressed }) => [styles.fileChip, pressed && styles.pressed]}
+                      >
+                        <FontAwesome6 name="file-arrow-down" size={12} color={C.secondary} />
+                        <Text style={styles.fileChipText}>Test Paper Attached</Text>
+                        <FontAwesome6 name="arrow-up-right-from-square" size={11} color={C.textMuted} />
+                      </Pressable>
+                    ) : null}
+
+                    {test.submissions.length === 0 ? (
+                      <View style={[styles.banner, { backgroundColor: C.surfaceAlt }]}>
+                        <Text style={[styles.bannerText, { color: C.textMuted }]}>No submissions yet.</Text>
+                      </View>
+                    ) : (
+                      <View style={{ gap: 8, marginTop: 4 }}>
+                        {test.submissions.map((sub) => {
+                          const key = `${test.id}__${sub.userId}`;
+                          const isReviewing = reviewingTestKey === key;
+                          return (
+                            <View key={sub.userId} style={styles.subCard}>
+                              <View style={styles.subHeaderRow}>
+                                <View style={{ flex: 1, gap: 2 }}>
+                                  <Text style={styles.subUserId}>{sub.studentName?.trim() || 'Student'}</Text>
+                                  <Text style={styles.subMeta}>{sub.studentEmail?.trim() || sub.userId}</Text>
+                                  <Text style={styles.subMeta}>
+                                    {formatDate(sub.submittedAt)} · {sub.grade != null ? getOutcomeLabel(sub.grade) : 'Pending Review'}
+                                  </Text>
                                 </View>
-
-                                {sub.text ? (
-                                  <View style={styles.subTextCard}>
-                                    <Text style={styles.noteLabel}>Submission</Text>
-                                    <Text style={styles.noteBody}>{sub.text}</Text>
-                                  </View>
-                                ) : null}
-
-                                {sub.attachmentLink ? (
-                                  <Pressable onPress={() => Linking.openURL(sub.attachmentLink!)} style={styles.subTextCard}>
-                                    <Text style={styles.noteLabel}>Attached file link</Text>
-                                    <Text style={styles.noteBody}>{sub.attachmentLink}</Text>
+                                {sub.grade == null ? (
+                                  <Pressable
+                                    onPress={() => { setReviewingTestKey(key); setSelectedTestOutcome(null); setTestReviewFeedback(''); }}
+                                    style={({ pressed }) => [styles.gradeBtn, pressed && styles.pressed]}
+                                  >
+                                    <Text style={styles.gradeBtnText}>Review</Text>
                                   </Pressable>
                                 ) : null}
-
-                                {sub.feedback ? (
-                                  <View style={[styles.subTextCard, { backgroundColor: C.successSoft }]}>
-                                    <Text style={[styles.noteLabel, { color: C.success }]}>Feedback given</Text>
-                                    <Text style={styles.noteBody}>{sub.feedback}</Text>
-                                  </View>
-                                ) : null}
-
-                                {isGrading ? (
-                                  <View style={styles.gradeForm}>
-                                    <View style={styles.fieldGroup}>
-                                      <Text style={styles.fieldLabel}>Score (0–{test.totalMarks})</Text>
-                                      <TextInput value={testScore} onChangeText={setTestScore} keyboardType="numeric" placeholder="e.g. 78" placeholderTextColor={C.textMuted} style={styles.input} />
-                                    </View>
-                                    <View style={styles.fieldGroup}>
-                                      <Text style={styles.fieldLabel}>Feedback</Text>
-                                      <TextInput value={testFeedback} onChangeText={setTestFeedback} placeholder="Optional feedback for the student..." placeholderTextColor={C.textMuted} multiline textAlignVertical="top" style={styles.textArea} />
-                                    </View>
-                                    <View style={styles.buttonRow}>
-                                      <Pressable onPress={() => setGradingTestKey(null)} style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null]}>
-                                        <Text style={styles.secondaryButtonText}>Cancel</Text>
-                                      </Pressable>
-                                      <Pressable onPress={() => handleGradeTest(test, sub.userId)} disabled={testGradingSaving}
-                                        style={({ pressed }) => [styles.primaryButton, (testGradingSaving || pressed) ? styles.pressed : null]}>
-                                        {testGradingSaving ? <ActivityIndicator size="small" color={C.textInverse} /> : <Text style={styles.primaryButtonText}>Save Grade</Text>}
-                                      </Pressable>
-                                    </View>
-                                  </View>
-                                ) : null}
                               </View>
-                            );
-                          })
-                        )}
+
+                              {sub.text ? (
+                                <View style={styles.subTextCard}>
+                                  <Text style={styles.noteLabel}>Submission</Text>
+                                  <Text style={styles.noteBody}>{sub.text}</Text>
+                                </View>
+                              ) : null}
+                              {sub.attachmentLink ? (
+                                <Pressable
+                                  onPress={() => Linking.openURL(sub.attachmentLink!)}
+                                  style={({ pressed }) => [styles.fileChip, { alignSelf: 'flex-start' }, pressed && styles.pressed]}
+                                >
+                                  <FontAwesome6 name="file-arrow-down" size={12} color={C.secondary} />
+                                  <Text style={styles.fileChipText}>Open {sub.studentName?.trim() || 'Student'}'s File</Text>
+                                  <FontAwesome6 name="arrow-up-right-from-square" size={11} color={C.textMuted} />
+                                </Pressable>
+                              ) : null}
+
+                              {isReviewing ? (
+                                <View style={styles.gradeForm}>
+                                  <View style={styles.fieldGroup}>
+                                    <Text style={styles.fieldLabel}>Outcome</Text>
+                                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                                      {(['needs_revision', 'satisfactory', 'excellent'] as const).map((outcome) => {
+                                        const cfg = {
+                                          needs_revision: { label: 'Needs Revision', color: C.warning, bg: C.warningSoft },
+                                          satisfactory: { label: 'Satisfactory', color: C.secondary, bg: C.secondarySoft },
+                                          excellent: { label: 'Excellent', color: C.success, bg: C.successSoft },
+                                        }[outcome];
+                                        const isSelected = selectedTestOutcome === outcome;
+                                        return (
+                                          <Pressable
+                                            key={outcome}
+                                            onPress={() => setSelectedTestOutcome(outcome)}
+                                            style={[{
+                                              paddingHorizontal: 16, paddingVertical: 9,
+                                              borderRadius: 20, borderWidth: 1.5,
+                                              borderColor: isSelected ? cfg.color : C.border,
+                                              backgroundColor: isSelected ? cfg.bg : 'transparent',
+                                            }]}
+                                          >
+                                            <Text style={{ fontSize: 13, fontFamily: Fonts.sansSemiBold, color: isSelected ? cfg.color : C.textMuted }}>
+                                              {cfg.label}
+                                            </Text>
+                                          </Pressable>
+                                        );
+                                      })}
+                                    </View>
+                                  </View>
+                                  <View style={styles.fieldGroup}>
+                                    <Text style={styles.fieldLabel}>Feedback (optional)</Text>
+                                    <TextInput value={testReviewFeedback} onChangeText={setTestReviewFeedback} placeholder="Add comments for the student..." placeholderTextColor={C.textMuted} multiline textAlignVertical="top" style={styles.textArea} />
+                                  </View>
+                                  <View style={styles.buttonRow}>
+                                    <Pressable onPress={() => { setReviewingTestKey(null); setSelectedTestOutcome(null); setTestReviewFeedback(''); }} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
+                                      <Text style={styles.secondaryButtonText}>Cancel</Text>
+                                    </Pressable>
+                                    <Pressable onPress={() => handleReviewTest(test, sub.userId)} disabled={testReviewSaving}
+                                      style={({ pressed }) => [styles.primaryButton, (testReviewSaving || pressed) && styles.pressed]}>
+                                      {testReviewSaving ? <ActivityIndicator size="small" color={C.textInverse} /> : <Text style={styles.primaryButtonText}>Submit Review</Text>}
+                                    </Pressable>
+                                  </View>
+                                </View>
+                              ) : null}
+                            </View>
+                          );
+                        })}
                       </View>
-                    );
-                  })}
-                </View>
-              )
-            )}
+                    )}
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </>
         ) : null}
 
@@ -2189,6 +3228,131 @@ function AdminPanel() {
           )
         ) : null}
 
+        {activeView === 'registrations' ? (
+          registrations.length > 0 ? (
+            <View style={styles.stack}>
+              {registrations.map((reg) => (
+                <View key={reg.id} style={styles.panelCard}>
+                  <View style={styles.panelHeaderRow}>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={styles.panelTitle}>{reg.fullName}</Text>
+                      <Text style={styles.panelSubtitle}>{reg.email}</Text>
+                      <Text style={styles.panelSubtitle}>{reg.phone}</Text>
+                      <Text style={styles.panelSubtitle}>Course: {reg.courseInterest.toUpperCase()}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, {
+                      backgroundColor:
+                        reg.status === 'accepted' ? '#E8F2EE' :
+                        reg.status === 'letter_sent' ? '#EEF2F9' :
+                        reg.status === 'rejected' ? '#F9EFEC' : '#F4ECD2',
+                    }]}>
+                      <Text style={[styles.statusBadgeText, {
+                        color:
+                          reg.status === 'accepted' ? C.success :
+                          reg.status === 'letter_sent' ? C.secondary :
+                          reg.status === 'rejected' ? C.danger : C.warning,
+                      }]}>
+                        {reg.status === 'pending' ? 'Pending' :
+                         reg.status === 'letter_sent' ? 'Letter Sent' :
+                         reg.status === 'accepted' ? 'Accepted' : 'Rejected'}
+                      </Text>
+                    </View>
+                  </View>
+                  {reg.studentNumber ? (
+                    <Text style={styles.panelSubtitle}>Student No: {reg.studentNumber}</Text>
+                  ) : null}
+                  {reg.status === 'pending' && (
+                    <View style={{ gap: 8, marginTop: 8 }}>
+                      <TextInput
+                        value={studentNumberInputs[reg.id] ?? ''}
+                        onChangeText={(v) => setStudentNumberInputs((prev) => ({ ...prev, [reg.id]: v }))}
+                        placeholder="Assign student number"
+                        placeholderTextColor={C.textMuted}
+                        style={styles.input}
+                      />
+                      <Pressable
+                        onPress={() => handlePickLetterFile(reg.id)}
+                        disabled={uploadingLetterId === reg.id}
+                        style={({ pressed }) => [styles.uploadBtn, letterFileUrls[reg.id] ? styles.uploadBtnDone : null, pressed ? styles.pressed : null]}
+                      >
+                        {uploadingLetterId === reg.id ? (
+                          <View style={styles.uploadBtnInner}>
+                            <ActivityIndicator size="small" color={C.secondary} />
+                            <Text style={styles.uploadBtnText}>Uploading {Math.round(letterUploadProgress * 100)}%…</Text>
+                          </View>
+                        ) : letterFileUrls[reg.id] ? (
+                          <View style={styles.uploadBtnInner}>
+                            <FontAwesome6 name="circle-check" size={14} color={C.success} />
+                            <Text style={[styles.uploadBtnText, { color: C.success }]} numberOfLines={1}>{letterFileNames[reg.id] || 'Letter uploaded'}</Text>
+                            <FontAwesome6 name="arrow-rotate-right" size={11} color={C.textMuted} />
+                          </View>
+                        ) : (
+                          <View style={styles.uploadBtnInner}>
+                            <FontAwesome6 name="arrow-up-from-bracket" size={14} color={C.secondary} />
+                            <Text style={styles.uploadBtnText}>Upload Admission Letter (PDF)</Text>
+                          </View>
+                        )}
+                      </Pressable>
+                      <View style={styles.buttonRow}>
+                        <Pressable
+                          onPress={async () => {
+                            const sn = studentNumberInputs[reg.id]?.trim();
+                            if (!sn) { Alert.alert('Error', 'Please enter a student number.'); return; }
+                            if (!letterFileUrls[reg.id]) { Alert.alert('Error', 'Please upload the admission letter first.'); return; }
+                            setBusyRegId(reg.id);
+                            try {
+                              await sendAdmissionLetter(reg.id, reg.userId, sn, reg.fullName, reg.courseInterest, letterFileUrls[reg.id]);
+                              setStudentNumberInputs((prev) => ({ ...prev, [reg.id]: '' }));
+                              setLetterFileUrls((prev) => ({ ...prev, [reg.id]: '' }));
+                              setLetterFileNames((prev) => ({ ...prev, [reg.id]: '' }));
+                            } catch {
+                              Alert.alert('Error', 'Could not send admission letter.');
+                            } finally { setBusyRegId(null); }
+                          }}
+                          disabled={busyRegId === reg.id}
+                          style={({ pressed }) => [styles.primaryButton, (pressed || busyRegId === reg.id) ? styles.pressed : null]}
+                        >
+                          {busyRegId === reg.id
+                            ? <ActivityIndicator size="small" color={C.textInverse} />
+                            : <Text style={styles.primaryButtonText}>Send Admission Letter</Text>
+                          }
+                        </Pressable>
+                        <Pressable
+                          onPress={async () => {
+                            setBusyRegId(reg.id);
+                            try { await rejectRegistration(reg.id); }
+                            catch { Alert.alert('Error', 'Could not reject registration.'); }
+                            finally { setBusyRegId(null); }
+                          }}
+                          disabled={busyRegId === reg.id}
+                          style={({ pressed }) => [styles.secondaryButton, (pressed || busyRegId === reg.id) ? styles.pressed : null]}
+                        >
+                          <Text style={styles.secondaryButtonText}>Reject</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  )}
+
+                  {reg.status === 'letter_sent' && reg.letterUrl ? (
+                    <Pressable
+                      onPress={() => Linking.openURL(reg.letterUrl!)}
+                      style={({ pressed }) => [styles.fileChip, { marginTop: 8 }, pressed && styles.pressed]}
+                    >
+                      <FontAwesome6 name="file-arrow-down" size={12} color={C.secondary} />
+                      <Text style={styles.fileChipText}>View Sent Letter</Text>
+                      <FontAwesome6 name="arrow-up-right-from-square" size={11} color={C.textMuted} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No registrations yet.</Text>
+            </View>
+          )
+        ) : null}
+
         {activeView === 'team' ? (
           <View style={styles.stack}>
             <View style={styles.panelCard}>
@@ -2228,7 +3392,10 @@ function AdminPanel() {
                 return (
                   <View key={user.id} style={styles.panelCard}>
                     <Pressable
-                      onPress={() => setExpandedUserId(isExpanded ? null : user.id)}
+                      onPress={() => {
+                        setExpandedUserId(isExpanded ? null : user.id);
+                        setConfirmingUserId(null);
+                      }}
                       style={({ pressed }) => [
                         styles.teamDropdownHeader,
                         pressed && styles.pressed,
@@ -2263,21 +3430,54 @@ function AdminPanel() {
                           <Text style={[styles.panelSubtitle, { fontStyle: 'italic' }]}>
                             This is you — you cannot change your own role.
                           </Text>
+                        ) : confirmingUserId === user.id ? (
+                          <View style={{ gap: 6 }}>
+                            <Text style={[styles.panelSubtitle, { marginBottom: 2 }]}>
+                              {isAdmin
+                                ? `Remove admin access from ${user.fullName?.trim() || user.email}?`
+                                : `Make ${user.fullName?.trim() || user.email} an admin?`}
+                            </Text>
+                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                              <Pressable
+                                onPress={() => setConfirmingUserId(null)}
+                                disabled={isBusy}
+                                style={({ pressed }) => [
+                                  styles.outlineButton,
+                                  (pressed || isBusy) && styles.pressed,
+                                  { flex: 1 },
+                                ]}
+                              >
+                                <Text style={styles.outlineButtonText}>Cancel</Text>
+                              </Pressable>
+                              <Pressable
+                                onPress={() => handleToggleAdmin(user)}
+                                disabled={isBusy}
+                                style={({ pressed }) => [
+                                  isAdmin ? styles.dangerButton : styles.primaryButton,
+                                  (pressed || isBusy) && styles.pressed,
+                                  { flex: 1 },
+                                ]}
+                              >
+                                {isBusy
+                                  ? <ActivityIndicator size="small" color={C.textInverse} />
+                                  : <Text style={isAdmin ? styles.dangerButtonText : styles.primaryButtonText}>
+                                      Confirm
+                                    </Text>
+                                }
+                              </Pressable>
+                            </View>
+                          </View>
                         ) : (
                           <Pressable
-                            onPress={() => handleToggleAdmin(user)}
-                            disabled={isBusy}
+                            onPress={() => setConfirmingUserId(user.id)}
                             style={({ pressed }) => [
                               isAdmin ? styles.dangerButton : styles.primaryButton,
-                              (pressed || isBusy) && styles.pressed,
+                              pressed && styles.pressed,
                             ]}
                           >
-                            {isBusy
-                              ? <ActivityIndicator size="small" color={C.textInverse} />
-                              : <Text style={isAdmin ? styles.dangerButtonText : styles.primaryButtonText}>
-                                  {isAdmin ? 'Remove Admin Access' : 'Make Admin'}
-                                </Text>
-                            }
+                            <Text style={isAdmin ? styles.dangerButtonText : styles.primaryButtonText}>
+                              {isAdmin ? 'Remove Admin Access' : 'Make Admin'}
+                            </Text>
                           </Pressable>
                         )}
                       </View>
@@ -2860,6 +4060,42 @@ const styles = StyleSheet.create({
     borderTopColor: C.border,
     gap: 8,
   },
+  enrolledActions: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+    gap: 12,
+  },
+  sessionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: C.surfaceAlt,
+    borderRadius: 12,
+    padding: 10,
+  },
+  courseChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: C.border,
+    marginRight: 6,
+    marginBottom: 6,
+  },
+  courseChipActive: {
+    backgroundColor: C.primary,
+    borderColor: C.primary,
+  },
+  courseChipText: {
+    fontSize: 13,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.textSecondary,
+  },
+  courseChipTextActive: {
+    color: C.textInverse,
+  },
   outcomeBar: {
     borderRadius: 16,
     backgroundColor: C.surfaceAlt,
@@ -3368,6 +4604,41 @@ const styles = StyleSheet.create({
   materialUrlInput: {
     width: '100%',
   },
+  statusBadge: {
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: 'flex-start',
+  },
+  statusBadgeText: {
+    fontSize: 11, fontFamily: Fonts.sansBold,
+  },
+  emptyStateText: {
+    fontSize: 14, fontFamily: Fonts.sans, color: C.textMuted, textAlign: 'center',
+  },
+  fileChip: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    backgroundColor: '#EEF2F9',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignSelf: 'flex-start' as const,
+  },
+  fileChipText: {
+    fontSize: 13,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.secondary,
+    flex: 1,
+  },
+  uploadBtn: {
+    backgroundColor: C.surfaceAlt, borderWidth: 1, borderColor: C.border,
+    borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14,
+    borderStyle: 'dashed',
+  },
+  uploadBtnDone: {
+    backgroundColor: C.successSoft, borderColor: '#A8D5C0', borderStyle: 'solid',
+  },
+  uploadBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  uploadBtnText: { flex: 1, fontSize: 14, fontFamily: Fonts.sans, color: C.secondary },
   chatDivider: { height: 1, backgroundColor: C.border, marginVertical: 4 },
   chatMessages: { gap: 8 },
   chatBubble: { borderRadius: 12, padding: 10, gap: 2, maxWidth: '90%' },
@@ -3409,5 +4680,110 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontFamily: Fonts.sans,
     color: C.textMuted,
+  },
+  enrolledDivider: {
+    height: 1,
+    backgroundColor: C.border,
+    marginVertical: 4,
+  },
+  enrolledRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  enrolledLabel: {
+    fontSize: 14,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.textPrimary,
+  },
+  enrolledActionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  enrolledChipText: {
+    fontSize: 12,
+    fontFamily: Fonts.sansBold,
+  },
+  enrolledFullButton: {
+    minHeight: 52,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: C.primary,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  enrolledNudge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: C.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: C.surfaceAlt,
+  },
+  enrolledNudgeText: {
+    fontSize: 13,
+    fontFamily: Fonts.sansBold,
+    color: C.textPrimary,
+  },
+  enrolledDangerRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  enrolledDangerText: {
+    fontSize: 13,
+    fontFamily: Fonts.sansBold,
+    color: C.danger,
+  },
+  certOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  certSuccessCard: {
+    backgroundColor: C.surface,
+    borderRadius: 28,
+    padding: 28,
+    alignItems: 'center',
+    gap: 6,
+    width: '100%',
+    maxWidth: 360,
+  },
+  certSuccessIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: C.secondarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  certSuccessTitle: {
+    fontSize: 22,
+    fontFamily: Fonts.sansBold,
+    color: C.textPrimary,
+    marginTop: 4,
+  },
+  certSuccessName: {
+    fontSize: 16,
+    fontFamily: Fonts.sansSemiBold,
+    color: C.textPrimary,
+  },
+  certSuccessSub: {
+    fontSize: 14,
+    fontFamily: Fonts.sans,
+    color: C.textSecondary,
+    textAlign: 'center',
   },
 });

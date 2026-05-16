@@ -4,12 +4,15 @@ import {
   Test,
   TestGrade,
   TestSubmissionInput,
-  getApprovedApplications,
   submitTest,
   subscribeStudentTestGrades,
   subscribeTests,
+  subscribeUserApplications,
+  isPaymentLocked,
 } from '@/services/firestore';
+import { uploadFile } from '@/services/storage';
 import { FontAwesome6 } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -63,46 +66,22 @@ function formatDate(timestamp: unknown): string {
   });
 }
 
-function getTestStatus(test: Test) {
+function getOutcomeFromScore(score: number | null | undefined) {
+  if (score == null) return null;
+  if (score >= 90) return { label: 'Excellent', bg: C.successSoft, color: C.success };
+  if (score >= 70) return { label: 'Satisfactory', bg: C.secondarySoft, color: C.secondary };
+  return { label: 'Needs Revision', bg: C.warningSoft, color: C.warning };
+}
+
+function getTestStatus(test: Test, score?: number | null) {
   if (test.status === 'upcoming') return { label: 'Upcoming', bg: C.secondarySoft, color: C.secondary };
   if (test.status === 'submitted') return { label: 'Submitted', bg: C.warningSoft, color: C.warning };
   if (test.status === 'missed') return { label: 'Missed', bg: C.dangerSoft, color: C.danger };
-  const passed = test.score != null && test.score >= test.passMark;
-  return {
-    label: passed ? 'Passed' : 'Failed',
-    bg: passed ? C.successSoft : C.dangerSoft,
-    color: passed ? C.success : C.danger,
-  };
+  const outcome = getOutcomeFromScore(score ?? test.score);
+  if (outcome) return outcome;
+  return { label: 'Reviewed', bg: C.successSoft, color: C.success };
 }
 
-function ScoreBar({ score, total, pass }: { score: number; total: number; pass: number }) {
-  const pct = Math.min((score / total) * 100, 100);
-  const passed = score >= pass;
-  return (
-    <View style={styles.scoreBarContainer}>
-      <View style={styles.scoreBarTrack}>
-        <View
-          style={[
-            styles.scoreBarFill,
-            { width: `${pct}%`, backgroundColor: passed ? C.success : C.danger },
-          ]}
-        />
-        <View style={[styles.passLine, { left: `${(pass / total) * 100}%` }]} />
-      </View>
-      <View style={styles.scoreBarLabels}>
-        <Text style={styles.scoreBarText}>
-          <Text style={{ color: passed ? C.success : C.danger, fontFamily: Fonts.sansBold }}>
-            {score}/{total}
-          </Text>
-          {' '}marks
-        </Text>
-        <Text style={[styles.passFailTag, { color: passed ? C.success : C.danger }]}>
-          {passed ? 'Passed' : 'Failed'} (pass mark: {pass})
-        </Text>
-      </View>
-    </View>
-  );
-}
 
 function ActionButton({
   kind,
@@ -142,26 +121,47 @@ export default function TestsScreen() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [submissionText, setSubmissionText] = useState('');
-  const [attachmentDraft, setAttachmentDraft] = useState('');
+  const [attachmentUrl, setAttachmentUrl] = useState('');
+  const [attachmentFileName, setAttachmentFileName] = useState('');
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [fileUploadProgress, setFileUploadProgress] = useState(0);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [studentName, setStudentName] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
+  const [paymentLocked, setPaymentLocked] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) { setLoading(false); return; }
     let active = true;
-    const unsubscribers: (() => void)[] = [];
+    let testUnsubs: (() => void)[] = [];
+    let lastCourseKey = '';
 
-    getApprovedApplications(user.uid).then((approved) => {
+    const appUnsub = subscribeUserApplications(user.uid, (allApps) => {
       if (!active) return;
-      if (approved.length === 0) { setLoading(false); return; }
-      const primary = approved[0];
+      const activeApps = allApps.filter((a) => a.status === 'approved' || a.status === 'completed');
+      setPaymentLocked(activeApps.some(isPaymentLocked));
+
+      if (activeApps.length === 0) {
+        testUnsubs.forEach((u) => u());
+        testUnsubs = [];
+        setTests([]);
+        setLoading(false);
+        return;
+      }
+
+      const primary = activeApps[0];
       setStudentName(primary.fullName?.trim() || user.displayName || '');
       setStudentEmail(primary.email?.trim() || user.email || '');
 
-      const perCourse: Record<string, Test[]> = {};
+      const newKey = activeApps.map((a) => a.courseId).sort().join(',');
+      if (newKey === lastCourseKey) return;
+      lastCourseKey = newKey;
 
-      approved.forEach((app) => {
+      testUnsubs.forEach((u) => u());
+      testUnsubs = [];
+
+      const perCourse: Record<string, Test[]> = {};
+      activeApps.forEach((app) => {
         perCourse[app.courseId] = [];
         const unsub = subscribeTests(user.uid!, app.courseId, (data) => {
           perCourse[app.courseId] = data;
@@ -170,11 +170,11 @@ export default function TestsScreen() {
             .filter((t, i, arr) => arr.findIndex((x) => x.id === t.id) === i);
           if (active) { setTests(merged); setLoading(false); }
         });
-        unsubscribers.push(unsub);
+        testUnsubs.push(unsub);
       });
-    }).catch(() => { if (active) setLoading(false); });
+    });
 
-    return () => { active = false; unsubscribers.forEach((u) => u()); };
+    return () => { active = false; appUnsub(); testUnsubs.forEach((u) => u()); };
   }, [user?.uid, user?.displayName, user?.email]);
 
   useEffect(() => {
@@ -186,11 +186,32 @@ export default function TestsScreen() {
     return testGrades.find((g) => g.testId === testId);
   }
 
+  async function handlePickTestFile(testId: string) {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const file = result.assets[0];
+      setUploadingFile(true);
+      setFileUploadProgress(0);
+      const path = `test-submissions/${testId}/${user!.uid}/${Date.now()}_${file.name}`;
+      const url = await uploadFile(path, file.uri, setFileUploadProgress);
+      setAttachmentUrl(url);
+      setAttachmentFileName(file.name);
+    } catch {
+      Alert.alert('Upload failed', 'Could not upload the file. Please try again.');
+    } finally {
+      setUploadingFile(false);
+    }
+  }
+
   async function handleSubmit(test: Test) {
     const draft = submissionText.trim();
-    const attachmentLink = attachmentDraft.trim();
-    if (!draft && !attachmentLink) {
-      Alert.alert('Nothing to submit', 'Enter a response, paste a share link, or do both before submitting.');
+    const attachmentLink = attachmentUrl;
+    if (!attachmentLink) {
+      Alert.alert('File required', 'Please upload a file before submitting your test.');
       return;
     }
     if (!user?.uid) return;
@@ -220,7 +241,8 @@ export default function TestsScreen() {
       );
       setExpandedId(null);
       setSubmissionText('');
-      setAttachmentDraft('');
+      setAttachmentUrl('');
+      setAttachmentFileName('');
       Alert.alert('Submitted!', 'Your test response has been submitted successfully. Admin can now review it.');
     } catch {
       Alert.alert('Error', 'Could not submit your test response. Please try again.');
@@ -249,7 +271,7 @@ export default function TestsScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.safe}
-        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
         <ScrollView
@@ -295,11 +317,10 @@ export default function TestsScreen() {
               <Text style={[styles.summaryNum, { color: C.success }]}>
                 {results.filter((t) => {
                   const grade = getGradeForTest(t.id);
-                  const score = grade?.score ?? t.score;
-                  return score != null && score >= t.passMark;
+                  return (grade?.score ?? t.score) != null;
                 }).length}
               </Text>
-              <Text style={[styles.summaryLabel, { color: C.success }]}>Passed</Text>
+              <Text style={[styles.summaryLabel, { color: C.success }]}>Reviewed</Text>
             </View>
           </View>
         )}
@@ -327,7 +348,20 @@ export default function TestsScreen() {
         </View>
 
         {/* Content */}
-        {loading ? (
+        {paymentLocked ? (
+          <View style={styles.centerCard}>
+            <FontAwesome6 name="lock" size={28} color="#E65100" style={{ marginBottom: 12 }} />
+            <Text style={[styles.emptyTitle, { color: '#E65100' }]}>Access Restricted</Text>
+            <Text style={styles.emptyText}>
+              Your course is approaching completion and an outstanding balance remains. Please complete your full payment to regain access to tests.
+            </Text>
+            <Pressable onPress={() => router.push('/(main)/explore')} style={({ pressed }) => [{ marginTop: 8 }, pressed && { opacity: 0.6 }]}>
+              <Text style={[styles.emptyText, { color: C.secondary, textDecorationLine: 'underline' }]}>
+                Contact GIAC to confirm your payment.
+              </Text>
+            </Pressable>
+          </View>
+        ) : loading ? (
           <View style={styles.centerCard}>
             <ActivityIndicator color={C.secondary} />
           </View>
@@ -359,11 +393,9 @@ export default function TestsScreen() {
             {displayed.map((test) => {
               const grade = getGradeForTest(test.id);
               const effectiveScore = grade?.score ?? test.score;
-              const effectiveTotal = grade?.totalMarks ?? test.totalMarks;
-              const effectivePass = grade?.passMark ?? test.passMark;
-              const isGraded = effectiveScore != null;
-              const displayStatus = isGraded ? 'graded' : test.status;
-              const ts = getTestStatus({ ...test, status: displayStatus, score: effectiveScore });
+              const isReviewed = effectiveScore != null;
+              const displayStatus = isReviewed ? 'graded' : test.status;
+              const ts = getTestStatus({ ...test, status: displayStatus }, effectiveScore);
               const isExpanded = expandedId === test.id;
               return (
               <View key={test.id} style={styles.card}>
@@ -390,19 +422,18 @@ export default function TestsScreen() {
                     <FontAwesome6 name="clock" size={12} color={C.textMuted} />
                     <Text style={styles.metaText}>{test.durationMinutes} min</Text>
                   </View>
-                  <View style={styles.metaItem}>
-                    <FontAwesome6 name="star" size={12} color={C.textMuted} />
-                    <Text style={styles.metaText}>{effectiveTotal} marks</Text>
-                  </View>
-                  <View style={styles.metaItem}>
-                    <FontAwesome6 name="check-circle" size={12} color={C.textMuted} />
-                    <Text style={styles.metaText}>Pass: {effectivePass}</Text>
-                  </View>
                 </View>
 
-                {isGraded && (
-                  <ScoreBar score={effectiveScore!} total={effectiveTotal} pass={effectivePass} />
-                )}
+                {isReviewed && (() => {
+                  const outcome = getOutcomeFromScore(effectiveScore);
+                  if (!outcome) return null;
+                  return (
+                    <View style={[styles.outcomeCard, { backgroundColor: outcome.bg }]}>
+                      <FontAwesome6 name="circle-check" size={14} color={outcome.color} />
+                      <Text style={[styles.outcomeText, { color: outcome.color }]}>{outcome.label}</Text>
+                    </View>
+                  );
+                })()}
 
                 {test.status === 'submitted' && test.submissionText ? (
                   <View style={styles.submittedCard}>
@@ -412,9 +443,13 @@ export default function TestsScreen() {
                 ) : null}
 
                 {test.status !== 'upcoming' && test.attachmentLink ? (
-                  <Pressable onPress={() => Linking.openURL(test.attachmentLink!)} style={styles.linkCard}>
-                    <Text style={styles.submittedLabel}>Attached file link</Text>
-                    <Text style={styles.submittedText}>{test.attachmentLink}</Text>
+                  <Pressable
+                    onPress={() => Linking.openURL(test.attachmentLink!)}
+                    style={({ pressed }) => [styles.fileBtn, pressed && styles.pressed]}
+                  >
+                    <FontAwesome6 name="file-circle-check" size={14} color={C.success} />
+                    <Text style={[styles.fileBtnText, { color: C.success }]}>View Your Submitted File</Text>
+                    <FontAwesome6 name="arrow-up-right-from-square" size={12} color={C.textMuted} />
                   </Pressable>
                 ) : null}
 
@@ -425,13 +460,24 @@ export default function TestsScreen() {
                   </View>
                 ) : null}
 
+                {test.fileUrl ? (
+                  <Pressable
+                    onPress={() => Linking.openURL(test.fileUrl!)}
+                    style={styles.fileDownloadBtn}
+                  >
+                    <FontAwesome6 name="file-arrow-down" size={14} color={C.secondary} />
+                    <Text style={styles.fileDownloadText}>Download Test Paper</Text>
+                  </Pressable>
+                ) : null}
+
                 {test.status === 'upcoming' ? (
                   <>
                     <TouchableOpacity
                       onPress={() => {
                         setExpandedId(isExpanded ? null : test.id);
                         setSubmissionText('');
-                        setAttachmentDraft('');
+                        setAttachmentUrl('');
+                        setAttachmentFileName('');
                       }}
                       style={[styles.submitToggle, isExpanded ? styles.submitToggleActive : null]}
                     >
@@ -457,15 +503,35 @@ export default function TestsScreen() {
                           onChangeText={setSubmissionText}
                           textAlignVertical="top"
                         />
-                        <TextInput
-                          style={styles.linkInput}
-                          placeholder="PDF/DOC share link"
-                          placeholderTextColor={C.textMuted}
-                          value={attachmentDraft}
-                          onChangeText={setAttachmentDraft}
-                          autoCapitalize="none"
-                          keyboardType="url"
-                        />
+                        <Pressable
+                          onPress={() => handlePickTestFile(test.id)}
+                          disabled={uploadingFile}
+                          style={({ pressed }) => [
+                            styles.uploadBtn,
+                            attachmentUrl ? styles.uploadBtnDone : null,
+                            pressed ? styles.pressed : null,
+                          ]}
+                        >
+                          {uploadingFile ? (
+                            <View style={styles.uploadBtnInner}>
+                              <ActivityIndicator size="small" color={C.secondary} />
+                              <Text style={styles.uploadBtnText}>Uploading {Math.round(fileUploadProgress * 100)}%…</Text>
+                            </View>
+                          ) : attachmentUrl ? (
+                            <View style={styles.uploadBtnInner}>
+                              <FontAwesome6 name="circle-check" size={14} color={C.success} />
+                              <Text style={[styles.uploadBtnText, { color: C.success }]} numberOfLines={1}>
+                                {attachmentFileName || 'File uploaded'}
+                              </Text>
+                              <FontAwesome6 name="arrow-rotate-right" size={11} color={C.textMuted} />
+                            </View>
+                          ) : (
+                            <View style={styles.uploadBtnInner}>
+                              <FontAwesome6 name="arrow-up-from-bracket" size={14} color={C.secondary} />
+                              <Text style={styles.uploadBtnText}>Upload file (PDF, Word, image)</Text>
+                            </View>
+                          )}
+                        </Pressable>
                         <TouchableOpacity
                           style={styles.submitBtn}
                           onPress={() => handleSubmit(test)}
@@ -596,19 +662,11 @@ const styles = StyleSheet.create({
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   metaText: { fontSize: 13, fontFamily: Fonts.sans, color: C.textMuted },
 
-  scoreBarContainer: { gap: 8 },
-  scoreBarTrack: {
-    height: 8, backgroundColor: C.border, borderRadius: 999, position: 'relative',
+  outcomeCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, alignSelf: 'flex-start',
   },
-  scoreBarFill: { height: '100%', borderRadius: 999 },
-  passLine: {
-    position: 'absolute', top: 0, bottom: 0, width: 2, backgroundColor: '#1F2A44',
-  },
-  scoreBarLabels: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
-  scoreBarText: { fontSize: 14, fontFamily: Fonts.sans, color: C.textSecondary },
-  passFailTag: { fontSize: 13, fontFamily: Fonts.sansSemiBold },
+  outcomeText: { fontSize: 13, fontFamily: Fonts.sansBold },
   pressed: {
     opacity: 0.92,
   },
@@ -711,4 +769,21 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sansSemiBold,
     color: C.surface,
   },
+  uploadBtn: {
+    borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.border,
+    borderRadius: 12, paddingVertical: 14, paddingHorizontal: 14,
+  },
+  uploadBtnDone: { borderStyle: 'solid', borderColor: C.success, backgroundColor: '#EDF5EC' },
+  uploadBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  uploadBtnText: { flex: 1, fontSize: 14, fontFamily: Fonts.sans, color: C.secondary },
+  fileDownloadBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: C.secondarySoft, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+  },
+  fileDownloadText: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.secondary },
+  fileBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: C.successSoft, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+  },
+  fileBtnText: { flex: 1, fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.success },
 });

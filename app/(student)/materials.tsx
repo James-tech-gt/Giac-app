@@ -2,9 +2,10 @@ import { Fonts } from '@/constants/theme';
 import { auth } from '@/services/firebase';
 import {
   Material,
-  getApprovedApplications,
   resolveCourseFromReference,
   subscribeMaterials,
+  subscribeUserApplications,
+  isPaymentLocked,
 } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -74,28 +75,26 @@ export default function MaterialsScreen() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [loadingMaterials, setLoadingMaterials] = useState(false);
+  const [lockedCourseIds, setLockedCourseIds] = useState<Set<string>>(new Set());
 
-  // Load enrolled courses from approved applications
+  // Real-time enrolled courses from active applications
   useEffect(() => {
+    if (!user?.uid) { setLoadingCourses(false); return; }
     let active = true;
-    async function load() {
-      if (!user?.uid) { if (active) setLoadingCourses(false); return; }
-      try {
-        const approved = await getApprovedApplications(user.uid);
-        const courses = approved.map((app) => ({
-          courseId: app.courseId,
-          courseLabel: resolveCourseFromReference(app.courseId)?.program ?? app.courseId.toUpperCase(),
-        }));
-        if (active) {
-          setEnrolledCourses(courses);
-          setSelectedCourseId((currentCourseId) => currentCourseId || courses[0]?.courseId || '');
-        }
-      } finally {
-        if (active) setLoadingCourses(false);
-      }
-    }
-    load();
-    return () => { active = false; };
+    const unsub = subscribeUserApplications(user.uid, (allApps) => {
+      if (!active) return;
+      const activeApps = allApps.filter((a) => a.status === 'approved' || a.status === 'completed');
+      const courses = activeApps.map((app) => ({
+        courseId: app.courseId,
+        courseLabel: resolveCourseFromReference(app.courseId)?.program ?? app.courseId.toUpperCase(),
+      }));
+      const locked = new Set(activeApps.filter(isPaymentLocked).map((a) => a.courseId));
+      setEnrolledCourses(courses);
+      setLockedCourseIds(locked);
+      setSelectedCourseId((cur) => cur || courses[0]?.courseId || '');
+      setLoadingCourses(false);
+    });
+    return () => { active = false; unsub(); };
   }, [user?.uid]);
 
   // Real-time materials listener
@@ -161,7 +160,20 @@ export default function MaterialsScreen() {
           </View>
         )}
 
-        {loadingCourses ? (
+        {lockedCourseIds.has(selectedCourseId) ? (
+          <View style={styles.centerCard}>
+            <FontAwesome6 name="lock" size={28} color="#E65100" style={{ marginBottom: 12 }} />
+            <Text style={[styles.emptyTitle, { color: '#E65100' }]}>Access Restricted</Text>
+            <Text style={styles.emptyText}>
+              Your course is approaching completion and an outstanding balance remains. Please complete your full payment to regain access to learning materials.
+            </Text>
+            <Pressable onPress={() => router.push('/(main)/explore')} style={({ pressed }) => [{ marginTop: 8 }, pressed && { opacity: 0.6 }]}>
+              <Text style={[styles.emptyText, { color: C.secondary, textDecorationLine: 'underline' }]}>
+                Contact GIAC to confirm your payment.
+              </Text>
+            </Pressable>
+          </View>
+        ) : loadingCourses ? (
           <View style={styles.centerCard}>
             <ActivityIndicator color={C.secondary} />
           </View>

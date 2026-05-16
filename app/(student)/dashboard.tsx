@@ -4,10 +4,16 @@ import {
   Application,
   Course,
   LearningProgress,
-  getApprovedApplications,
+  Session,
+  PersonalSession,
   getLearningProgress,
   resolveCourseFromReference,
+  subscribeUserApplications,
+  subscribeSessionsByCourse,
+  subscribePersonalSessions,
 } from '@/services/firestore';
+import { getDisplayRole } from '@/services/access';
+import { Linking } from 'react-native';
 import NotificationBell from '@/components/notification-bell';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -71,42 +77,78 @@ export default function StudentDashboardScreen() {
   const displayName = user?.displayName?.split(' ')[0] ?? 'Student';
 
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [personalSessions, setPersonalSessions] = useState<PersonalSession[]>([]);
+  const [allApplications, setAllApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    let active = true;
+    if (!user?.uid) { setLoading(false); return; }
 
-    async function load() {
-      if (!user?.uid) {
-        if (active) setLoading(false);
+    let active = true;
+    let sessionUnsubs: (() => void)[] = [];
+    let personalUnsub: (() => void) | null = null;
+    let lastCourseKey = '';
+
+    const appUnsub = subscribeUserApplications(user.uid, async (allApps) => {
+      if (active) setAllApplications(allApps);
+      const activeApps = allApps.filter((a) => a.status === 'approved' || a.status === 'completed');
+
+      if (activeApps.length === 0) {
+        if (active) { setEnrolledCourses([]); setLoading(false); }
         return;
       }
 
       try {
-        const approved = await getApprovedApplications(user.uid);
-
         const courseData = await Promise.all(
-          approved.map(async (app) => {
+          activeApps.map(async (app) => {
             const course = resolveCourseFromReference(app.courseId);
-            const progress = await getLearningProgress(user.uid, app.courseId);
+            const progress = await getLearningProgress(user.uid!, app.courseId);
             return { application: app, course, progress };
           })
         );
+        if (!active) return;
+        setEnrolledCourses(courseData);
+        setError('');
+        setLoading(false);
 
-        if (active) {
-          setEnrolledCourses(courseData);
-          setError('');
+        const newCourseKey = activeApps.map((a) => a.courseId).sort().join(',');
+        if (newCourseKey !== lastCourseKey) {
+          lastCourseKey = newCourseKey;
+          sessionUnsubs.forEach((u) => u());
+          sessionUnsubs = [];
+          const allSessions: Session[] = [];
+          const seen = new Set<string>();
+          activeApps.forEach((app) => {
+            const unsub = subscribeSessionsByCourse(app.courseId, (s) => {
+              s.forEach((sess) => { if (!seen.has(sess.id)) { seen.add(sess.id); allSessions.push(sess); } });
+              if (active) setSessions([...allSessions].sort((a, b) => {
+                const aT = a.scheduledDate?.toDate?.()?.getTime?.() ?? 0;
+                const bT = b.scheduledDate?.toDate?.()?.getTime?.() ?? 0;
+                return aT - bT;
+              }));
+            });
+            sessionUnsubs.push(unsub);
+          });
+        }
+
+        if (!personalUnsub) {
+          personalUnsub = subscribePersonalSessions(user.uid!, (s) => {
+            if (active) setPersonalSessions(s);
+          });
         }
       } catch {
-        if (active) setError('Could not load your dashboard. Please try again.');
-      } finally {
-        if (active) setLoading(false);
+        if (active) { setError('Could not load your dashboard. Please try again.'); setLoading(false); }
       }
-    }
+    });
 
-    load();
-    return () => { active = false; };
+    return () => {
+      active = false;
+      appUnsub();
+      sessionUnsubs.forEach((u) => u());
+      if (personalUnsub) personalUnsub();
+    };
   }, [user?.uid]);
 
   return (
@@ -127,7 +169,7 @@ export default function StudentDashboardScreen() {
           </TouchableOpacity>
           <View style={[styles.rolePill, { backgroundColor: C.secondarySoft }]}>
             <FontAwesome6 name="graduation-cap" size={11} color={C.secondary} />
-            <Text style={styles.rolePillText}>Active Student</Text>
+            <Text style={styles.rolePillText}>{getDisplayRole({ applications: allApplications })}</Text>
           </View>
           <View style={{ flex: 1 }} />
           <NotificationBell color={C.primary} />
@@ -172,8 +214,7 @@ export default function StudentDashboardScreen() {
           ) : (
             enrolledCourses.map(({ application, course, progress }) => {
               const pct = progress?.progressPercentage ?? 0;
-              const completed = progress?.completedModules?.length ?? 0;
-              const total = progress?.totalModules ?? course?.modules ?? 0;
+              const isCompleted = application.courseCompleted === true;
 
               return (
                 <View key={application.id} style={styles.courseCard}>
@@ -200,12 +241,18 @@ export default function StudentDashboardScreen() {
                     <Text style={styles.courseMetaText}>{course?.platform ?? 'Virtual'}</Text>
                   </View>
 
+                  {/* Congratulations banner */}
+                  {isCompleted ? (
+                    <View style={styles.completedBanner}>
+                      <FontAwesome6 name="circle-check" size={16} color="#2D6A4F" />
+                      <Text style={styles.completedBannerText}>Congratulations! You have completed this course.</Text>
+                    </View>
+                  ) : null}
+
                   {/* Progress bar */}
                   <View style={styles.progressSection}>
                     <View style={styles.progressLabelRow}>
-                      <Text style={styles.progressLabel}>
-                        {completed} of {total} modules
-                      </Text>
+                      <Text style={styles.progressLabel}>Progress</Text>
                       <Text style={styles.progressPct}>{pct}%</Text>
                     </View>
                     <View style={styles.progressTrack}>
@@ -235,41 +282,49 @@ export default function StudentDashboardScreen() {
           )}
         </View>
 
-        {/* Class Schedule */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Class Schedule</Text>
-          <View style={styles.scheduleCard}>
-            <View style={styles.scheduleRow}>
-              <View style={[styles.scheduleIcon, { backgroundColor: C.accentSoft }]}>
-                <FontAwesome6 name="calendar-days" size={16} color={C.accent} />
-              </View>
-              <View style={styles.scheduleText}>
-                <Text style={styles.scheduleDay}>Mon · Wed · Fri</Text>
-                <Text style={styles.scheduleTime}>5:30 PM – 8:30 PM</Text>
-              </View>
-            </View>
-            <View style={styles.scheduleDivider} />
-            <View style={styles.scheduleRow}>
-              <View style={[styles.scheduleIcon, { backgroundColor: C.secondarySoft }]}>
-                <FontAwesome6 name="video" size={14} color={C.secondary} />
-              </View>
-              <View style={styles.scheduleText}>
-                <Text style={styles.scheduleDay}>Virtual Sessions</Text>
-                <Text style={styles.scheduleTime}>Google Meet / Zoom</Text>
-              </View>
-            </View>
-            <View style={styles.scheduleDivider} />
-            <View style={styles.scheduleRow}>
-              <View style={[styles.scheduleIcon, { backgroundColor: C.successSoft }]}>
-                <FontAwesome6 name="location-dot" size={14} color={C.success} />
-              </View>
-              <View style={styles.scheduleText}>
-                <Text style={styles.scheduleDay}>Practical Sessions</Text>
-                <Text style={styles.scheduleTime}>In-person · Kasoa</Text>
-              </View>
+        {/* Virtual Sessions */}
+        {(sessions.length > 0 || personalSessions.length > 0) ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>Virtual Sessions</Text>
+            <View style={styles.scheduleCard}>
+              {[...sessions, ...personalSessions]
+                .sort((a, b) => {
+                  const aT = a.scheduledDate?.toDate?.()?.getTime?.() ?? 0;
+                  const bT = b.scheduledDate?.toDate?.()?.getTime?.() ?? 0;
+                  return aT - bT;
+                })
+                .map((session, index) => {
+                  const date = session.scheduledDate?.toDate?.() ?? null;
+                  const dateStr = date
+                    ? date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+                    : '';
+                  const timeStr = date
+                    ? date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                    : '';
+                  return (
+                    <View key={session.id}>
+                      {index > 0 && <View style={styles.scheduleDivider} />}
+                      <TouchableOpacity
+                        style={styles.scheduleRow}
+                        onPress={() => Linking.openURL(session.zoomLink)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.scheduleIcon, { backgroundColor: C.secondarySoft }]}>
+                          <FontAwesome6 name="video" size={14} color={C.secondary} />
+                        </View>
+                        <View style={styles.scheduleText}>
+                          <Text style={styles.scheduleDay}>{session.title}</Text>
+                          <Text style={styles.scheduleTime}>{dateStr}{timeStr ? ` · ${timeStr}` : ''}</Text>
+                          <Text style={[styles.scheduleTime, { color: C.secondary, marginTop: 2 }]}>Tap to join</Text>
+                        </View>
+                        <FontAwesome6 name="arrow-up-right-from-square" size={12} color={C.secondary} />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
             </View>
           </View>
-        </View>
+        ) : null}
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -447,6 +502,21 @@ const styles = StyleSheet.create({
   },
   dot: { fontSize: 13, color: C.textMuted },
 
+  completedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#E8F2EE',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 4,
+  },
+  completedBannerText: {
+    flex: 1,
+    fontFamily: Fonts.sansSemiBold,
+    fontSize: 13,
+    color: '#2D6A4F',
+  },
   progressSection: { gap: 6 },
   progressLabelRow: { flexDirection: 'row', justifyContent: 'space-between' },
   progressLabel: {

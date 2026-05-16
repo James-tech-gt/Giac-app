@@ -2,6 +2,7 @@ import {
     addDoc,
     collection,
     deleteDoc,
+    deleteField,
     doc,
     getDoc,
     getDocs,
@@ -60,7 +61,7 @@ export interface AnnouncementInput {
 
 export interface AdminNotification {
   id: string;
-  type: 'application' | 'service' | 'account';
+  type: 'application' | 'service' | 'account' | 'registration';
   message: string;
   referenceId: string;
   userId: string;
@@ -78,12 +79,28 @@ export interface Application {
   fullName?: string;
   email?: string;
   phone?: string;
-  status: 'pending' | 'approved' | 'rejected' | 'withdrawn';
+  whatsapp?: string;
+  location?: string;
+  educationLevel?: string;
+  certificateLink?: string;
+  areaOfStudy?: string;
+  occupation?: string;
+  organization?: string;
+  motivation?: string;
+  paymentMode?: string;
+  transactionRef?: string;
+  receiptLink?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'withdrawn' | 'completed';
   documents: string[];
   feedback: string;
   submittedAt: any;
   decidedAt?: any;
   withdrawnAt?: any;
+  courseCompleted?: boolean;
+  completedAt?: any;
+  paymentStatus?: 'partial' | 'full';
+  accessLocked?: boolean;
+  certificateUrl?: string;
 }
 
 export interface ApplicationInput {
@@ -104,6 +121,8 @@ export interface ApplicationInput {
   organization?: string;
   motivation?: string;
   paymentMode?: string;
+  transactionRef?: string;
+  receiptLink?: string;
   message?: string;
 }
 
@@ -254,7 +273,7 @@ function isCurrentApplicationRecord(application: Application) {
 
 // ─── Internal helpers ───────────────────────────────────────────────────────
 export async function createAdminNotification(data: {
-  type: 'application' | 'service' | 'account';
+  type: 'application' | 'service' | 'account' | 'registration';
   message: string;
   referenceId: string;
   userId: string;
@@ -511,11 +530,27 @@ export async function getUserApplications(userId: string): Promise<Application[]
             courseTitle: pickField<string>(data, 'courseTitle', 'CourseTitle'),
             courseProgram: pickField<string>(data, 'courseProgram', 'CourseProgram'),
             courseDuration: pickField<string>(data, 'courseDuration', 'CourseDuration'),
+            fullName: pickField<string>(data, 'fullName', 'FullName'),
+            email: pickField<string>(data, 'email', 'Email'),
+            phone: pickField<string>(data, 'phone', 'Phone'),
+            whatsapp: data.whatsapp,
+            location: data.location,
+            educationLevel: data.educationLevel,
+            certificateLink: data.certificateLink,
+            areaOfStudy: data.areaOfStudy,
+            occupation: data.occupation,
+            organization: data.organization,
+            motivation: data.motivation,
+            paymentMode: data.paymentMode,
+            transactionRef: data.transactionRef,
+            receiptLink: data.receiptLink,
             status: pickField<Application['status']>(data, 'status', 'Status') ?? 'pending',
             documents: pickField<string[]>(data, 'documents', 'Documents') ?? [],
             feedback: pickField<string>(data, 'feedback', 'Feedback') ?? '',
             submittedAt: pickField<any>(data, 'submittedAt', 'SubmittedAt'),
             decidedAt: pickField<any>(data, 'decidedAt', 'DecidedAt'),
+            courseCompleted: data.courseCompleted ?? false,
+            completedAt: data.completedAt,
           });
         });
 
@@ -558,11 +593,30 @@ export function subscribeUserApplications(
             courseTitle: pickField<string>(data, 'courseTitle', 'CourseTitle'),
             courseProgram: pickField<string>(data, 'courseProgram', 'CourseProgram'),
             courseDuration: pickField<string>(data, 'courseDuration', 'CourseDuration'),
+            fullName: pickField<string>(data, 'fullName', 'FullName'),
+            email: pickField<string>(data, 'email', 'Email'),
+            phone: pickField<string>(data, 'phone', 'Phone'),
+            whatsapp: data.whatsapp,
+            location: data.location,
+            educationLevel: data.educationLevel,
+            certificateLink: data.certificateLink,
+            areaOfStudy: data.areaOfStudy,
+            occupation: data.occupation,
+            organization: data.organization,
+            motivation: data.motivation,
+            paymentMode: data.paymentMode,
+            transactionRef: data.transactionRef,
+            receiptLink: data.receiptLink,
             status: pickField<Application['status']>(data, 'status', 'Status') ?? 'pending',
             documents: pickField<string[]>(data, 'documents', 'Documents') ?? [],
             feedback: pickField<string>(data, 'feedback', 'Feedback') ?? '',
             submittedAt: pickField<any>(data, 'submittedAt', 'SubmittedAt'),
             decidedAt: pickField<any>(data, 'decidedAt', 'DecidedAt'),
+            courseCompleted: data.courseCompleted ?? false,
+            completedAt: data.completedAt,
+            paymentStatus: data.paymentStatus ?? 'partial',
+            accessLocked: data.accessLocked ?? false,
+            certificateUrl: data.certificateUrl,
           };
         })
         .filter(isCurrentApplicationRecord);
@@ -594,6 +648,18 @@ export async function getApplicationById(applicationId: string): Promise<Applica
       courseTitle: pickField<string>(data, 'courseTitle', 'CourseTitle'),
       courseProgram: pickField<string>(data, 'courseProgram', 'CourseProgram'),
       courseDuration: pickField<string>(data, 'courseDuration', 'CourseDuration'),
+      fullName: pickField<string>(data, 'fullName', 'FullName'),
+      email: pickField<string>(data, 'email', 'Email'),
+      phone: pickField<string>(data, 'phone', 'Phone'),
+      whatsapp: data.whatsapp,
+      location: data.location,
+      educationLevel: data.educationLevel,
+      certificateLink: data.certificateLink,
+      areaOfStudy: data.areaOfStudy,
+      occupation: data.occupation,
+      organization: data.organization,
+      motivation: data.motivation,
+      paymentMode: data.paymentMode,
       status: pickField<Application['status']>(data, 'status', 'Status') ?? 'pending',
       documents: pickField<string[]>(data, 'documents', 'Documents') ?? [],
       feedback: pickField<string>(data, 'feedback', 'Feedback') ?? '',
@@ -629,6 +695,8 @@ export async function createApplication(input: ApplicationInput): Promise<void> 
       organization: input.organization?.trim() ?? '',
       motivation: input.motivation?.trim() ?? '',
       paymentMode: input.paymentMode?.trim() ?? '',
+      transactionRef: input.transactionRef?.trim() ?? '',
+      receiptLink: input.receiptLink?.trim() ?? '',
       status: 'pending',
       documents: [],
       feedback: input.message?.trim() ?? '',
@@ -647,6 +715,23 @@ export async function createApplication(input: ApplicationInput): Promise<void> 
 }
 
 export async function deleteApplication(applicationId: string): Promise<void> {
+  const appSnap = await getDoc(doc(db, COLLECTIONS.applications, applicationId));
+  if (appSnap.exists()) {
+    const data = appSnap.data();
+    const userId = pickField<string>(data, 'userId', 'UserId') ?? '';
+    const courseId = pickField<string>(data, 'courseId', 'CourseId') ?? '';
+    if (userId && courseId) {
+      const progressQ = query(
+        collection(db, 'LearningProgress'),
+        where('userId', '==', userId),
+        where('courseId', '==', courseId)
+      );
+      const progressSnap = await getDocs(progressQ);
+      for (const d of progressSnap.docs) {
+        await deleteDoc(d.ref);
+      }
+    }
+  }
   await deleteDoc(doc(db, COLLECTIONS.applications, applicationId));
 }
 
@@ -970,6 +1055,7 @@ export interface Assignment {
   description: string;
   deadline: any;
   maxGrade: number;
+  fileUrl?: string;
   submittedAt?: any;
   submissionText?: string;
   attachmentLink?: string;
@@ -1010,6 +1096,7 @@ export function subscribeAssignments(
           description: data.description ?? '',
           deadline: data.deadline,
           maxGrade: data.maxGrade ?? 100,
+          fileUrl: data.fileUrl ?? '',
           submittedAt: userSub?.submittedAt,
           submissionText: userSub?.text,
           attachmentLink: userSub?.attachmentLink,
@@ -1096,6 +1183,7 @@ export interface Test {
   durationMinutes: number;
   totalMarks: number;
   passMark: number;
+  fileUrl?: string;
   submittedAt?: any;
   submissionText?: string;
   attachmentLink?: string;
@@ -1146,6 +1234,7 @@ export function subscribeTests(
             durationMinutes: data.durationMinutes ?? 60,
             totalMarks: data.totalMarks ?? 100,
             passMark: data.passMark ?? 50,
+            fileUrl: data.fileUrl ?? '',
             submittedAt: userSub?.submittedAt,
             submissionText: userSub?.text,
             attachmentLink: userSub?.attachmentLink,
@@ -1256,10 +1345,174 @@ export async function getCertificates(userId: string): Promise<Certificate[]> {
   }
 }
 
+export async function issueCertificate(params: {
+  applicationId: string;
+  userId: string;
+  courseId: string;
+  courseTitle: string;
+  program: string;
+  studentName: string;
+  certificateUrl: string;
+}): Promise<string> {
+  const credentialId = `GIAC-${params.courseId.toUpperCase().slice(0, 6)}-${Date.now().toString(36).toUpperCase()}`;
+  const docRef = await addDoc(collection(db, 'Certificates'), {
+    userId: params.userId,
+    courseId: params.courseId,
+    courseTitle: params.courseTitle,
+    program: params.program,
+    issueDate: serverTimestamp(),
+    certificateUrl: params.certificateUrl,
+    credentialId,
+  });
+  await updateDoc(doc(db, COLLECTIONS.applications, params.applicationId), {
+    certificateUrl: params.certificateUrl,
+  });
+  createStudentNotification(
+    params.userId,
+    `Your certificate for "${params.courseTitle}" is ready. Tap to download.`,
+    'certificate_issued',
+    docRef.id
+  ).catch(() => {});
+  return credentialId;
+}
+
+export async function deleteCertificate(
+  applicationId: string,
+  userId: string,
+  courseId: string
+): Promise<void> {
+  const q = query(
+    collection(db, 'Certificates'),
+    where('userId', '==', userId),
+    where('courseId', '==', courseId)
+  );
+  const snap = await getDocs(q);
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+  // Revert to enrolled state — student goes back to learning until cert is re-issued
+  await updateDoc(doc(db, COLLECTIONS.applications, applicationId), {
+    certificateUrl: deleteField(),
+    courseCompleted: false,
+    status: 'approved',
+    completedAt: deleteField(),
+  });
+}
+
+// ─── Course Registration ──────────────────────────────────────────────────────
+export interface CourseRegistration {
+  id: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  courseInterest: 'pecadr' | 'pemadr';
+  status: 'pending' | 'letter_sent' | 'accepted' | 'rejected';
+  studentNumber: string;
+  letterUrl?: string;
+  submittedAt: any;
+  updatedAt: any;
+}
+
+export async function createCourseRegistration(input: {
+  userId: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  courseInterest: 'pecadr' | 'pemadr';
+}): Promise<void> {
+  const docRef = await addDoc(collection(db, 'CourseRegistrations'), {
+    userId: input.userId,
+    fullName: input.fullName.trim(),
+    email: input.email.trim(),
+    phone: input.phone.trim(),
+    courseInterest: input.courseInterest,
+    status: 'pending',
+    studentNumber: '',
+    submittedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+
+  createAdminNotification({
+    type: 'registration',
+    message: `${input.fullName.trim()} submitted a course registration for ${input.courseInterest.toUpperCase()}.`,
+    referenceId: docRef.id,
+    userId: input.userId,
+  }).catch(() => {});
+}
+
+export function subscribeUserRegistration(
+  userId: string,
+  callback: (reg: CourseRegistration | null) => void
+): () => void {
+  const q = query(collection(db, 'CourseRegistrations'), where('userId', '==', userId));
+  return onSnapshot(q, (snap) => {
+    if (snap.empty) { callback(null); return; }
+    const d = snap.docs[0];
+    callback({ id: d.id, ...d.data() } as CourseRegistration);
+  }, () => callback(null));
+}
+
+export function subscribePendingRegistrations(
+  callback: (regs: CourseRegistration[]) => void
+): () => void {
+  const q = query(collection(db, 'CourseRegistrations'), where('status', '==', 'pending'));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as CourseRegistration)));
+  });
+}
+
+export function subscribeAllRegistrations(
+  callback: (regs: CourseRegistration[]) => void
+): () => void {
+  return onSnapshot(collection(db, 'CourseRegistrations'), (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as CourseRegistration)));
+  });
+}
+
+export async function sendAdmissionLetter(
+  registrationId: string,
+  userId: string,
+  studentNumber: string,
+  studentName: string,
+  courseInterest: string,
+  letterUrl?: string,
+): Promise<void> {
+  await updateDoc(doc(db, 'CourseRegistrations', registrationId), {
+    status: 'letter_sent',
+    studentNumber: studentNumber.trim(),
+    ...(letterUrl ? { letterUrl } : {}),
+    updatedAt: serverTimestamp(),
+  });
+  await createStudentNotification(
+    userId,
+    `Congratulations ${studentName}! Your student number is ${studentNumber}. Tap to accept your admission and begin your ${courseInterest.toUpperCase()} journey.`,
+    'admission_letter',
+    registrationId,
+  );
+}
+
+export async function acceptAdmissionLetter(registrationId: string): Promise<void> {
+  await updateDoc(doc(db, 'CourseRegistrations', registrationId), {
+    status: 'accepted',
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function rejectRegistration(registrationId: string): Promise<void> {
+  await updateDoc(doc(db, 'CourseRegistrations', registrationId), {
+    status: 'rejected',
+    updatedAt: serverTimestamp(),
+  });
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 export async function getApprovedApplications(userId: string): Promise<Application[]> {
   const apps = await getUserApplications(userId);
   return apps.filter((a) => a.status === 'approved');
+}
+
+export async function getActiveApplications(userId: string): Promise<Application[]> {
+  const apps = await getUserApplications(userId);
+  return apps.filter((a) => a.status === 'approved' || a.status === 'completed');
 }
 
 // ─── Admin ───────────────────────────────────────────────────────────────────
@@ -1310,6 +1563,15 @@ export function getAllPendingApplications(
         fullName: pickField<string>(data, 'fullName', 'FullName'),
         email: pickField<string>(data, 'email', 'Email'),
         phone: pickField<string>(data, 'phone', 'Phone'),
+        whatsapp: data.whatsapp,
+        location: data.location,
+        educationLevel: data.educationLevel,
+        certificateLink: data.certificateLink,
+        areaOfStudy: data.areaOfStudy,
+        occupation: data.occupation,
+        organization: data.organization,
+        motivation: data.motivation,
+        paymentMode: data.paymentMode,
         status: 'pending' as const,
         documents: pickField<string[]>(data, 'documents', 'Documents') ?? [],
         feedback: pickField<string>(data, 'feedback', 'Feedback') ?? '',
@@ -1340,11 +1602,27 @@ export function subscribeAllApplications(
             fullName: pickField<string>(data, 'fullName', 'FullName'),
             email: pickField<string>(data, 'email', 'Email'),
             phone: pickField<string>(data, 'phone', 'Phone'),
+            whatsapp: data.whatsapp,
+            location: data.location,
+            educationLevel: data.educationLevel,
+            certificateLink: data.certificateLink,
+            areaOfStudy: data.areaOfStudy,
+            occupation: data.occupation,
+            organization: data.organization,
+            motivation: data.motivation,
+            paymentMode: data.paymentMode,
+            transactionRef: data.transactionRef,
+            receiptLink: data.receiptLink,
             status: pickField<Application['status']>(data, 'status', 'Status') ?? 'pending',
             documents: pickField<string[]>(data, 'documents', 'Documents') ?? [],
             feedback: pickField<string>(data, 'feedback', 'Feedback') ?? '',
             submittedAt: pickField<any>(data, 'submittedAt', 'SubmittedAt'),
             decidedAt: pickField<any>(data, 'decidedAt', 'DecidedAt'),
+            courseCompleted: data.courseCompleted ?? false,
+            completedAt: data.completedAt,
+            paymentStatus: data.paymentStatus ?? 'partial',
+            accessLocked: data.accessLocked ?? false,
+            certificateUrl: data.certificateUrl,
           };
         })
         .filter(isCurrentApplicationRecord)
@@ -1419,20 +1697,70 @@ export function subscribeAllServices(
   );
 }
 
+export function isPaymentLocked(application: Application): boolean {
+  return application.accessLocked === true;
+}
+
+export async function updatePaymentStatus(
+  applicationId: string,
+  status: 'partial' | 'full'
+): Promise<void> {
+  const update: Record<string, unknown> = { paymentStatus: status };
+  if (status === 'full') update.accessLocked = false;
+  await updateDoc(doc(db, COLLECTIONS.applications, applicationId), update);
+}
+
+export async function toggleAccessLock(
+  applicationId: string,
+  locked: boolean
+): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.applications, applicationId), { accessLocked: locked });
+}
+
 export async function approveApplication(
   applicationId: string,
   userId: string,
-  courseTitle?: string
+  courseTitle?: string,
+  courseId?: string
 ): Promise<void> {
   const batch = writeBatch(db);
   batch.update(doc(db, COLLECTIONS.applications, applicationId), {
     status: 'approved',
     decidedAt: serverTimestamp(),
+    courseCompleted: false,
+    completedAt: null,
+    paymentStatus: 'partial',
+    accessLocked: false,
   });
   if (userId) {
     batch.set(doc(db, COLLECTIONS.users, userId), { role: 'student' }, { merge: true });
   }
   await batch.commit();
+
+  // Reset any existing learning progress so new enrolments always start at 0%
+  if (userId && courseId) {
+    const progressQ = query(
+      collection(db, 'LearningProgress'),
+      where('userId', '==', userId),
+      where('courseId', '==', courseId)
+    );
+    const snap = await getDocs(progressQ);
+    if (snap.empty) {
+      await addDoc(collection(db, 'LearningProgress'), {
+        userId,
+        courseId,
+        progressPercentage: 0,
+        completedModules: [],
+        totalModules: 0,
+        lastAccessed: serverTimestamp(),
+      });
+    } else {
+      await updateDoc(doc(db, 'LearningProgress', snap.docs[0].id), {
+        progressPercentage: 0,
+      });
+    }
+  }
+
   if (userId) {
     const msg = courseTitle
       ? `Your application for ${courseTitle} has been approved. Welcome to GIAC!`
@@ -1465,6 +1793,10 @@ export async function updateUserRole(
   role: UserRole
 ): Promise<void> {
   await updateDoc(doc(db, COLLECTIONS.users, userId), { role });
+}
+
+export async function updateUserPushToken(uid: string, pushToken: string): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.users, uid), { pushToken });
 }
 
 export function subscribeAdminNotifications(
@@ -1662,13 +1994,17 @@ export interface StudentNotification {
     | 'test_graded'
     | 'application_approved'
     | 'application_rejected'
+    | 'admission_letter'
     | 'material_posted'
     | 'assignment_posted'
     | 'test_posted'
     | 'case_assigned'
     | 'case_updated'
     | 'case_completed'
-    | 'case_message';
+    | 'case_message'
+    | 'course_completed'
+    | 'session_posted'
+    | 'certificate_issued';
   message: string;
   referenceId: string;
   read: boolean;
@@ -1798,6 +2134,14 @@ export async function deleteMaterial(materialId: string): Promise<void> {
   await deleteDoc(doc(db, 'Materials', materialId));
 }
 
+export async function deleteAssignment(assignmentId: string): Promise<void> {
+  await deleteDoc(doc(db, 'Assignments', assignmentId));
+}
+
+export async function deleteTest(testId: string): Promise<void> {
+  await deleteDoc(doc(db, 'Tests', testId));
+}
+
 export function subscribeAllMaterials(
   callback: (materials: Material[]) => void
 ): () => void {
@@ -1833,6 +2177,7 @@ export interface CreateAssignmentInput {
   description: string;
   deadlineIso: string;
   maxGrade: number;
+  fileUrl?: string;
 }
 
 export interface AdminSubmission {
@@ -1854,6 +2199,7 @@ export interface AdminAssignment {
   description: string;
   deadline: any;
   maxGrade: number;
+  fileUrl?: string;
   submissions: AdminSubmission[];
 }
 
@@ -1865,6 +2211,7 @@ export async function createAdminAssignment(input: CreateAssignmentInput): Promi
     description: input.description.trim(),
     deadline: new Date(input.deadlineIso),
     maxGrade: input.maxGrade,
+    ...(input.fileUrl ? { fileUrl: input.fileUrl } : {}),
     createdAt: serverTimestamp(),
   });
   notifyEnrolledStudents(
@@ -1908,6 +2255,7 @@ export function subscribeAdminAssignments(
           description: data.description ?? '',
           deadline: data.deadline,
           maxGrade: data.maxGrade ?? 100,
+          fileUrl: data.fileUrl ?? '',
           submissions,
         };
       });
@@ -1930,7 +2278,7 @@ export async function gradeAssignmentSubmission(
   });
   await createStudentNotification(
     userId,
-    `Your assignment "${assignmentTitle}" has been graded. Score: ${grade}`,
+    `Your assignment "${assignmentTitle}" has been reviewed.${feedback ? ' Admin has left feedback for you.' : ''}`,
     'assignment_graded',
     assignmentId
   );
@@ -1952,6 +2300,7 @@ export interface CreateTestInput {
   durationMinutes: number;
   totalMarks: number;
   passMark: number;
+  fileUrl?: string;
 }
 
 export interface TestGrade {
@@ -1988,6 +2337,7 @@ export interface AdminTest {
   durationMinutes: number;
   totalMarks: number;
   passMark: number;
+  fileUrl?: string;
   status: 'upcoming' | 'submitted' | 'graded' | 'completed' | 'missed';
   submissions: AdminTestSubmission[];
 }
@@ -2002,6 +2352,7 @@ export async function createAdminTest(input: CreateTestInput): Promise<void> {
     durationMinutes: input.durationMinutes,
     totalMarks: input.totalMarks,
     passMark: input.passMark,
+    ...(input.fileUrl ? { fileUrl: input.fileUrl } : {}),
     status: 'upcoming',
     createdAt: serverTimestamp(),
   });
@@ -2048,6 +2399,7 @@ export function subscribeAdminTests(
           durationMinutes: data.durationMinutes ?? 60,
           totalMarks: data.totalMarks ?? 100,
           passMark: data.passMark ?? 50,
+          fileUrl: data.fileUrl ?? '',
           status: data.status ?? 'upcoming',
           submissions,
         };
@@ -2097,7 +2449,7 @@ export async function gradeTestSubmission(
   });
   await createStudentNotification(
     userId,
-    `Your test "${testTitle}" has been graded. Score: ${score}/${totalMarks}`,
+    `Your test "${testTitle}" has been reviewed.${feedback ? ' Admin has left feedback for you.' : ''}`,
     'test_graded',
     testId
   );
@@ -2133,4 +2485,229 @@ export function subscribeStudentTestGrades(
     },
     () => callback([])
   );
+}
+
+// ─── Course Completion ────────────────────────────────────────────────────────
+
+export async function markCourseComplete(
+  applicationId: string,
+  userId: string,
+  courseId: string,
+  courseName: string
+): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.applications, applicationId), {
+    courseCompleted: true,
+    completedAt: serverTimestamp(),
+    status: 'completed',
+  });
+  const progressQuery = query(
+    collection(db, 'LearningProgress'),
+    where('userId', '==', userId),
+    where('courseId', '==', courseId)
+  );
+  const snap = await getDocs(progressQuery);
+  if (snap.empty) {
+    await addDoc(collection(db, 'LearningProgress'), {
+      userId,
+      courseId,
+      progressPercentage: 100,
+      completedModules: [],
+      totalModules: 0,
+      lastAccessed: serverTimestamp(),
+    });
+  } else {
+    await updateDoc(doc(db, 'LearningProgress', snap.docs[0].id), {
+      progressPercentage: 100,
+    });
+  }
+  await createStudentNotification(
+    userId,
+    `Congratulations! You have completed "${courseName}".`,
+    'course_completed',
+    applicationId
+  );
+}
+
+export async function setStudentProgress(
+  userId: string,
+  courseId: string,
+  percentage: number
+): Promise<void> {
+  const q = query(
+    collection(db, 'LearningProgress'),
+    where('userId', '==', userId),
+    where('courseId', '==', courseId)
+  );
+  const snap = await getDocs(q);
+  const clamped = Math.min(100, Math.max(0, Math.round(percentage)));
+  if (snap.empty) {
+    await addDoc(collection(db, 'LearningProgress'), {
+      userId,
+      courseId,
+      progressPercentage: clamped,
+      completedModules: [],
+      totalModules: 0,
+      lastAccessed: serverTimestamp(),
+    });
+  } else {
+    await updateDoc(doc(db, 'LearningProgress', snap.docs[0].id), {
+      progressPercentage: clamped,
+    });
+  }
+}
+
+// ─── Virtual Sessions ─────────────────────────────────────────────────────────
+
+export interface Session {
+  id: string;
+  courseId: string;
+  title: string;
+  scheduledDate: any;
+  zoomLink: string;
+  createdAt: any;
+}
+
+export interface CreateSessionInput {
+  courseId: string;
+  title: string;
+  scheduledDateIso: string;
+  zoomLink: string;
+}
+
+export async function createSession(input: CreateSessionInput): Promise<void> {
+  const title = input.title.trim();
+  const docRef = await addDoc(collection(db, 'Sessions'), {
+    courseId: input.courseId,
+    title,
+    scheduledDate: new Date(input.scheduledDateIso),
+    zoomLink: input.zoomLink.trim(),
+    createdAt: serverTimestamp(),
+  });
+  notifyEnrolledStudents(
+    input.courseId,
+    `Virtual session scheduled: "${title}"`,
+    'session_posted',
+    docRef.id
+  ).catch(() => {});
+}
+
+export function subscribeSessionsByCourse(
+  courseId: string,
+  callback: (sessions: Session[]) => void
+): () => void {
+  const q = query(
+    collection(db, 'Sessions'),
+    where('courseId', '==', courseId),
+    orderBy('scheduledDate', 'asc')
+  );
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const sessions: Session[] = snapshot.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          courseId: data.courseId ?? '',
+          title: data.title ?? '',
+          scheduledDate: data.scheduledDate,
+          zoomLink: data.zoomLink ?? '',
+          createdAt: data.createdAt,
+        };
+      });
+      callback(sessions);
+    },
+    () => callback([])
+  );
+}
+
+export function subscribeAdminSessions(
+  callback: (sessions: Session[]) => void
+): () => void {
+  const q = query(collection(db, 'Sessions'), orderBy('scheduledDate', 'asc'));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const sessions: Session[] = snapshot.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          courseId: data.courseId ?? '',
+          title: data.title ?? '',
+          scheduledDate: data.scheduledDate,
+          zoomLink: data.zoomLink ?? '',
+          createdAt: data.createdAt,
+        };
+      });
+      callback(sessions);
+    },
+    () => callback([])
+  );
+}
+
+export async function deleteSession(sessionId: string): Promise<void> {
+  await deleteDoc(doc(db, 'Sessions', sessionId));
+}
+
+// ─── Personal Sessions ────────────────────────────────────────────────────────
+
+export interface PersonalSession {
+  id: string;
+  userId: string;
+  title: string;
+  scheduledDate: any;
+  zoomLink: string;
+  createdAt: any;
+}
+
+export async function createPersonalSession(input: {
+  userId: string;
+  title: string;
+  scheduledDateIso: string;
+  zoomLink: string;
+}): Promise<void> {
+  await addDoc(collection(db, 'PersonalSessions'), {
+    userId: input.userId,
+    title: input.title.trim(),
+    scheduledDate: new Date(input.scheduledDateIso),
+    zoomLink: input.zoomLink.trim(),
+    createdAt: serverTimestamp(),
+  });
+  await createStudentNotification(
+    input.userId,
+    `A virtual session has been scheduled for you: "${input.title.trim()}"`,
+    'session_posted',
+    input.userId
+  );
+}
+
+export function subscribePersonalSessions(
+  userId: string,
+  callback: (sessions: PersonalSession[]) => void
+): () => void {
+  const q = query(
+    collection(db, 'PersonalSessions'),
+    where('userId', '==', userId),
+    orderBy('scheduledDate', 'asc')
+  );
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      callback(snapshot.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          userId: data.userId ?? '',
+          title: data.title ?? '',
+          scheduledDate: data.scheduledDate,
+          zoomLink: data.zoomLink ?? '',
+          createdAt: data.createdAt,
+        };
+      }));
+    },
+    () => callback([])
+  );
+}
+
+export async function deletePersonalSession(sessionId: string): Promise<void> {
+  await deleteDoc(doc(db, 'PersonalSessions', sessionId));
 }

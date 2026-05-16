@@ -1,0 +1,72 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Course materials — admin uploads, any signed-in user can read
+    match /materials/{courseId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write, delete: if isAdmin();
+    }
+
+    // Assignment submissions — students upload their own, admin can read all
+    match /submissions/{assignmentId}/{userId}/{fileName} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if isAdmin();
+    }
+
+    // Certificates — admin uploads, owner can read
+    match /certificates/{userId}/{fileName} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow write, delete: if isAdmin();
+    }
+
+    // Payment receipts — uploader can read/write their own
+    match /receipts/{userId}/{fileName} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if isAdmin();
+    }
+
+    // Educational certificate proofs uploaded during application
+    match /edu-proofs/{userId}/{fileName} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if isAdmin();
+    }
+
+    // Admission letters — admin uploads, the specific student can read
+    match /admission-letters/{registrationId}/{fileName} {
+      allow read: if isAdmin() || isSignedIn();
+      allow write, delete: if isAdmin();
+    }
+
+    // Admin-uploaded assignment instruction files
+    match /assignment-files/{courseId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write, delete: if isAdmin();
+    }
+
+    // Admin-uploaded test instruction files
+    match /test-files/{courseId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write, delete: if isAdmin();
+    }
+
+    // Student test submissions (file uploads)
+    match /test-submissions/{testId}/{userId}/{fileName} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -9,15 +9,20 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "icon": "./assets/images/giac-logo.png"
+      "icon": "./assets/images/giac-logo.png",
+      "bundleIdentifier": "com.giac.app",
+      "buildNumber": "1"
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/giac-logo.png",
         "backgroundColor": "#FFFFFF"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.giacapp"
+      "package": "com.giac.app",
+      "versionCode": 1
     },
     "web": {
       "output": "static",
@@ -39,8 +44,15 @@
           }
         }
       ],
-    
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/giac-logo.png",
+          "color": "#1F2A44",
+          "defaultChannel": "default"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -54,4 +66,3 @@
     }
   }
 }
-  

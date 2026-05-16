@@ -97,7 +97,9 @@ service cloud.firestore {
 
     match /Tests/{testId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
     match /TestSubmissions/{submissionId} {
@@ -122,6 +124,35 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isAdmin() || (isSignedIn() && request.resource.data.senderId == request.auth.uid);
       allow update, delete: if isAdmin();
+    }
+
+    match /Sessions/{sessionId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /LearningProgress/{progressId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /PersonalSessions/{sessionId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /Certificates/{certificateId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /CourseRegistrations/{regId} {
+      allow list: if isAdmin() || isSignedIn();
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.status == 'accepted');
+      allow delete: if isAdmin();
     }
   }
 }

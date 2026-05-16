@@ -238,7 +238,8 @@ function CaseCard({ service, user, autoOpen = false }: { service: Service; user:
             </View>
           ) : (
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+            style={styles.chatWrap}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 18 : 0}
           >
             <Text style={styles.chatTitle}>In Progress — Messages with GIAC</Text>
@@ -248,6 +249,9 @@ function CaseCard({ service, user, autoOpen = false }: { service: Service; user:
               contentContainerStyle={{ gap: 10, padding: 12 }}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+              nestedScrollEnabled
+              onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
             >
               {messages.length === 0 ? (
                 <Text style={styles.chatEmpty}>No messages yet. Send a message to your mediator below.</Text>
@@ -485,7 +489,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 4, paddingBottom: 2,
     borderTopWidth: 1, borderTopColor: C.border,
   },
-  chatScroll: { maxHeight: 260 },
+  chatWrap: {
+    marginTop: 2,
+  },
+  chatScroll: { maxHeight: 320 },
   chatEmpty: { fontSize: 13, fontFamily: Fonts.sans, color: C.textMuted, textAlign: 'center', paddingVertical: 12 },
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   bubbleRowMe: { flexDirection: 'row-reverse' },

@@ -60,6 +60,9 @@ function getStatusTone(status: Application['status']) {
   if (status === 'approved') {
     return { label: 'Approved', color: C.success, bg: C.successSoft, border: '#C9D8BE' };
   }
+  if (status === 'completed') {
+    return { label: 'Completed', color: C.success, bg: C.successSoft, border: '#C9D8BE' };
+  }
   if (status === 'rejected') {
     return { label: 'Rejected', color: C.danger, bg: C.dangerSoft, border: '#E7C8C0' };
   }
@@ -79,7 +82,7 @@ function StatusChip({
   const tone =
     status === 'submitted'
       ? { label: 'Submitted', color: C.secondary, bg: C.primarySoft, border: '#D4DCEB' }
-      : getStatusTone(status);
+      : getStatusTone(status as Application['status']);
 
   return (
     <View style={[styles.statusChip, { backgroundColor: tone.bg, borderColor: tone.border }]}>
@@ -159,8 +162,9 @@ function ApplicationCTA({
 }
 
 function StatusTimeline({ status }: { status: Application['status'] }) {
+  const isCompleted = status === 'completed';
   const finalLabel =
-    status === 'approved' ? 'Approved' : status === 'rejected' ? 'Rejected' : 'Decision';
+    status === 'approved' || isCompleted ? 'Approved' : status === 'rejected' ? 'Rejected' : 'Decision';
 
   const steps = [
     { label: 'Submitted', state: 'done' as const },
@@ -171,14 +175,16 @@ function StatusTimeline({ status }: { status: Application['status'] }) {
     {
       label: finalLabel,
       state:
-        status === 'approved' || status === 'rejected'
+        status === 'approved' || status === 'rejected' || isCompleted
           ? ('done' as const)
           : ('idle' as const),
     },
     {
-      label: 'Onboarding',
+      label: isCompleted ? 'Completed' : 'Onboarding',
       state:
-        status === 'approved'
+        isCompleted
+          ? ('done' as const)
+          : status === 'approved'
           ? ('active' as const)
           : ('idle' as const),
     },
@@ -331,6 +337,7 @@ export default function ApplicationStatusScreen() {
   const pendingCount = activeApplications.filter((application) => application.status === 'pending').length;
   const approvedCount = activeApplications.filter((application) => application.status === 'approved').length;
   const rejectedCount = activeApplications.filter((application) => application.status === 'rejected').length;
+  const completedCount = activeApplications.filter((application) => application.status === 'completed').length;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -359,14 +366,14 @@ export default function ApplicationStatusScreen() {
           </Text>
           <View style={styles.statusChipRail}>
             <StatusChip status="approved" count={approvedCount} />
+            <StatusChip status="completed" count={completedCount} />
             <StatusChip status="pending" count={pendingCount} />
             <StatusChip status="rejected" count={rejectedCount} />
-            <StatusChip status="submitted" count={activeApplications.length} />
           </View>
           <View style={styles.metaPillRail}>
             <MetaPill label={`${activeApplications.length} total applications`} />
-            <MetaPill label={`${approvedCount} accepted by admin`} brass />
-            <MetaPill label={`${rejectedCount} need action`} outline />
+            <MetaPill label={`${completedCount} completed`} brass />
+            <MetaPill label={`${approvedCount} active`} outline />
           </View>
           <View style={styles.statRow}>
             <View style={styles.statCard}>
@@ -375,11 +382,11 @@ export default function ApplicationStatusScreen() {
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>{approvedCount}</Text>
-              <Text style={styles.statLabel}>Approved</Text>
+              <Text style={styles.statLabel}>Active</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statValue}>{rejectedCount}</Text>
-              <Text style={styles.statLabel}>Rejected</Text>
+              <Text style={styles.statValue}>{completedCount}</Text>
+              <Text style={styles.statLabel}>Completed</Text>
             </View>
           </View>
         </View>
@@ -458,16 +465,32 @@ export default function ApplicationStatusScreen() {
                         ? 'Your application has been received and is currently under review.'
                         : application.status === 'approved'
                           ? 'Your application was approved. Watch for your next onboarding or course access update.'
-                          : 'Your application was reviewed. Please check back or contact GIAC for next steps.'}
+                          : application.status === 'completed'
+                            ? 'Congratulations! You have successfully completed this course. Your certificate is ready.'
+                            : 'Your application was reviewed. Please check back or contact GIAC for next steps.'}
                   </Text>
                 </View>
                 <StatusTimeline status={application.status} />
                 <View style={styles.ctaRow}>
+                  {application.status === 'completed' ? (
+                    <>
+                      <ApplicationCTA
+                        kind="primary"
+                        label="View Certificate"
+                        onPress={() => router.push('/(student)/certificates' as any)}
+                      />
+                      <ApplicationCTA
+                        kind="secondary"
+                        label="My Dashboard"
+                        onPress={() => router.push('/(student)/dashboard')}
+                      />
+                    </>
+                  ) : null}
                   {application.status === 'approved' ? (
                     <>
                       <ApplicationCTA
                         kind="primary"
-                        label="Continue"
+                        label="Continue Learning"
                         onPress={() => router.push('/(student)/dashboard')}
                       />
                       <ApplicationCTA

@@ -109,6 +109,10 @@ function navigateForNotif(item: StudentNotification) {
     case 'test_graded':
       router.push('/(student)/tests' as any);
       break;
+    case 'certificate_issued':
+    case 'course_completed':
+      router.push('/(student)/dashboard' as any);
+      break;
   }
 }
 
@@ -119,7 +123,8 @@ function hasPersonalNavTarget(item: StudentNotification): boolean {
     item.type === 'application_approved' || item.type === 'application_rejected' ||
     item.type === 'material_posted' || item.type === 'assignment_posted' ||
     item.type === 'assignment_graded' || item.type === 'test_posted' ||
-    item.type === 'test_graded'
+    item.type === 'test_graded' || item.type === 'certificate_issued' ||
+    item.type === 'course_completed'
   );
 }
 
@@ -235,16 +240,22 @@ function PersonalNotifItem({ item }: { item: StudentNotification }) {
 }
 
 function AdminNotifItem({ item }: { item: AdminNotification }) {
-  const tappable = item.type === 'service' || item.type === 'application';
+  const tappable = item.type === 'service' || item.type === 'application' || item.type === 'registration';
+
+  function handlePress() {
+    if (item.type === 'application') {
+      router.push({ pathname: '/admin', params: { openAdmissions: '1' } } as any);
+    } else if (item.type === 'registration') {
+      router.push({ pathname: '/admin', params: { openRegistrations: '1' } } as any);
+    } else if (item.type === 'service') {
+      router.push({ pathname: '/admin', params: { openCaseId: item.referenceId } } as any);
+    }
+  }
 
   return (
     <Pressable
       style={({ pressed }) => [styles.item, styles.courseItem, pressed && { opacity: 0.85 }]}
-      onPress={tappable
-        ? () => router.push(item.type === 'application'
-            ? { pathname: '/admin', params: { openAdmissions: '1' } } as any
-            : { pathname: '/admin', params: { openCaseId: item.referenceId } } as any)
-        : undefined}
+      onPress={tappable ? handlePress : undefined}
     >
       <View style={styles.itemTop}>
         <View style={styles.itemLeft}>

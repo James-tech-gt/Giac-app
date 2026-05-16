@@ -3,11 +3,14 @@ import { auth } from '@/services/firebase';
 import {
   Assignment,
   AssignmentSubmissionInput,
-  getApprovedApplications,
   subscribeAssignments,
   submitAssignment,
+  subscribeUserApplications,
+  isPaymentLocked,
 } from '@/services/firestore';
+import { uploadFile } from '@/services/storage';
 import { FontAwesome6 } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -44,7 +47,7 @@ const C = {
   border: '#E3E9F2',
 };
 
-type Tab = 'pending' | 'submitted' | 'graded';
+type Tab = 'pending' | 'submitted' | 'reviewed';
 
 function formatDeadline(timestamp: unknown): { label: string; overdue: boolean } {
   if (!timestamp) return { label: 'No deadline set', overdue: false };
@@ -70,7 +73,7 @@ function StatusPill({ status }: { status: Assignment['status'] }) {
   const map = {
     pending: { label: 'Pending', bg: C.warningSoft, color: C.warning },
     submitted: { label: 'Submitted', bg: C.secondarySoft, color: C.secondary },
-    graded: { label: 'Graded', bg: C.successSoft, color: C.success },
+    graded: { label: 'Reviewed', bg: C.successSoft, color: C.success },
   };
   const t = map[status];
   return (
@@ -117,59 +120,97 @@ export default function AssignmentsScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [submissionDrafts, setSubmissionDrafts] = useState<Record<string, string>>({});
-  const [attachmentDrafts, setAttachmentDrafts] = useState<Record<string, string>>({});
+  const [attachmentUrls, setAttachmentUrls] = useState<Record<string, string>>({});
+  const [attachmentNames, setAttachmentNames] = useState<Record<string, string>>({});
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [studentName, setStudentName] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
+  const [paymentLocked, setPaymentLocked] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) { setLoading(false); return; }
     let active = true;
-    const unsubscribers: (() => void)[] = [];
+    let asnUnsubs: (() => void)[] = [];
+    let lastCourseKey = '';
 
-    getApprovedApplications(user.uid).then((approved) => {
+    const appUnsub = subscribeUserApplications(user.uid, (allApps) => {
       if (!active) return;
-      if (approved.length === 0) { setLoading(false); return; }
-      const primary = approved[0];
+      const activeApps = allApps.filter((a) => a.status === 'approved' || a.status === 'completed');
+      setPaymentLocked(activeApps.some(isPaymentLocked));
+
+      if (activeApps.length === 0) {
+        asnUnsubs.forEach((u) => u());
+        asnUnsubs = [];
+        setAssignments([]);
+        setLoading(false);
+        return;
+      }
+
+      const primary = activeApps[0];
       setStudentName(primary.fullName?.trim() || user.displayName || '');
       setStudentEmail(primary.email?.trim() || user.email || '');
 
-      const perCourse: Record<string, Assignment[]> = {};
-      let settled = 0;
+      const newKey = activeApps.map((a) => a.courseId).sort().join(',');
+      if (newKey === lastCourseKey) return;
+      lastCourseKey = newKey;
 
-      approved.forEach((application) => {
+      asnUnsubs.forEach((u) => u());
+      asnUnsubs = [];
+
+      const perCourse: Record<string, Assignment[]> = {};
+      activeApps.forEach((application) => {
         perCourse[application.courseId] = [];
         const unsub = subscribeAssignments(user.uid!, application.courseId, (data) => {
           perCourse[application.courseId] = data;
-          settled++;
-          if (settled >= approved.length || data.length > 0) {
-            const merged = Object.values(perCourse)
-              .flat()
-              .filter((a, i, arr) => arr.findIndex((x) => x.id === a.id) === i)
-              .sort((l, r) => {
-                const lt = typeof l.deadline?.toDate === 'function' ? l.deadline.toDate().getTime() : 0;
-                const rt = typeof r.deadline?.toDate === 'function' ? r.deadline.toDate().getTime() : 0;
-                return lt - rt;
-              });
-            if (active) { setAssignments(merged); setLoading(false); }
-          }
+          const merged = Object.values(perCourse)
+            .flat()
+            .filter((a, i, arr) => arr.findIndex((x) => x.id === a.id) === i)
+            .sort((l, r) => {
+              const lt = typeof l.deadline?.toDate === 'function' ? l.deadline.toDate().getTime() : 0;
+              const rt = typeof r.deadline?.toDate === 'function' ? r.deadline.toDate().getTime() : 0;
+              return lt - rt;
+            });
+          if (active) { setAssignments(merged); setLoading(false); }
         });
-        unsubscribers.push(unsub);
+        asnUnsubs.push(unsub);
       });
-    }).catch(() => { if (active) setLoading(false); });
+    });
 
-    return () => { active = false; unsubscribers.forEach((u) => u()); };
+    return () => { active = false; appUnsub(); asnUnsubs.forEach((u) => u()); };
   }, [user?.uid, user?.displayName, user?.email]);
 
-  const filtered = assignments.filter((a) => a.status === activeTab);
+  const filtered = assignments.filter((a) => activeTab === 'reviewed' ? a.status === 'graded' : a.status === activeTab);
   const pendingCount = assignments.filter((a) => a.status === 'pending').length;
   const submittedCount = assignments.filter((a) => a.status === 'submitted').length;
   const gradedCount = assignments.filter((a) => a.status === 'graded').length;
 
+  async function handlePickFile(assignmentId: string) {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const file = result.assets[0];
+      setUploadingId(assignmentId);
+      setUploadProgress(0);
+      const path = `submissions/${assignmentId}/${user!.uid}/${Date.now()}_${file.name}`;
+      const url = await uploadFile(path, file.uri, setUploadProgress);
+      setAttachmentUrls((prev) => ({ ...prev, [assignmentId]: url }));
+      setAttachmentNames((prev) => ({ ...prev, [assignmentId]: file.name }));
+    } catch {
+      Alert.alert('Upload failed', 'Could not upload the file. Please try again.');
+    } finally {
+      setUploadingId(null);
+    }
+  }
+
   async function handleSubmit(assignment: Assignment) {
     const draft = submissionDrafts[assignment.id]?.trim() ?? '';
-    const attachmentLink = attachmentDrafts[assignment.id]?.trim() ?? '';
-    if (!draft && !attachmentLink) {
-      Alert.alert('Nothing to submit', 'Enter a response, paste a share link, or do both before submitting.');
+    const attachmentLink = attachmentUrls[assignment.id] ?? '';
+    if (!attachmentLink) {
+      Alert.alert('File required', 'Please upload a file before submitting your assignment.');
       return;
     }
     if (!user?.uid) return;
@@ -191,7 +232,8 @@ export default function AssignmentsScreen() {
         )
       );
       setSubmissionDrafts((prev) => ({ ...prev, [assignment.id]: '' }));
-      setAttachmentDrafts((prev) => ({ ...prev, [assignment.id]: '' }));
+      setAttachmentUrls((prev) => ({ ...prev, [assignment.id]: '' }));
+      setAttachmentNames((prev) => ({ ...prev, [assignment.id]: '' }));
       Alert.alert('Submitted!', 'Your assignment has been submitted successfully. Your instructor or admin can now review it.');
     } catch {
       Alert.alert('Error', 'Could not submit. Please try again.');
@@ -203,14 +245,14 @@ export default function AssignmentsScreen() {
   const TABS: { key: Tab; label: string }[] = [
     { key: 'pending', label: 'Pending' },
     { key: 'submitted', label: 'Submitted' },
-    { key: 'graded', label: 'Graded' },
+    { key: 'reviewed', label: 'Reviewed' },
   ];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.safe}
-        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
         <ScrollView
@@ -241,7 +283,7 @@ export default function AssignmentsScreen() {
               <Text style={[styles.heroChipText, { color: C.secondary }]}>Submitted {submittedCount}</Text>
             </View>
             <View style={[styles.heroChip, { backgroundColor: C.successSoft }]}>
-              <Text style={[styles.heroChipText, { color: C.success }]}>Graded {gradedCount}</Text>
+              <Text style={[styles.heroChipText, { color: C.success }]}>Reviewed {gradedCount}</Text>
             </View>
           </View>
           <View style={styles.heroActionRow}>
@@ -253,7 +295,7 @@ export default function AssignmentsScreen() {
         {/* Tabs */}
         <View style={styles.tabs}>
           {TABS.map((tab) => {
-            const count = assignments.filter((a) => a.status === tab.key).length;
+            const count = assignments.filter((a) => tab.key === 'reviewed' ? a.status === 'graded' : a.status === tab.key).length;
             return (
               <Pressable
                 key={tab.key}
@@ -276,14 +318,27 @@ export default function AssignmentsScreen() {
         </View>
 
         {/* Content */}
-        {loading ? (
+        {paymentLocked ? (
+          <View style={styles.centerCard}>
+            <FontAwesome6 name="lock" size={28} color="#E65100" style={{ marginBottom: 12 }} />
+            <Text style={[styles.emptyTitle, { color: '#E65100' }]}>Access Restricted</Text>
+            <Text style={styles.emptyText}>
+              Your course is approaching completion and an outstanding balance remains. Please complete your full payment to regain access to assignments.
+            </Text>
+            <Pressable onPress={() => router.push('/(main)/explore')} style={({ pressed }) => [{ marginTop: 8 }, pressed && { opacity: 0.6 }]}>
+              <Text style={[styles.emptyText, { color: C.secondary, textDecorationLine: 'underline' }]}>
+                Contact GIAC to confirm your payment.
+              </Text>
+            </Pressable>
+          </View>
+        ) : loading ? (
           <View style={styles.centerCard}>
             <ActivityIndicator color={C.secondary} />
           </View>
         ) : filtered.length === 0 ? (
           <View style={styles.centerCard}>
             <FontAwesome6
-              name={activeTab === 'graded' ? 'star' : 'clipboard-check'}
+              name={activeTab === 'reviewed' ? 'star' : 'clipboard-check'}
               size={28}
               color={C.textMuted}
               style={{ marginBottom: 8 }}
@@ -293,14 +348,14 @@ export default function AssignmentsScreen() {
                 ? 'No pending assignments'
                 : activeTab === 'submitted'
                 ? 'No submitted assignments'
-                : 'No graded assignments yet'}
+                : 'No reviewed assignments yet'}
             </Text>
             <Text style={styles.emptyText}>
               {activeTab === 'pending'
                 ? 'All caught up! Check back when your instructor posts new tasks.'
                 : activeTab === 'submitted'
                 ? 'Submit a pending assignment to see it here.'
-                : 'Grades will appear here once your instructor reviews your work.'}
+                : 'Reviews will appear here once your instructor reviews your work.'}
             </Text>
           </View>
         ) : (
@@ -334,15 +389,21 @@ export default function AssignmentsScreen() {
 
                   {assignment.status === 'graded' && (
                     <View style={styles.gradeRow}>
-                      <View style={[styles.gradeBox, { backgroundColor: C.successSoft }]}>
-                        <Text style={styles.gradeLabel}>Score</Text>
-                        <Text style={styles.gradeValue}>
-                          {assignment.grade ?? '—'}/{assignment.maxGrade}
-                        </Text>
-                      </View>
+                      {(() => {
+                        const g = assignment.grade ?? 0;
+                        const label = g >= 90 ? 'Excellent' : g >= 70 ? 'Satisfactory' : 'Needs Revision';
+                        const color = g >= 90 ? C.success : g >= 70 ? C.secondary : C.warning;
+                        const bg = g >= 90 ? C.successSoft : g >= 70 ? C.secondarySoft : C.warningSoft;
+                        return (
+                          <View style={[styles.gradeBox, { backgroundColor: bg }]}>
+                            <Text style={[styles.gradeLabel, { color }]}>Outcome</Text>
+                            <Text style={[styles.gradeValue, { color }]}>{label}</Text>
+                          </View>
+                        );
+                      })()}
                       {assignment.feedback ? (
                         <View style={[styles.feedbackBox, { backgroundColor: C.secondarySoft }]}>
-                          <Text style={styles.feedbackLabel}>Feedback</Text>
+                          <Text style={styles.feedbackLabel}>Instructor Feedback</Text>
                           <Text style={styles.feedbackText}>{assignment.feedback}</Text>
                         </View>
                       ) : null}
@@ -358,13 +419,25 @@ export default function AssignmentsScreen() {
                     </View>
                   )}
 
+                  {assignment.fileUrl ? (
+                    <Pressable
+                      onPress={() => Linking.openURL(assignment.fileUrl!)}
+                      style={({ pressed }) => [styles.fileBtn, pressed && styles.pressed]}
+                    >
+                      <FontAwesome6 name="file-arrow-down" size={14} color={C.secondary} />
+                      <Text style={styles.fileBtnText}>Open Assignment File</Text>
+                      <FontAwesome6 name="arrow-up-right-from-square" size={12} color={C.textMuted} />
+                    </Pressable>
+                  ) : null}
+
                   {assignment.status !== 'pending' && assignment.attachmentLink ? (
                     <Pressable
                       onPress={() => Linking.openURL(assignment.attachmentLink!)}
-                      style={styles.linkCard}
+                      style={({ pressed }) => [styles.fileBtn, styles.fileBtnSubmitted, pressed && styles.pressed]}
                     >
-                      <Text style={styles.linkLabel}>Attached file link</Text>
-                      <Text style={styles.linkValue} numberOfLines={2}>{assignment.attachmentLink}</Text>
+                      <FontAwesome6 name="file-circle-check" size={14} color={C.success} />
+                      <Text style={[styles.fileBtnText, { color: C.success }]}>View Your Submitted File</Text>
+                      <FontAwesome6 name="arrow-up-right-from-square" size={12} color={C.textMuted} />
                     </Pressable>
                   ) : null}
 
@@ -373,7 +446,7 @@ export default function AssignmentsScreen() {
                       <View style={styles.submitIntro}>
                         <Text style={styles.submitIntroTitle}>Submission Area</Text>
                         <Text style={styles.submitIntroText}>
-                          Type your answer below, or upload your PDF/doc to Google Drive, Dropbox, or OneDrive and paste the share link here.
+                          Upload your file (required). You may also add a written response.
                         </Text>
                       </View>
                       <TextInput
@@ -388,17 +461,35 @@ export default function AssignmentsScreen() {
                         }
                         textAlignVertical="top"
                       />
-                      <TextInput
-                        style={styles.linkInput}
-                        placeholder="PDF/DOC share link"
-                        placeholderTextColor={C.textMuted}
-                        value={attachmentDrafts[assignment.id] ?? ''}
-                        onChangeText={(value) =>
-                          setAttachmentDrafts((prev) => ({ ...prev, [assignment.id]: value }))
-                        }
-                        autoCapitalize="none"
-                        keyboardType="url"
-                      />
+                      <Pressable
+                        onPress={() => handlePickFile(assignment.id)}
+                        disabled={uploadingId === assignment.id}
+                        style={({ pressed }) => [
+                          styles.uploadBtn,
+                          attachmentUrls[assignment.id] ? styles.uploadBtnDone : null,
+                          pressed ? styles.pressed : null,
+                        ]}
+                      >
+                        {uploadingId === assignment.id ? (
+                          <View style={styles.uploadBtnInner}>
+                            <ActivityIndicator size="small" color={C.secondary} />
+                            <Text style={styles.uploadBtnText}>Uploading {Math.round(uploadProgress * 100)}%…</Text>
+                          </View>
+                        ) : attachmentUrls[assignment.id] ? (
+                          <View style={styles.uploadBtnInner}>
+                            <FontAwesome6 name="circle-check" size={14} color={C.success} />
+                            <Text style={[styles.uploadBtnText, { color: C.success }]} numberOfLines={1}>
+                              {attachmentNames[assignment.id] || 'File uploaded'}
+                            </Text>
+                            <FontAwesome6 name="arrow-rotate-right" size={11} color={C.textMuted} />
+                          </View>
+                        ) : (
+                          <View style={styles.uploadBtnInner}>
+                            <FontAwesome6 name="arrow-up-from-bracket" size={14} color={C.secondary} />
+                            <Text style={styles.uploadBtnText}>Upload file (PDF, Word, image)</Text>
+                          </View>
+                        )}
+                      </Pressable>
                       <TouchableOpacity
                         style={styles.submitBtn}
                         onPress={() => handleSubmit(assignment)}
@@ -589,7 +680,25 @@ const styles = StyleSheet.create({
     paddingVertical: 14, alignItems: 'center',
   },
   submitBtnText: { fontSize: 15, fontFamily: Fonts.sansSemiBold, color: C.surface },
-  pressed: {
-    opacity: 0.92,
+  pressed: { opacity: 0.92 },
+  uploadBtn: {
+    borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.border,
+    borderRadius: 12, paddingVertical: 14, paddingHorizontal: 14,
   },
+  uploadBtnDone: { borderStyle: 'solid', borderColor: C.success, backgroundColor: '#EDF5EC' },
+  uploadBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  uploadBtnText: { flex: 1, fontSize: 14, fontFamily: Fonts.sans, color: C.secondary },
+  fileDownloadBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: C.secondarySoft, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+  },
+  fileDownloadText: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.secondary },
+  fileBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: C.secondarySoft, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+  },
+  fileBtnSubmitted: {
+    backgroundColor: C.successSoft,
+  },
+  fileBtnText: { flex: 1, fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.secondary },
 });

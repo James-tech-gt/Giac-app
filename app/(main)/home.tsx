@@ -5,11 +5,14 @@ import { auth } from '@/services/firebase';
 import {
   Announcement,
   Application,
+  CourseRegistration,
   Service,
   getAllPendingApplications,
   subscribeAnnouncements,
   subscribeUserApplications,
+  subscribeUserRegistration,
   subscribeUserServices,
+  acceptAdmissionLetter,
 } from '@/services/firestore';
 import NotificationBell from '@/components/notification-bell';
 import { FontAwesome6 } from '@expo/vector-icons';
@@ -18,6 +21,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
+  Linking,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -70,6 +75,7 @@ function formatDate(timestamp: unknown) {
 
 function getApplicationStatusTone(status: Application['status']) {
   if (status === 'approved') return { label: 'Approved', color: C.success, bg: C.successSoft, border: '#C9D8BE' };
+  if (status === 'completed') return { label: 'Completed', color: C.success, bg: C.successSoft, border: '#C9D8BE' };
   if (status === 'rejected') return { label: 'Rejected', color: C.danger, bg: C.dangerSoft, border: '#E7C8C0' };
   return { label: 'Pending review', color: C.warning, bg: C.warningSoft, border: '#E7D7A8' };
 }
@@ -90,6 +96,7 @@ function QuickTile({
   accentSoft,
   onPress,
   badge,
+  disabled,
 }: {
   icon: React.ComponentProps<typeof FontAwesome6>['name'];
   label: string;
@@ -97,13 +104,14 @@ function QuickTile({
   accentSoft: string;
   onPress: () => void;
   badge?: number;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
+      onPress={disabled ? undefined : onPress}
+      style={({ pressed }) => [styles.tile, disabled && styles.tileDisabled, !disabled && pressed && styles.pressed]}
     >
-      <View style={[styles.tileIconWrap, { backgroundColor: accentSoft }]}>
+      <View style={[styles.tileIconWrap, { backgroundColor: accentSoft, opacity: disabled ? 0.4 : 1 }]}>
         <FontAwesome6 name={icon} size={22} color={accent} />
         {badge != null && badge > 0 && (
           <View style={styles.tileBadge}>
@@ -111,7 +119,7 @@ function QuickTile({
           </View>
         )}
       </View>
-      <Text style={styles.tileLabel} numberOfLines={2}>{label}</Text>
+      <Text style={[styles.tileLabel, disabled && styles.tileLabelDisabled]} numberOfLines={2}>{label}</Text>
     </Pressable>
   );
 }
@@ -126,9 +134,12 @@ export default function HomeScreen() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [pendingApps, setPendingApps] = useState<Application[]>([]);
   const [expandedAnnId, setExpandedAnnId] = useState<string | null>(null);
+  const [registration, setRegistration] = useState<CourseRegistration | null | undefined>(undefined);
+  const [acceptingLetter, setAcceptingLetter] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) { setApplications([]); return; }
@@ -173,7 +184,11 @@ export default function HomeScreen() {
     [applications, profile?.role, services]
   );
 
-  const latestApplication = applications[0];
+  const latestApplication = useMemo(() => {
+    if (!applications.length) return undefined;
+    const rank = (s: string) => s === 'completed' ? 4 : s === 'approved' ? 3 : s === 'pending' ? 2 : 1;
+    return [...applications].sort((a, b) => rank(b.status) - rank(a.status))[0];
+  }, [applications]);
   const isAdmin = effectiveRole === 'admin';
   const isStudent = effectiveRole === 'student';
 
@@ -182,15 +197,21 @@ export default function HomeScreen() {
     return getAllPendingApplications(setPendingApps);
   }, [profile?.role]);
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={C.secondary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  useEffect(() => {
+    if (!user?.uid) return;
+    return subscribeUserRegistration(user.uid, setRegistration);
+  }, [user?.uid]);
+
+  const handleAcceptLetter = async () => {
+    if (!registration) return;
+    setAcceptingLetter(true);
+    try {
+      await acceptAdmissionLetter(registration.id);
+      setShowSuccessModal(true);
+    } finally {
+      setAcceptingLetter(false);
+    }
+  };
 
   const adminTiles = [
     {
@@ -255,6 +276,8 @@ export default function HomeScreen() {
     },
   ];
 
+  const registrationAccepted = registration?.status === 'accepted';
+
   const pendingApplicationTile = latestApplication && latestApplication.status !== 'approved'
     ? {
         icon: 'clock' as const,
@@ -262,6 +285,7 @@ export default function HomeScreen() {
         accent: latestApplication.status === 'rejected' ? C.danger : C.warning,
         accentSoft: latestApplication.status === 'rejected' ? C.dangerSoft : C.warningSoft,
         onPress: () => router.push('/(main)/application-status'),
+        disabled: false,
       }
     : {
         icon: 'file-signature' as const,
@@ -269,6 +293,7 @@ export default function HomeScreen() {
         accent: C.warning,
         accentSoft: C.accentSoft,
         onPress: () => router.push('/(main)/application'),
+        disabled: !registrationAccepted,
       };
 
   const defaultTiles = [
@@ -370,14 +395,25 @@ export default function HomeScreen() {
                   <Text style={styles.appDeskNoteText}>
                     {latestApplication.feedback?.trim()
                       ? latestApplication.feedback.trim()
-                      : latestApplication.status === 'approved'
-                        ? 'Your application has been accepted. Open your student workspace to continue.'
-                        : 'Your application was reviewed but not approved. Review and reapply when ready.'}
+                      : latestApplication.status === 'completed'
+                        ? 'Congratulations! You have successfully completed this course.'
+                        : latestApplication.status === 'approved'
+                          ? 'Your application has been accepted. Open your student workspace to continue.'
+                          : 'Your application was reviewed but not approved. Review and reapply when ready.'}
                   </Text>
                 </View>
               )}
 
               <View style={styles.appDeskBtnRow}>
+                {latestApplication.status === 'completed' && (
+                  <Pressable
+                    onPress={() => router.push('/(student)/certificates' as any)}
+                    style={({ pressed }) => [styles.appDeskPrimaryBtn, pressed && styles.pressed]}
+                  >
+                    <Text style={styles.appDeskPrimaryBtnText}>View Certificate</Text>
+                    <FontAwesome6 name="certificate" size={12} color="#fff" />
+                  </Pressable>
+                )}
                 {latestApplication.status === 'approved' && (
                   <Pressable
                     onPress={() => router.push('/(student)/dashboard')}
@@ -403,6 +439,85 @@ export default function HomeScreen() {
                   <Text style={styles.appDeskSecondaryBtnText}>View Details</Text>
                 </Pressable>
               </View>
+            </View>
+          </View>
+        )}
+
+        {/* Registration card — shown only for users with no applications and no registration */}
+        {!isAdmin && registration === null && applications.length === 0 && (
+          <Pressable
+            onPress={() => router.push('/(main)/course-registration')}
+            style={({ pressed }) => [styles.regCard, pressed && styles.pressed]}
+          >
+            <View style={styles.regCardIcon}>
+              <FontAwesome6 name="graduation-cap" size={20} color={C.secondary} />
+            </View>
+            <View style={styles.regCardBody}>
+              <Text style={styles.regCardTitle}>Register Your Course</Text>
+              <Text style={styles.regCardSubtitle}>
+                Register your course to access GIAC programmes and begin your learning journey.
+              </Text>
+            </View>
+            <FontAwesome6 name="angle-right" size={14} color={C.secondary} />
+          </Pressable>
+        )}
+
+        {/* Pending registration */}
+        {!isAdmin && registration?.status === 'pending' && (
+          <View style={styles.regPendingCard}>
+            <View style={styles.regPendingDot} />
+            <View style={styles.regCardBody}>
+              <Text style={styles.regPendingTitle}>Registration Under Review</Text>
+              <Text style={styles.regPendingSubtitle}>
+                GIAC is reviewing your registration. You will receive an admission letter soon.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Admission letter — waiting for acceptance */}
+        {!isAdmin && registration?.status === 'letter_sent' && (
+          <View style={styles.letterCard}>
+            <View style={styles.letterCardTop}>
+              <FontAwesome6 name="envelope-open-text" size={18} color={C.success} />
+              <View style={styles.regCardBody}>
+                <Text style={styles.letterCardTitle}>Your Admission Letter is Ready</Text>
+                <Text style={styles.letterCardSubtitle}>
+                  Student No: <Text style={styles.letterStudentNo}>{registration.studentNumber}</Text>
+                </Text>
+              </View>
+            </View>
+            {registration.letterUrl ? (
+              <Pressable
+                onPress={() => Linking.openURL(registration.letterUrl!)}
+                style={({ pressed }) => [styles.letterDownloadBtn, pressed && styles.pressed]}
+              >
+                <FontAwesome6 name="file-arrow-down" size={14} color={C.success} />
+                <Text style={styles.letterDownloadText}>Download Admission Letter</Text>
+              </Pressable>
+            ) : null}
+            <Pressable
+              onPress={handleAcceptLetter}
+              disabled={acceptingLetter}
+              style={({ pressed }) => [styles.letterAcceptBtn, (pressed || acceptingLetter) && styles.pressed]}
+            >
+              {acceptingLetter
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={styles.letterAcceptBtnText}>Accept Admission →</Text>
+              }
+            </Pressable>
+          </View>
+        )}
+
+        {/* Rejected registration */}
+        {!isAdmin && registration?.status === 'rejected' && (
+          <View style={[styles.regPendingCard, styles.regRejectedCard]}>
+            <FontAwesome6 name="circle-xmark" size={16} color={C.danger} />
+            <View style={styles.regCardBody}>
+              <Text style={[styles.regPendingTitle, { color: C.danger }]}>Registration Not Approved</Text>
+              <Text style={styles.regPendingSubtitle}>
+                Contact GIAC support for more information.
+              </Text>
             </View>
           </View>
         )}
@@ -462,6 +577,27 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Registration success modal */}
+      <Modal visible={showSuccessModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconWrap}>
+              <FontAwesome6 name="circle-check" size={40} color={C.success} />
+            </View>
+            <Text style={styles.modalTitle}>Registration Complete!</Text>
+            <Text style={styles.modalBody}>
+              Welcome to GIAC. Your student number has been confirmed. You can now apply for your training programme.
+            </Text>
+            <Pressable
+              onPress={() => setShowSuccessModal(false)}
+              style={({ pressed }) => [styles.modalBtn, pressed && styles.pressed]}
+            >
+              <Text style={styles.modalBtnText}>Go to Dashboard →</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -692,6 +828,8 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sansBold,
     color: C.textPrimary,
   },
+  tileDisabled: { opacity: 0.45 },
+  tileLabelDisabled: { color: C.textMuted },
 
   announcementsCard: {
     backgroundColor: C.surface,
@@ -745,4 +883,72 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sans,
     color: C.textMuted,
   },
+
+  regCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: C.surface, borderRadius: 18,
+    borderWidth: 1, borderColor: C.border, padding: 16,
+  },
+  regCardIcon: {
+    width: 44, height: 44, borderRadius: 13,
+    backgroundColor: '#EEF2F9', alignItems: 'center', justifyContent: 'center',
+  },
+  regCardBody: { flex: 1, gap: 3 },
+  regCardTitle: { fontSize: 14, fontFamily: Fonts.sansBold, color: C.textPrimary },
+  regCardSubtitle: { fontSize: 12, lineHeight: 18, fontFamily: Fonts.sans, color: C.textMuted },
+
+  regPendingCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    backgroundColor: C.warningSoft, borderRadius: 18,
+    borderWidth: 1, borderColor: '#E7D7A8', padding: 16,
+  },
+  regRejectedCard: {
+    backgroundColor: C.dangerSoft, borderColor: '#E7C8C0',
+  },
+  regPendingDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.warning, marginTop: 4 },
+  regPendingTitle: { fontSize: 14, fontFamily: Fonts.sansBold, color: C.warning },
+  regPendingSubtitle: { fontSize: 12, lineHeight: 18, fontFamily: Fonts.sans, color: C.textSecondary },
+
+  letterCard: {
+    backgroundColor: C.successSoft, borderRadius: 18,
+    borderWidth: 1, borderColor: '#C9D8BE', padding: 16, gap: 12,
+  },
+  letterCardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  letterCardTitle: { fontSize: 14, fontFamily: Fonts.sansBold, color: C.success },
+  letterCardSubtitle: { fontSize: 12, fontFamily: Fonts.sans, color: C.textSecondary },
+  letterStudentNo: { fontFamily: Fonts.sansBold, color: C.success },
+  letterDownloadBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FFFFFF', borderRadius: 10, borderWidth: 1, borderColor: '#C9D8BE',
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  letterDownloadText: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.success },
+  letterAcceptBtn: {
+    backgroundColor: C.success, borderRadius: 12,
+    paddingVertical: 12, alignItems: 'center', justifyContent: 'center',
+  },
+  letterAcceptBtnText: { fontSize: 14, fontFamily: Fonts.sansBold, color: '#FFFFFF' },
+
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 24,
+    padding: 28, width: '100%', alignItems: 'center', gap: 14,
+  },
+  modalIconWrap: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: '#E8F2EE', alignItems: 'center', justifyContent: 'center',
+  },
+  modalTitle: { fontSize: 22, fontFamily: Fonts.displayBold, color: C.textPrimary, textAlign: 'center' },
+  modalBody: {
+    fontSize: 14, lineHeight: 22, fontFamily: Fonts.sans,
+    color: C.textSecondary, textAlign: 'center',
+  },
+  modalBtn: {
+    backgroundColor: C.primary, borderRadius: 14,
+    paddingVertical: 14, paddingHorizontal: 28, alignSelf: 'stretch', alignItems: 'center',
+  },
+  modalBtnText: { fontSize: 15, fontFamily: Fonts.sansBold, color: '#FFFFFF' },
 });

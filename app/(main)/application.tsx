@@ -2,7 +2,9 @@ import { Fonts } from '@/constants/theme';
 import { getUserProfile } from '@/services/auth';
 import { auth } from '@/services/firebase';
 import { Course, createApplication, getCourses } from '@/services/firestore';
+import { uploadFile } from '@/services/storage';
 import { FontAwesome6 } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -48,6 +50,8 @@ type FormErrors = {
   educationLevel?: string;
   motivation?: string;
   paymentMode?: string;
+  hasPaid?: string;
+  transactionRef?: string;
   agreed?: string;
 };
 
@@ -61,7 +65,20 @@ const EDUCATION_LEVELS = [
   'Other',
 ];
 
-const PAYMENT_MODES = ['Bank Transfer', 'MoMo', 'Other'];
+const PAYMENT_MODES = ['MoMo', 'Bank Transfer', 'Other'];
+
+const MOMO_DETAILS = [
+  { network: 'MTN MoMo', number: '055 000 0000', name: 'GIAC Ghana' },
+  { network: 'Telecel Cash', number: '050 000 0000', name: 'GIAC Ghana' },
+  { network: 'AirtelTigo Money', number: '027 000 0000', name: 'GIAC Ghana' },
+];
+
+const BANK_DETAILS = {
+  bankName: 'Ecobank Ghana',
+  branch: 'Accra Main',
+  accountName: 'GIAC Ghana Ltd',
+  accountNumber: '1234567890',
+};
 
 function formatCurrency(value?: number) {
   if (typeof value !== 'number') return 'Fee TBC';
@@ -162,6 +179,15 @@ function RadioGroup({
   );
 }
 
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.reviewRow}>
+      <Text style={styles.reviewLabel}>{label}</Text>
+      <Text style={styles.reviewValue}>{value || '—'}</Text>
+    </View>
+  );
+}
+
 function SectionTitle({ icon, title }: { icon: IconName; title: string }) {
   return (
     <View style={styles.sectionTitleRow}>
@@ -199,6 +225,9 @@ export default function ApplicationScreen() {
   // Educational background
   const [educationLevel, setEducationLevel] = useState('');
   const [certificateLink, setCertificateLink] = useState('');
+  const [certFileName, setCertFileName] = useState('');
+  const [uploadingCert, setUploadingCert] = useState(false);
+  const [certUploadProgress, setCertUploadProgress] = useState(0);
   const [areaOfStudy, setAreaOfStudy] = useState('');
   const [occupation, setOccupation] = useState('');
   const [organization, setOrganization] = useState('');
@@ -209,7 +238,14 @@ export default function ApplicationScreen() {
   // Payment & commitment
   const [paymentMode, setPaymentMode] = useState('');
   const [readyToProceed, setReadyToProceed] = useState('');
+  const [hasPaid, setHasPaid] = useState(false);
+  const [transactionRef, setTransactionRef] = useState('');
+  const [receiptLink, setReceiptLink] = useState('');
+  const [receiptFileName, setReceiptFileName] = useState('');
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [agreed, setAgreed] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -243,6 +279,48 @@ export default function ApplicationScreen() {
     [courses, selectedCourseId]
   );
 
+  const handlePickCertificate = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const file = result.assets[0];
+      setUploadingCert(true);
+      setCertUploadProgress(0);
+      const path = `edu-proofs/${user!.uid}/${Date.now()}_${file.name}`;
+      const url = await uploadFile(path, file.uri, setCertUploadProgress);
+      setCertificateLink(url);
+      setCertFileName(file.name);
+    } catch {
+      Alert.alert('Upload failed', 'Could not upload certificate. Please try again.');
+    } finally {
+      setUploadingCert(false);
+    }
+  };
+
+  const handlePickReceipt = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const file = result.assets[0];
+      setUploadingReceipt(true);
+      setUploadProgress(0);
+      const path = `receipts/${user!.uid}/${Date.now()}_${file.name}`;
+      const url = await uploadFile(path, file.uri, setUploadProgress);
+      setReceiptLink(url);
+      setReceiptFileName(file.name);
+    } catch {
+      Alert.alert('Upload failed', 'Could not upload receipt. Please try again.');
+    } finally {
+      setUploadingReceipt(false);
+    }
+  };
+
   const validate = () => {
     const e: FormErrors = {};
     if (!fullName.trim()) e.fullName = 'Full name is required.';
@@ -254,29 +332,36 @@ export default function ApplicationScreen() {
     if (!educationLevel) e.educationLevel = 'Please select your highest education level.';
     if (!motivation.trim()) e.motivation = 'Please tell us why you want to study ADR.';
     if (!paymentMode) e.paymentMode = 'Please select a payment mode.';
+    if (paymentMode && paymentMode !== 'Other' && !hasPaid) e.hasPaid = 'Please confirm you have made payment before submitting.';
+    if (paymentMode && paymentMode !== 'Other' && !transactionRef.trim()) e.transactionRef = 'Please enter your transaction / reference number.';
     if (!agreed) e.agreed = 'You must confirm the agreement to submit.';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = async () => {
+  const handleReview = () => {
     if (!user?.uid) {
       Alert.alert('Sign in required', 'Please sign in before submitting an application.');
       return;
     }
     if (!validate()) return;
+    setReviewing(true);
+  };
+
+  const handleConfirmSubmit = async () => {
     setSubmitting(true);
     try {
       await createApplication({
-        userId: user.uid,
+        userId: user!.uid,
         courseId: selectedCourseId,
         courseTitle: selectedCourse?.title || '',
         courseProgram: selectedCourse?.program || '',
         courseDuration: selectedCourse?.duration || '',
         fullName, email, phone, whatsapp, location,
         educationLevel, certificateLink, areaOfStudy, occupation, organization,
-        motivation, paymentMode,
+        motivation, paymentMode, transactionRef, receiptLink,
       });
+      setReviewing(false);
       setSubmitted(true);
     } catch {
       Alert.alert('Submission failed', 'Please try again in a moment.');
@@ -333,11 +418,99 @@ export default function ApplicationScreen() {
     );
   }
 
+  if (reviewing) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingHorizontal: horizontalPadding, paddingBottom: 140 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.hero}>
+            <Pressable onPress={() => setReviewing(false)} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
+              <FontAwesome6 name="arrow-left" size={14} color={C.secondary} />
+              <Text style={styles.backButtonText}>Back to Edit</Text>
+            </Pressable>
+            <Text style={styles.heroEyebrow}>Review & Confirm</Text>
+            <Text style={[styles.heroTitle, isCompact && styles.heroTitleCompact]}>Check Your Details</Text>
+            <Text style={styles.heroDescription}>
+              Please review all your information carefully before submitting.
+            </Text>
+          </View>
+
+          {/* Personal */}
+          <View style={styles.reviewCard}>
+            <Text style={styles.reviewSection}>Personal Details</Text>
+            <ReviewRow label="Full Name" value={fullName} />
+            <ReviewRow label="Phone" value={phone} />
+            {whatsapp?.trim() ? <ReviewRow label="WhatsApp" value={whatsapp} /> : null}
+            <ReviewRow label="Email" value={email} />
+            <ReviewRow label="Location" value={location} />
+          </View>
+
+          {/* Program */}
+          <View style={styles.reviewCard}>
+            <Text style={styles.reviewSection}>Program</Text>
+            <ReviewRow label="Course" value={selectedCourse?.title || selectedCourseId} />
+            <ReviewRow label="Program" value={selectedCourse?.program || '—'} />
+            <ReviewRow label="Duration" value={selectedCourse?.duration || '—'} />
+            <ReviewRow label="Fee" value={formatCurrency(selectedCourse?.fees)} />
+          </View>
+
+          {/* Background */}
+          <View style={styles.reviewCard}>
+            <Text style={styles.reviewSection}>Educational Background</Text>
+            <ReviewRow label="Education" value={educationLevel} />
+            {certFileName ? <ReviewRow label="Certificate" value={certFileName} /> : null}
+            {areaOfStudy?.trim() ? <ReviewRow label="Area of Study" value={areaOfStudy} /> : null}
+            {occupation?.trim() ? <ReviewRow label="Occupation" value={occupation} /> : null}
+            {organization?.trim() ? <ReviewRow label="Organisation" value={organization} /> : null}
+          </View>
+
+          {/* Motivation */}
+          <View style={styles.reviewCard}>
+            <Text style={styles.reviewSection}>Motivation</Text>
+            <Text style={styles.reviewBody}>{motivation}</Text>
+          </View>
+
+          {/* Payment */}
+          <View style={styles.reviewCard}>
+            <Text style={styles.reviewSection}>Payment</Text>
+            <ReviewRow label="Mode" value={paymentMode} />
+            {transactionRef?.trim() ? <ReviewRow label="Transaction Ref" value={transactionRef.trim()} /> : null}
+            {receiptLink?.trim() ? <ReviewRow label="Receipt" value={receiptFileName || 'Uploaded'} /> : null}
+            <ReviewRow label="Payment confirmed" value="Yes — I have made payment" />
+          </View>
+
+          <Pressable
+            onPress={handleConfirmSubmit}
+            disabled={submitting}
+            style={({ pressed }) => [styles.submitButton, submitting && styles.buttonDisabled, pressed && styles.pressed]}
+          >
+            {submitting ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color="#FFFFFF" size="small" />
+                <Text style={styles.submitButtonText}>Submitting…</Text>
+              </View>
+            ) : (
+              <Text style={styles.submitButtonText}>Confirm & Submit Application</Text>
+            )}
+          </Pressable>
+          <Pressable
+            onPress={() => setReviewing(false)}
+            style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
+          >
+            <Text style={styles.secondaryBtnText}>Go Back & Edit</Text>
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.safe}
-        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
         <ScrollView
@@ -417,16 +590,30 @@ export default function ApplicationScreen() {
           <Field label="Highest Level of Education" required error={errors.educationLevel}>
             <RadioGroup options={EDUCATION_LEVELS} value={educationLevel} onChange={setEducationLevel} error={Boolean(errors.educationLevel)} />
           </Field>
-          <Field
-            label="Proof of Educational Certificate"
-            hint="Upload your certificate to Google Drive, make it shareable, and paste the link here."
-          >
-            <Input
-              value={certificateLink}
-              onChangeText={setCertificateLink}
-              placeholder="https://drive.google.com/..."
-              autoCapitalize="none"
-            />
+          <Field label="Proof of Educational Certificate" hint="Upload a photo or PDF of your highest educational certificate.">
+            <Pressable
+              onPress={handlePickCertificate}
+              disabled={uploadingCert}
+              style={({ pressed }) => [styles.uploadBtn, certificateLink && styles.uploadBtnDone, pressed && styles.pressed]}
+            >
+              {uploadingCert ? (
+                <View style={styles.uploadBtnInner}>
+                  <ActivityIndicator size="small" color={C.secondary} />
+                  <Text style={styles.uploadBtnText}>Uploading {Math.round(certUploadProgress * 100)}%…</Text>
+                </View>
+              ) : certificateLink ? (
+                <View style={styles.uploadBtnInner}>
+                  <FontAwesome6 name="circle-check" size={15} color={C.success} />
+                  <Text style={[styles.uploadBtnText, { color: C.success }]} numberOfLines={1}>{certFileName || 'Certificate uploaded'}</Text>
+                  <FontAwesome6 name="arrow-rotate-right" size={12} color={C.textMuted} />
+                </View>
+              ) : (
+                <View style={styles.uploadBtnInner}>
+                  <FontAwesome6 name="arrow-up-from-bracket" size={15} color={C.secondary} />
+                  <Text style={styles.uploadBtnText}>Choose file (image or PDF)</Text>
+                </View>
+              )}
+            </Pressable>
           </Field>
           <Field label="Area of Study / Profession">
             <Input value={areaOfStudy} onChangeText={setAreaOfStudy} placeholder="e.g. Law, Business, Engineering" />
@@ -466,12 +653,119 @@ export default function ApplicationScreen() {
         {/* ── Section 6: Payment & Commitment ── */}
         <View style={styles.card}>
           <SectionTitle icon="credit-card" title="Payment & Commitment" />
+
+          {/* Payment notice */}
+          <View style={styles.payNotice}>
+            <FontAwesome6 name="triangle-exclamation" size={13} color="#A9822A" />
+            <Text style={styles.payNoticeText}>
+              At least 50% of the course fee must be paid before you can submit your application. Any outstanding balance must be cleared before the end of your course, or your access to materials, assignments, and tests will be restricted.
+            </Text>
+          </View>
+
           <Field label="Are you ready to proceed with registration?">
             <RadioGroup options={['Yes', 'No']} value={readyToProceed} onChange={setReadyToProceed} />
           </Field>
           <Field label="Preferred mode of payment" required error={errors.paymentMode}>
-            <RadioGroup options={PAYMENT_MODES} value={paymentMode} onChange={setPaymentMode} error={Boolean(errors.paymentMode)} />
+            <RadioGroup options={PAYMENT_MODES} value={paymentMode} onChange={(v) => { setPaymentMode(v); setHasPaid(false); setTransactionRef(''); setReceiptLink(''); }} error={Boolean(errors.paymentMode)} />
           </Field>
+
+          {paymentMode === 'MoMo' ? (
+            <View style={styles.payDetailsCard}>
+              <View style={styles.payDetailsHeader}>
+                <FontAwesome6 name="mobile-screen" size={14} color={C.secondary} />
+                <Text style={styles.payDetailsTitle}>Send Payment via MoMo</Text>
+              </View>
+              {MOMO_DETAILS.map((m) => (
+                <View key={m.network} style={styles.payDetailsRow}>
+                  <Text style={styles.payDetailsNetwork}>{m.network}</Text>
+                  <Text style={styles.payDetailsNumber}>{m.number}</Text>
+                  <Text style={styles.payDetailsName}>{m.name}</Text>
+                </View>
+              ))}
+              <Text style={styles.payDetailsNote}>Use your full name as the sender reference.</Text>
+            </View>
+          ) : null}
+
+          {paymentMode === 'Bank Transfer' ? (
+            <View style={styles.payDetailsCard}>
+              <View style={styles.payDetailsHeader}>
+                <FontAwesome6 name="building-columns" size={14} color={C.secondary} />
+                <Text style={styles.payDetailsTitle}>Bank Transfer Details</Text>
+              </View>
+              <View style={styles.payDetailsRow}>
+                <Text style={styles.payDetailsNetwork}>Bank</Text>
+                <Text style={styles.payDetailsNumber}>{BANK_DETAILS.bankName}</Text>
+              </View>
+              <View style={styles.payDetailsRow}>
+                <Text style={styles.payDetailsNetwork}>Branch</Text>
+                <Text style={styles.payDetailsNumber}>{BANK_DETAILS.branch}</Text>
+              </View>
+              <View style={styles.payDetailsRow}>
+                <Text style={styles.payDetailsNetwork}>Account Name</Text>
+                <Text style={styles.payDetailsNumber}>{BANK_DETAILS.accountName}</Text>
+              </View>
+              <View style={styles.payDetailsRow}>
+                <Text style={styles.payDetailsNetwork}>Account No.</Text>
+                <Text style={styles.payDetailsNumber}>{BANK_DETAILS.accountNumber}</Text>
+              </View>
+              <Text style={styles.payDetailsNote}>Send your payment receipt to GIAC after transfer.</Text>
+            </View>
+          ) : null}
+
+          {paymentMode && paymentMode !== 'Other' ? (
+            <Pressable
+              onPress={() => setHasPaid((v) => !v)}
+              style={({ pressed }) => [styles.agreementRow, pressed && styles.pressed]}
+            >
+              <View style={[styles.checkbox, hasPaid && styles.checkboxChecked]}>
+                {hasPaid ? <FontAwesome6 name="check" size={10} color="#FFFFFF" /> : null}
+              </View>
+              <Text style={styles.agreementText}>
+                I confirm that I have made payment to GIAC using the details above.
+              </Text>
+            </Pressable>
+          ) : null}
+          {errors.hasPaid ? <Text style={styles.fieldError}>{errors.hasPaid}</Text> : null}
+
+          {paymentMode && paymentMode !== 'Other' ? (
+            <>
+              <Field label="Transaction / Reference Number" required error={errors.transactionRef}
+                hint="Copy the transaction ID from your MoMo SMS or bank confirmation.">
+                <Input
+                  value={transactionRef}
+                  onChangeText={setTransactionRef}
+                  placeholder="e.g. 1234567890"
+                  autoCapitalize="none"
+                  error={Boolean(errors.transactionRef)}
+                />
+              </Field>
+              <Field label="Payment Receipt" hint="Optional — upload a screenshot or PDF of your payment confirmation.">
+                <Pressable
+                  onPress={handlePickReceipt}
+                  disabled={uploadingReceipt}
+                  style={({ pressed }) => [styles.uploadBtn, receiptLink && styles.uploadBtnDone, pressed && styles.pressed]}
+                >
+                  {uploadingReceipt ? (
+                    <View style={styles.uploadBtnInner}>
+                      <ActivityIndicator size="small" color={C.secondary} />
+                      <Text style={styles.uploadBtnText}>Uploading {Math.round(uploadProgress * 100)}%…</Text>
+                    </View>
+                  ) : receiptLink ? (
+                    <View style={styles.uploadBtnInner}>
+                      <FontAwesome6 name="circle-check" size={15} color={C.success} />
+                      <Text style={[styles.uploadBtnText, { color: C.success }]} numberOfLines={1}>{receiptFileName || 'Receipt uploaded'}</Text>
+                      <FontAwesome6 name="arrow-rotate-right" size={12} color={C.textMuted} />
+                    </View>
+                  ) : (
+                    <View style={styles.uploadBtnInner}>
+                      <FontAwesome6 name="arrow-up-from-bracket" size={15} color={C.secondary} />
+                      <Text style={styles.uploadBtnText}>Choose file (image or PDF)</Text>
+                    </View>
+                  )}
+                </Pressable>
+              </Field>
+            </>
+          ) : null}
         </View>
 
         {/* ── Section 7: Agreement ── */}
@@ -491,20 +785,12 @@ export default function ApplicationScreen() {
           {errors.agreed ? <Text style={styles.fieldError}>{errors.agreed}</Text> : null}
         </View>
 
-        {/* Submit */}
+        {/* Review & Submit */}
         <Pressable
-          onPress={handleSubmit}
-          disabled={submitting}
-          style={({ pressed }) => [styles.submitButton, submitting && styles.buttonDisabled, pressed && styles.pressed]}
+          onPress={handleReview}
+          style={({ pressed }) => [styles.submitButton, pressed && styles.pressed]}
         >
-          {submitting ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator color="#FFFFFF" size="small" />
-              <Text style={styles.submitButtonText}>Submitting…</Text>
-            </View>
-          ) : (
-            <Text style={styles.submitButtonText}>Submit Application</Text>
-          )}
+          <Text style={styles.submitButtonText}>Review My Application →</Text>
         </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -621,6 +907,49 @@ const styles = StyleSheet.create({
     alignItems: 'center', borderWidth: 1, borderColor: C.border, backgroundColor: C.surface,
   },
   secondaryBtnText: { fontSize: 14, fontFamily: Fonts.sansSemiBold, color: C.secondary },
+
+  payNotice: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: '#FFF8EC', borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: '#F0D080',
+  },
+  payNoticeText: { flex: 1, fontSize: 13, fontFamily: Fonts.sans, color: '#7A5A00', lineHeight: 19 },
+
+  payDetailsCard: {
+    backgroundColor: '#EEF3FB', borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: '#D0DCEE', gap: 10,
+  },
+  payDetailsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  payDetailsTitle: { fontSize: 14, fontFamily: Fonts.sansBold, color: C.secondary },
+  payDetailsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
+  payDetailsNetwork: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.textSecondary, flex: 1 },
+  payDetailsNumber: { fontSize: 14, fontFamily: Fonts.sansBold, color: C.textPrimary, flex: 1, textAlign: 'right' },
+  payDetailsName: { fontSize: 12, fontFamily: Fonts.sans, color: C.textMuted, flex: 1, textAlign: 'right' },
+  payDetailsNote: { fontSize: 12, fontFamily: Fonts.sans, color: C.textMuted, fontStyle: 'italic' },
+
+  reviewCard: {
+    backgroundColor: C.surface, borderRadius: 22, padding: 18,
+    borderWidth: 1, borderColor: C.border, gap: 12,
+  },
+  reviewSection: { fontSize: 15, fontFamily: Fonts.displaySemiBold, color: C.textPrimary },
+  reviewRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+    paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border, gap: 12,
+  },
+  reviewLabel: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.textSecondary, flex: 1 },
+  reviewValue: { fontSize: 13, fontFamily: Fonts.sans, color: C.textPrimary, flex: 2, textAlign: 'right' },
+  reviewBody: { fontSize: 14, lineHeight: 22, fontFamily: Fonts.sans, color: C.textSecondary },
+
+  uploadBtn: {
+    backgroundColor: C.surfaceAlt, borderWidth: 1, borderColor: C.border,
+    borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14,
+    borderStyle: 'dashed',
+  },
+  uploadBtnDone: {
+    backgroundColor: C.successSoft, borderColor: '#A8D5C0', borderStyle: 'solid',
+  },
+  uploadBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  uploadBtnText: { flex: 1, fontSize: 14, fontFamily: Fonts.sans, color: C.secondary },
 
   successContainer: {
     flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 16,
