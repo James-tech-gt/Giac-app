@@ -52,7 +52,8 @@
           "color": "#1F2A44",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

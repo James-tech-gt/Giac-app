@@ -78,6 +78,9 @@ export function AccessGate({
 
   if (!uid) return <Redirect href="/(auth)/login" />;
 
+  // Extra data (approved applications / services) is still being fetched — wait before deciding access
+  if (needsExtra && extra === null) return null;
+
   const snapshot: AccessSnapshot = {
     role: profile?.role ?? null,
     approvedApplicationCount: extra?.approvedApplicationCount ?? 0,
