@@ -46,10 +46,17 @@ export default function SignupScreen() {
   const [agreed, setAgreed] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
+  const scrollRef  = useRef<ScrollView>(null);
   const fadeAnim   = useRef(new Animated.Value(0)).current;
   const slideAnim  = useRef(new Animated.Value(24)).current;
   const shakeAnim  = useRef(new Animated.Value(0)).current;
   const checkScale = useRef(new Animated.Value(1)).current;
+
+  const showError = (msg: string) => {
+    setError(msg);
+    shake();
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -94,7 +101,7 @@ export default function SignupScreen() {
 
   const handleSignup = async () => {
     const err = validate();
-    if (err) { setError(err); shake(); return; }
+    if (err) { showError(err); return; }
     setLoading(true);
     setError('');
     setShowSignInHint(false);
@@ -115,8 +122,7 @@ export default function SignupScreen() {
           ? 'Password is too weak. Use at least 6 characters.'
           : 'Something went wrong. Please try again.';
       setShowSignInHint(emailTaken);
-      setError(msg);
-      shake();
+      showError(msg);
     } finally {
       setLoading(false);
     }
@@ -166,6 +172,7 @@ export default function SignupScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={C.bgWarm} />
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[styles.scroll, { paddingHorizontal: hPad }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}

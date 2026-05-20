@@ -26,6 +26,7 @@ import {
   gradeAssignmentSubmission,
   gradeTestSubmission,
   markAdminNotificationsRead,
+  createAdminNotification,
   createStudentNotification,
   deleteService,
   rejectAccountDeletionRequest,
@@ -542,7 +543,7 @@ function CaseCard({
   busyAssign: boolean;
   busyStatus: boolean;
   busyDelete: boolean;
-  onAssignMediator: (name: string, note: string) => void;
+  onAssignMediator: (name: string, note: string, meetingLink: string) => void;
   onMarkComplete: (resolution: string) => void;
   onDelete: () => void;
   service: Service;
@@ -550,6 +551,7 @@ function CaseCard({
   const tone = getServiceTone(service.status);
   const [mediatorName, setMediatorName] = useState(service.mediatorName ?? '');
   const [mediatorNote, setMediatorNote] = useState(service.mediatorNote ?? '');
+  const [meetingLink, setMeetingLink] = useState(service.meetingLink ?? '');
   const [resolution, setResolution] = useState(service.resolution ?? '');
   const [messages, setMessages] = useState<CaseMessage[]>([]);
   const [chatText, setChatText] = useState('');
@@ -559,8 +561,9 @@ function CaseCard({
   useEffect(() => {
     setMediatorName(service.mediatorName ?? '');
     setMediatorNote(service.mediatorNote ?? '');
+    setMeetingLink(service.meetingLink ?? '');
     setResolution(service.resolution ?? '');
-  }, [service.mediatorName, service.mediatorNote, service.resolution]);
+  }, [service.mediatorName, service.mediatorNote, service.meetingLink, service.resolution]);
 
   useEffect(() => subscribeCaseMessages(service.id, setMessages), [service.id]);
 
@@ -636,8 +639,21 @@ function CaseCard({
         />
       </View>
 
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>Session link (Zoom / Google Meet)</Text>
+        <TextInput
+          value={meetingLink}
+          onChangeText={setMeetingLink}
+          placeholder="https://zoom.us/j/... or meet.google.com/..."
+          placeholderTextColor={C.textMuted}
+          autoCapitalize="none"
+          keyboardType="url"
+          style={styles.input}
+        />
+      </View>
+
       <Pressable
-        onPress={() => onAssignMediator(mediatorName, mediatorNote)}
+        onPress={() => onAssignMediator(mediatorName, mediatorNote, meetingLink)}
         disabled={busyAssign}
         style={({ pressed }) => [styles.primaryButton, (busyAssign || pressed) ? styles.pressed : null]}
       >
@@ -1291,12 +1307,25 @@ function AdminPanel() {
   const handleApprove = async (application: Application) => {
     setBusyApplicationId(application.id);
     showAdmissionsMsg(null);
+    const adminName = auth.currentUser?.displayName || auth.currentUser?.email || 'An admin';
     try {
       await approveApplication(application.id, application.userId, application.courseTitle, application.courseId);
       setAdmissionsMsg({
         text: `${application.fullName || 'Applicant'} has been approved. Their account is now upgraded to student.`,
         kind: 'success',
       });
+      createAdminNotification({
+        type: 'application',
+        message: `${adminName} approved ${application.fullName || 'an applicant'}'s application for ${application.courseTitle || 'a course'}.`,
+        referenceId: application.id,
+        userId: application.userId,
+      }).catch(() => {});
+      createStudentNotification(
+        application.userId,
+        `Congratulations! Your application for ${application.courseTitle || 'the GIAC programme'} has been approved.`,
+        'application_approved',
+        application.id
+      ).catch(() => {});
     } catch {
       showAdmissionsMsg({ text: 'Could not approve the application. Please try again.', kind: 'error' });
     } finally {
@@ -1307,9 +1336,22 @@ function AdminPanel() {
   const handleReject = async (application: Application, feedback: string) => {
     setBusyApplicationId(application.id);
     showAdmissionsMsg(null);
+    const adminName = auth.currentUser?.displayName || auth.currentUser?.email || 'An admin';
     try {
       await rejectApplication(application.id, feedback, application.userId, application.courseTitle);
       showAdmissionsMsg({ text: `Application has been rejected.`, kind: 'success' });
+      createAdminNotification({
+        type: 'application',
+        message: `${adminName} rejected ${application.fullName || 'an applicant'}'s application for ${application.courseTitle || 'a course'}.`,
+        referenceId: application.id,
+        userId: application.userId,
+      }).catch(() => {});
+      createStudentNotification(
+        application.userId,
+        `We've reviewed your application for ${application.courseTitle || 'the GIAC programme'}. Please check the app for details.`,
+        'application_rejected',
+        application.id
+      ).catch(() => {});
     } catch {
       showAdmissionsMsg({ text: 'Could not reject the application. Please try again.', kind: 'error' });
     } finally {
@@ -1329,11 +1371,18 @@ function AdminPanel() {
     }
   };
 
-  const handleAssignMediator = async (service: Service, name: string, note: string) => {
+  const handleAssignMediator = async (service: Service, name: string, note: string, meetingLink: string) => {
     if (!name.trim()) { Alert.alert('Required', 'Enter a mediator name before assigning.'); return; }
     setBusyAssignId(service.id);
+    const adminName = auth.currentUser?.displayName || auth.currentUser?.email || 'An admin';
     try {
-      await assignMediator(service.id, name.trim(), note.trim(), service.userId);
+      await assignMediator(service.id, name.trim(), note.trim(), service.userId, meetingLink.trim());
+      createAdminNotification({
+        type: 'service',
+        message: `${adminName} assigned ${name.trim()} as mediator for ${service.clientName || 'a client'}'s ${service.serviceType} case.`,
+        referenceId: service.id,
+        userId: service.userId,
+      }).catch(() => {});
     } catch {
       Alert.alert('Error', 'Could not assign mediator. Please try again.');
     } finally {
@@ -1343,8 +1392,15 @@ function AdminPanel() {
 
   const handleUpdateStatus = async (service: Service, status: Service['status'], resolution: string) => {
     setBusyStatusId(service.id);
+    const adminName = auth.currentUser?.displayName || auth.currentUser?.email || 'An admin';
     try {
       await updateCaseStatus(service.id, status, resolution.trim(), service.userId);
+      createAdminNotification({
+        type: 'service',
+        message: `${adminName} marked ${service.clientName || 'a client'}'s ${service.serviceType} case as ${status}.`,
+        referenceId: service.id,
+        userId: service.userId,
+      }).catch(() => {});
     } catch {
       Alert.alert('Error', 'Could not update case status. Please try again.');
     } finally {
@@ -1631,8 +1687,15 @@ function AdminPanel() {
 
   const handleApproveDeletion = async (req: AccountDeletionRequest) => {
     setBusyDeletionId(req.id);
+    const adminName = auth.currentUser?.displayName || auth.currentUser?.email || 'An admin';
     try {
       await approveAccountDeletionRequest(req.id);
+      createAdminNotification({
+        type: 'account',
+        message: `${adminName} approved an account deletion request.`,
+        referenceId: req.id,
+        userId: req.userId,
+      }).catch(() => {});
     } catch {
       Alert.alert('Error', 'Could not approve the deletion request. Please try again.');
     } finally {
@@ -1642,8 +1705,15 @@ function AdminPanel() {
 
   const handleRejectDeletion = async (req: AccountDeletionRequest) => {
     setBusyDeletionId(req.id);
+    const adminName = auth.currentUser?.displayName || auth.currentUser?.email || 'An admin';
     try {
       await rejectAccountDeletionRequest(req.id);
+      createAdminNotification({
+        type: 'account',
+        message: `${adminName} rejected an account deletion request for ${req.fullName || req.email}.`,
+        referenceId: req.id,
+        userId: req.userId,
+      }).catch(() => {});
     } catch {
       Alert.alert('Error', 'Could not reject the deletion request. Please try again.');
     } finally {
@@ -2580,7 +2650,7 @@ function AdminPanel() {
                       busyAssign={busyAssignId === service.id}
                       busyStatus={busyStatusId === service.id}
                       busyDelete={busyDeleteId === service.id}
-                      onAssignMediator={(name, note) => handleAssignMediator(service, name, note)}
+                      onAssignMediator={(name, note, link) => handleAssignMediator(service, name, note, link)}
                       onMarkComplete={(resolution) => handleUpdateStatus(service, 'completed', resolution)}
                       onDelete={() => handleDeleteCase(service)}
                     />

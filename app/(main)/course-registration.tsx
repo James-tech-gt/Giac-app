@@ -4,7 +4,7 @@ import { createCourseRegistration } from '@/services/firestore';
 import { getUserProfile } from '@/services/auth';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -42,6 +42,7 @@ const COURSES = [
 export default function CourseRegistrationScreen() {
   const user = auth.currentUser;
 
+  const scrollRef = useRef<ScrollView>(null);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState(user?.email ?? '');
   const [phone, setPhone] = useState('');
@@ -68,7 +69,10 @@ export default function CourseRegistrationScreen() {
   }
 
   async function handleSubmit() {
-    if (!validate()) return;
+    if (!validate()) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
     if (!user?.uid) return;
     setBusy(true);
     try {
@@ -82,6 +86,7 @@ export default function CourseRegistrationScreen() {
       router.replace('/(main)/home');
     } catch {
       setBanner('Could not submit your registration. Please try again.');
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
     } finally {
       setBusy(false);
     }
@@ -95,6 +100,7 @@ export default function CourseRegistrationScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
         <ScrollView
+          ref={scrollRef}
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}

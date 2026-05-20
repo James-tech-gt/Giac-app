@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Fonts } from '@/constants/theme';
-import { getUserProfile } from '@/services/auth';
-import { auth } from '@/services/firebase';
+import { useUserProfile } from '@/context/user-profile';
 import {
   AdminNotification,
   Announcement,
@@ -14,7 +13,6 @@ import {
 } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { onAuthStateChanged } from 'firebase/auth';
 import React, { useEffect, useState } from 'react';
 import {
   Pressable,
@@ -284,18 +282,16 @@ function AdminNotifItem({ item }: { item: AdminNotification }) {
 }
 
 export default function NotificationsScreen() {
-  const [user, setUser] = useState(auth.currentUser);
+  const { profile, uid } = useUserProfile();
+  const isAdmin = profile?.role === 'admin';
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  // displayPersonalNotifs / displayAdminNotifs are snapshots taken the moment the
-  // screen opens — they don't update when Firestore marks items read, so the list
-  // stays visible while the user is reading.
   const [displayPersonalNotifs, setDisplayPersonalNotifs] = useState<StudentNotification[]>([]);
   const [displayAdminNotifs, setDisplayAdminNotifs] = useState<AdminNotification[]>([]);
   const [lastSeenMs, setLastSeenMs] = useState<number | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const snapped = React.useRef(false);
-
-  useEffect(() => onAuthStateChanged(auth, setUser), []);
+  // Track which IDs we've already added to the display list so each item is only
+  // added once, even if the subscription fires multiple times (cache + server).
+  const displayedPersonalRef = React.useRef<Set<string>>(new Set());
+  const displayedAdminRef = React.useRef<Set<string>>(new Set());
 
   useEffect(() => {
     AsyncStorage.getItem(LAST_SEEN_KEY).then((val) => {
@@ -308,72 +304,50 @@ export default function NotificationsScreen() {
   useEffect(() => {
     let active = true;
     let unsubscribe: (() => void) | undefined;
-    snapped.current = false;
+    // Reset accumulators for this session
+    displayedPersonalRef.current = new Set();
+    displayedAdminRef.current = new Set();
+    setDisplayPersonalNotifs([]);
+    setDisplayAdminNotifs([]);
 
-    async function loadNotificationSource() {
-      if (!user?.uid) {
-        if (active) {
-          setIsAdmin(false);
-          setDisplayPersonalNotifs([]);
-          setDisplayAdminNotifs([]);
-        }
-        return;
-      }
-
-      try {
-        const profile = await getUserProfile(user.uid);
-        const admin = profile?.role === 'admin';
-        if (!active) return;
-        setIsAdmin(admin);
-        unsubscribe = admin
-          ? subscribeAdminNotifications((notifs) => {
-              if (!active) return;
-              if (!snapped.current) {
-                // Skip empty cache hits — wait for a real server result
-                if (notifs.length === 0) return;
-                const unread = notifs.filter((n) => !n.read);
-                setDisplayAdminNotifs(unread);
-                snapped.current = true;
-                const ids = unread.map((n) => n.id);
-                if (ids.length > 0) markAdminNotificationsRead(ids).catch(() => {});
-              }
-            })
-          : subscribeStudentNotifications(user.uid, (notifs) => {
-              if (!active) return;
-              if (!snapped.current) {
-                // Skip empty cache hits — wait for a real server result
-                if (notifs.length === 0) return;
-                const unread = notifs.filter((n) => !n.read);
-                setDisplayPersonalNotifs(unread);
-                snapped.current = true;
-                const ids = unread.map((n) => n.id);
-                if (ids.length > 0) markStudentNotificationsRead(ids).catch(() => {});
-              }
-            });
-      } catch {
-        if (!active || !user?.uid) return;
-        setIsAdmin(false);
-        unsubscribe = subscribeStudentNotifications(user.uid, (notifs) => {
-          if (!active) return;
-          if (!snapped.current) {
-            if (notifs.length === 0) return;
-            const unread = notifs.filter((n) => !n.read);
-            setDisplayPersonalNotifs(unread);
-            snapped.current = true;
-            const ids = unread.map((n) => n.id);
-            if (ids.length > 0) markStudentNotificationsRead(ids).catch(() => {});
-          }
-        });
+    function handlePersonalNotifs(notifs: StudentNotification[]) {
+      if (!active) return;
+      // Only add items that are unread AND haven't been shown yet.
+      // This correctly handles Firestore firing cache (stale read items) first,
+      // then server (new unread items) — both batches are processed correctly.
+      const newUnread = notifs.filter(
+        (n) => !n.read && !displayedPersonalRef.current.has(n.id)
+      );
+      if (newUnread.length > 0) {
+        newUnread.forEach((n) => displayedPersonalRef.current.add(n.id));
+        setDisplayPersonalNotifs((prev) => [...newUnread, ...prev]);
+        markStudentNotificationsRead(newUnread.map((n) => n.id)).catch(() => {});
       }
     }
 
-    loadNotificationSource();
+    function handleAdminNotifs(notifs: AdminNotification[]) {
+      if (!active) return;
+      // subscribeAdminNotifications already filters to unread-only.
+      // Accumulate new unread items into display; mark them read.
+      const newItems = notifs.filter((n) => !displayedAdminRef.current.has(n.id));
+      if (newItems.length > 0) {
+        newItems.forEach((n) => displayedAdminRef.current.add(n.id));
+        setDisplayAdminNotifs((prev) => [...newItems, ...prev]);
+        markAdminNotificationsRead(newItems.map((n) => n.id)).catch(() => {});
+      }
+    }
+
+    if (!uid) return;
+
+    unsubscribe = isAdmin
+      ? subscribeAdminNotifications(handleAdminNotifs)
+      : subscribeStudentNotifications(uid, handlePersonalNotifs);
 
     return () => {
       active = false;
       unsubscribe?.();
     };
-  }, [user?.uid]);
+  }, [uid, isAdmin]);
 
   function isNew(ann: Announcement): boolean {
     if (lastSeenMs === null) return false;

@@ -4,7 +4,7 @@ import { auth } from '@/services/firebase';
 import { createService } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -158,12 +158,14 @@ export default function RequestMediationScreen() {
   const { width } = useWindowDimensions();
   const isCompact = width < 390;
   const horizontalPadding = width < 380 ? 16 : 20;
+  const scrollRef = useRef<ScrollView>(null);
   const [serviceType, setServiceType] = useState<ServiceType>('mediation');
   const [category, setCategory] = useState('');
   const [caseDetails, setCaseDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [openSelector, setOpenSelector] = useState<SelectorKey>(null);
+  const [errors, setErrors] = useState<{ category?: string; caseDetails?: string }>({});
 
   const selectedService = useMemo(
     () => SERVICE_OPTIONS.find((option) => option.value === serviceType) ?? SERVICE_OPTIONS[0],
@@ -181,8 +183,13 @@ export default function RequestMediationScreen() {
       return;
     }
 
-    if (!category.trim() || !caseDetails.trim()) {
-      Alert.alert('Missing details', 'Please choose a category and add case details.');
+    const newErrors: { category?: string; caseDetails?: string } = {};
+    if (!category.trim()) newErrors.category = 'Please select a case category.';
+    if (!caseDetails.trim()) newErrors.caseDetails = 'Please describe your case before submitting.';
+    else if (caseDetails.trim().length < 30) newErrors.caseDetails = 'Please provide more detail — at least 30 characters.';
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
 
@@ -252,6 +259,7 @@ export default function RequestMediationScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
         <ScrollView
+          ref={scrollRef}
           style={styles.scroll}
           contentContainerStyle={[
             styles.content,
@@ -388,6 +396,10 @@ export default function RequestMediationScreen() {
             />
           </Pressable>
 
+          {errors.category ? (
+            <Text style={styles.fieldError}>{errors.category}</Text>
+          ) : null}
+
           {openSelector === 'category' ? (
             <View style={styles.dropdown}>
               {CATEGORY_OPTIONS.map((option) => {
@@ -397,6 +409,7 @@ export default function RequestMediationScreen() {
                     key={option.value}
                     onPress={() => {
                       setCategory(option.value);
+                      setErrors((e) => ({ ...e, category: undefined }));
                       setOpenSelector(null);
                     }}
                     style={({ pressed }) => [
@@ -424,12 +437,18 @@ export default function RequestMediationScreen() {
             <Text style={styles.fieldLabel}>Case details</Text>
             <TextInput
               value={caseDetails}
-              onChangeText={setCaseDetails}
-              placeholder="Describe the issue or dispute"
+              onChangeText={(v) => {
+                setCaseDetails(v);
+                if (errors.caseDetails) setErrors((e) => ({ ...e, caseDetails: undefined }));
+              }}
+              placeholder="Describe the issue or dispute in at least 30 characters"
               placeholderTextColor={C.textMuted}
               multiline
-              style={[styles.input, styles.inputMultiline]}
+              style={[styles.input, styles.inputMultiline, errors.caseDetails ? styles.inputError : null]}
             />
+            {errors.caseDetails ? (
+              <Text style={styles.fieldError}>{errors.caseDetails}</Text>
+            ) : null}
           </View>
         </View>
 
@@ -942,5 +961,14 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.92,
+  },
+  inputError: {
+    borderColor: C.danger,
+  },
+  fieldError: {
+    fontSize: 12,
+    fontFamily: Fonts.sans,
+    color: C.danger,
+    marginTop: 4,
   },
 });

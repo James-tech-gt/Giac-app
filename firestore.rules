@@ -10,10 +10,6 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function requestIsTryingToBecomeAdmin() {
-      return request.resource.data.role == 'admin';
-    }
-
     function isAdmin() {
       return isSignedIn() &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
@@ -29,8 +25,13 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && !requestIsTryingToBecomeAdmin();
-      allow update: if (isOwner(userId) && !requestIsTryingToBecomeAdmin()) || isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.get('role', '') != 'admin';
+      allow update: if isAdmin() || (
+        isOwner(userId) && (
+          request.resource.data.get('role', '') != 'admin' ||
+          resource.data.role == 'admin'
+        )
+      );
       allow delete: if isAdmin();
     }
 
@@ -151,7 +152,7 @@ service cloud.firestore {
       allow list: if isAdmin() || isSignedIn();
       allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.status == 'accepted');
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && (request.resource.data.status == 'accepted' || request.resource.data.status == 'declined'));
       allow delete: if isAdmin();
     }
   }

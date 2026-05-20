@@ -1,4 +1,5 @@
 import { auth } from '@/services/firebase';
+import { googleSignInState } from '@/services/auth';
 import { configureGoogleSignIn } from '@/services/google-signin';
 import { registerForPushNotifications, setupNotificationHandlers } from '@/services/notifications';
 import * as Notifications from 'expo-notifications';
@@ -8,7 +9,8 @@ import { router, Stack, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { onAuthStateChanged } from 'firebase/auth';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import '../global.css';
@@ -16,6 +18,7 @@ import '../global.css';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { OfflineBanner } from '@/components/offline-banner';
+import { UserProfileProvider } from '@/context/user-profile';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -25,6 +28,7 @@ export default function RootLayout() {
   const segmentsRef = useRef(segments);
   useEffect(() => { segmentsRef.current = segments; }, [segments]);
   const registeredUidRef = useRef<string | null>(null);
+  const [currentUid, setCurrentUid] = useState<string | null>(auth.currentUser?.uid ?? null);
   const [fontsLoaded, fontError] = useFonts({
     'CormorantGaramond-Regular': require('../assets/fonts/CormorantGaramond-Regular.ttf'),
     'CormorantGaramond-SemiBold': require('../assets/fonts/CormorantGaramond-SemiBold.ttf'),
@@ -59,15 +63,27 @@ export default function RootLayout() {
       const inProtectedGroup = ['(main)', '(student)', '(applicant)', '(client)', 'admin'].includes(rootSegment ?? '');
 
       if (rootSegment === 'splashscreen' || rootSegment === 'onboarding') return;
-      if (user && inAuthGroup) { router.replace('/(main)/home'); return; }
+      if (googleSignInState.inProgress) return;
+      if (user && inAuthGroup) router.replace('/(main)/home');
       if (!user && inProtectedGroup) { router.replace('/(auth)/login'); }
 
-      if (user && registeredUidRef.current !== user.uid) {
-        registeredUidRef.current = user.uid;
-        // Defer so it doesn't block the navigation/render on startup
-        setTimeout(() => registerForPushNotifications(user.uid).catch(() => {}), 3000);
+      if (user) {
+        setCurrentUid(user.uid);
+        if (registeredUidRef.current !== user.uid) {
+          registeredUidRef.current = user.uid;
+          // Short delay so the Firebase Auth ID token is cached before the Firestore write
+          setTimeout(() => {
+            registerForPushNotifications(user.uid).catch(() => {
+              // Retry once in case FCM or token wasn't ready yet
+              registeredUidRef.current = null;
+              setTimeout(() => registerForPushNotifications(user.uid).catch(() => {}), 5000);
+            });
+          }, 1500);
+        }
+      } else {
+        registeredUidRef.current = null;
+        setCurrentUid(null);
       }
-      if (!user) registeredUidRef.current = null;
     });
 
     return unsubscribe;
@@ -75,7 +91,21 @@ export default function RootLayout() {
 
   useEffect(() => {
     Notifications.setBadgeCountAsync(0).catch(() => {});
-    return setupNotificationHandlers();
+    return setupNotificationHandlers(undefined, currentUid);
+  }, [currentUid]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        Notifications.setBadgeCountAsync(0).catch(() => {});
+        // Re-register on every foreground in case FCM rotated the token
+        // while the app was closed. getExpoPushTokenAsync is cached by the
+        // SDK, so this is a no-op when the token hasn't changed.
+        const uid = auth.currentUser?.uid;
+        if (uid) registerForPushNotifications(uid).catch(() => {});
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {
@@ -90,6 +120,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.light.background }}>
+      <UserProfileProvider>
       <ThemeProvider value={appTheme}>
         <Stack
           screenOptions={{
@@ -110,6 +141,7 @@ export default function RootLayout() {
         <StatusBar style="dark" backgroundColor={Colors.light.background} />
         <OfflineBanner />
       </ThemeProvider>
+      </UserProfileProvider>
     </GestureHandlerRootView>
   );
 }

@@ -6,7 +6,7 @@ import { uploadFile } from '@/services/storage';
 import { FontAwesome6 } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -206,6 +206,7 @@ export default function ApplicationScreen() {
   const isCompact = width < 390;
   const horizontalPadding = width < 380 ? 16 : 20;
 
+  const scrollRef = useRef<ScrollView>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -344,7 +345,10 @@ export default function ApplicationScreen() {
       Alert.alert('Sign in required', 'Please sign in before submitting an application.');
       return;
     }
-    if (!validate()) return;
+    if (!validate()) {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
     setReviewing(true);
   };
 
@@ -514,6 +518,7 @@ export default function ApplicationScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
         <ScrollView
+          ref={scrollRef}
           style={styles.scroll}
           contentContainerStyle={[styles.content, { paddingHorizontal: horizontalPadding, paddingBottom: isCompact ? 120 : 132 }]}
           showsVerticalScrollIndicator={false}

@@ -1,9 +1,10 @@
 import { Fonts } from '@/constants/theme';
-import { getUserProfile, updateUserProfile } from '@/services/auth';
+import { updateUserProfile } from '@/services/auth';
+import { useUserProfile } from '@/context/user-profile';
 import { auth } from '@/services/firebase';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -36,31 +37,28 @@ const C = {
 
 export default function EditProfileScreen() {
   const user = auth.currentUser;
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [loading, setLoading] = useState(true);
+  const { profile, reload } = useUserProfile();
+  const scrollRef = useRef<ScrollView>(null);
+  const [fullName, setFullName] = useState(profile?.fullName || '');
+  const [phone, setPhone] = useState(profile?.phone || '');
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
+  // Sync fields if profile loads after mount
   useEffect(() => {
-    if (!user?.uid) { setLoading(false); return; }
-    getUserProfile(user.uid)
-      .then((data) => {
-        if (data) {
-          setFullName(data.fullName || '');
-          setPhone(data.phone || '');
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [user?.uid]);
+    if (profile) {
+      setFullName(profile.fullName || '');
+      setPhone(profile.phone || '');
+    }
+  }, [profile?.fullName, profile?.phone]);
 
   const handleSave = async () => {
     if (!user?.uid) return;
     if (!fullName.trim()) {
       setError('Full name cannot be empty.');
       setSuccess('');
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
     setSaving(true);
@@ -68,9 +66,11 @@ export default function EditProfileScreen() {
     setSuccess('');
     try {
       await updateUserProfile(user.uid, { fullName, phone });
+      await reload();
       setSuccess('Profile updated successfully.');
     } catch {
       setError('Could not update profile. Please try again.');
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
     } finally {
       setSaving(false);
     }
@@ -84,6 +84,7 @@ export default function EditProfileScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
         <ScrollView
+          ref={scrollRef}
           style={styles.scroll}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
@@ -101,12 +102,7 @@ export default function EditProfileScreen() {
           <Text style={styles.subtitle}>Update your name and contact information.</Text>
         </View>
 
-        {loading ? (
-          <View style={styles.stateCard}>
-            <ActivityIndicator color={C.secondary} />
-          </View>
-        ) : (
-          <View style={styles.card}>
+        <View style={styles.card}>
             {error ? (
               <View style={[styles.banner, { backgroundColor: C.dangerSoft }]}>
                 <Text style={[styles.bannerText, { color: C.danger }]}>{error}</Text>
@@ -160,7 +156,6 @@ export default function EditProfileScreen() {
               }
             </Pressable>
           </View>
-        )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

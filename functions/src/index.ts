@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin';
+import { onCall } from 'firebase-functions/v2/https';
 import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { Resend } from 'resend';
 
@@ -6,9 +7,39 @@ admin.initializeApp();
 const db = admin.firestore();
 
 const FROM_EMAIL = 'GIAC <noreply@giacghana.com>';
+const CONTACT_EMAIL = 'info@giacghana.com';
+
+const EMAIL_FOOTER = `
+  <hr style="border:none;border-top:1px solid #E3E9F2;margin:32px 0 20px" />
+  <p style="font-size:12px;color:#9AA3B2;line-height:1.8;margin:0">
+    Global Institute of ADR Center · Kasoa, Ghana<br/>
+    For enquiries, contact us at <a href="mailto:${CONTACT_EMAIL}" style="color:#14213A">${CONTACT_EMAIL}</a><br/>
+    Please do not reply to this email.
+  </p>`;
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
+}
+
+async function sendTransactionalEmail(input: {
+  from?: string;
+  to: string;
+  subject: string;
+  html: string;
+  label: string;
+}) {
+  const { from = FROM_EMAIL, to, subject, html, label } = input;
+  try {
+    const result = await getResend().emails.send({ from, to, subject, html });
+    console.log(`[Email] ${label} sent`, JSON.stringify({ to, subject, id: result.data?.id ?? null, error: result.error ?? null }));
+    if (result.error) {
+      console.error(`[Email] ${label} Resend API error`, JSON.stringify(result.error));
+    }
+    return result;
+  } catch (err) {
+    console.error(`[Email] ${label} failed`, err);
+    throw err;
+  }
 }
 
 // ─── Expo Push Helper ─────────────────────────────────────────────────────────
@@ -17,12 +48,7 @@ async function sendFcmPush(tokens: string[], title: string, body: string, data?:
     .filter((t) => t.startsWith('ExponentPushToken['))
     .map((to) => ({ to, title, body, sound: 'default', data: data ?? {} }));
 
-  if (messages.length === 0) {
-    console.log('[Push] No valid Expo tokens to send to.');
-    return;
-  }
-
-  console.log('[Push] Sending to tokens:', tokens);
+  if (messages.length === 0) return;
 
   const res = await fetch('https://exp.host/--/api/v2/push/send', {
     method: 'POST',
@@ -31,7 +57,8 @@ async function sendFcmPush(tokens: string[], title: string, body: string, data?:
   });
 
   const json = await res.json();
-  console.log('[Push] Expo response:', JSON.stringify(json));
+  const failed = json?.data?.filter((r: any) => r.status === 'error');
+  if (failed?.length) console.error('[Push] Failed deliveries:', JSON.stringify(failed));
 }
 
 async function getAdminPushTokens(): Promise<string[]> {
@@ -78,42 +105,52 @@ export const onAdminNotification = onDocumentCreated(
 
 // Welcome email when a new user document is created
 export const onUserCreated = onDocumentCreated(
-  'users/{uid}',
+  { document: 'users/{uid}', secrets: ['RESEND_API_KEY'] },
   async (event) => {
-    const data = event.data?.data();
-    if (!data?.email) return;
+    let data = event.data?.data();
+    if (!data) return;
+
+    // Push token write can create the doc before the profile write lands.
+    // If email is missing, wait and re-fetch once so we get the full profile.
+    if (!data.email) {
+      await new Promise((r) => setTimeout(r, 4000));
+      const snap = await db.collection('users').doc(event.params.uid).get();
+      data = snap.data();
+      if (!data?.email) return;
+    }
 
     const name = data.fullName || data.email;
-
-    await getResend().emails.send({
-      from: FROM_EMAIL,
-      to: data.email,
-      subject: 'Welcome to GIAC',
-      html: `
-        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#14213A">
-          <img src="https://www.giacghana.com/logo.png" alt="GIAC" width="120" style="margin-bottom:24px" />
-          <h2 style="margin:0 0 12px">Welcome to GIAC, ${name}!</h2>
-          <p style="line-height:1.6;color:#4A5468">
-            Thank you for joining the Global Institute of ADR Center. Your account is now active.
-          </p>
-          <p style="line-height:1.6;color:#4A5468">
-            To get started, register for a course that interests you and our team will be in touch with next steps.
-          </p>
-          <a href="https://giacghana.com" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#1F2A44;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-            Open GIAC App
-          </a>
-          <p style="margin-top:32px;font-size:12px;color:#9AA3B2">
-            Global Institute of ADR Center · Kasoa, Ghana
-          </p>
-        </div>
-      `,
-    });
+    try {
+      await sendTransactionalEmail({
+        label: 'welcome',
+        to: data.email,
+        subject: 'Welcome to GIAC',
+        html: `
+          <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#14213A">
+            <img src="https://www.giacghana.com/logo.png" alt="GIAC" width="120" style="margin-bottom:24px" />
+            <h2 style="margin:0 0 12px">Welcome to GIAC, ${name}!</h2>
+            <p style="line-height:1.6;color:#4A5468">
+              Thank you for joining the Global Institute of ADR Center. Your account is now active.
+            </p>
+            <p style="line-height:1.6;color:#4A5468">
+              To get started, register for a course that interests you and our team will be in touch with next steps.
+            </p>
+            <p style="line-height:1.6;color:#4A5468">
+              Open the GIAC app to explore available courses.
+            </p>
+            ${EMAIL_FOOTER}
+          </div>
+        `,
+      });
+    } catch (err) {
+      console.error('[onUserCreated] Failed to send welcome email:', err);
+    }
   }
 );
 
 // Application approved or rejected email
 export const onApplicationUpdated = onDocumentUpdated(
-  'APPLICATIONS/{id}',
+  { document: 'APPLICATIONS/{id}', secrets: ['RESEND_API_KEY'] },
   async (event) => {
     const before = event.data?.before.data();
     const after = event.data?.after.data();
@@ -128,8 +165,8 @@ export const onApplicationUpdated = onDocumentUpdated(
     const name = fullName || email;
 
     if (status === 'approved') {
-      await getResend().emails.send({
-        from: FROM_EMAIL,
+      await sendTransactionalEmail({
+        label: 'application-approved',
         to: email,
         subject: 'Congratulations — Your GIAC Application is Approved',
         html: `
@@ -140,18 +177,15 @@ export const onApplicationUpdated = onDocumentUpdated(
               We are pleased to inform you that your application for <strong>${courseTitle || 'the GIAC programme'}</strong> has been <strong>approved</strong>.
             </p>
             <p style="line-height:1.6;color:#4A5468">
-              Please log in to the GIAC app to view your admission details and next steps.
+              Please open the GIAC app to view your admission details and next steps.
             </p>
-            <a href="https://giacghana.com" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#2D6A4F;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-              View My Admission
-            </a>
-            <p style="margin-top:32px;font-size:12px;color:#9AA3B2">Global Institute of ADR Center · Kasoa, Ghana</p>
+            ${EMAIL_FOOTER}
           </div>
         `,
       });
     } else if (status === 'rejected') {
-      await getResend().emails.send({
-        from: FROM_EMAIL,
+      await sendTransactionalEmail({
+        label: 'application-rejected',
         to: email,
         subject: 'Update on Your GIAC Application',
         html: `
@@ -163,12 +197,9 @@ export const onApplicationUpdated = onDocumentUpdated(
               After careful review, we are unable to proceed with your application at this time.
             </p>
             <p style="line-height:1.6;color:#4A5468">
-              We encourage you to reapply in the future or contact us if you have any questions.
+              We encourage you to reapply in the future. If you have any questions, please contact us at <a href="mailto:${CONTACT_EMAIL}" style="color:#14213A">${CONTACT_EMAIL}</a>.
             </p>
-            <a href="https://giacghana.com" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#1F2A44;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-              Contact GIAC
-            </a>
-            <p style="margin-top:32px;font-size:12px;color:#9AA3B2">Global Institute of ADR Center · Kasoa, Ghana</p>
+            ${EMAIL_FOOTER}
           </div>
         `,
       });
@@ -178,7 +209,7 @@ export const onApplicationUpdated = onDocumentUpdated(
 
 // Mediator assigned or case status changed email
 export const onCaseUpdated = onDocumentUpdated(
-  'Services/{id}',
+  { document: 'Services/{id}', secrets: ['RESEND_API_KEY'] },
   async (event) => {
     const before = event.data?.before.data();
     const after = event.data?.after.data();
@@ -191,8 +222,8 @@ export const onCaseUpdated = onDocumentUpdated(
 
     // Mediator just assigned
     if (!before.mediatorName && after.mediatorName) {
-      await getResend().emails.send({
-        from: FROM_EMAIL,
+      await sendTransactionalEmail({
+        label: 'case-assigned',
         to: email,
         subject: 'Your GIAC Case Has Been Assigned',
         html: `
@@ -201,12 +232,9 @@ export const onCaseUpdated = onDocumentUpdated(
             <p style="line-height:1.6;color:#4A5468">
               Dear ${name},<br/><br/>
               <strong>${after.mediatorName}</strong> has been assigned to handle your case.
-              You can track progress and communicate through the GIAC app.
+              Open the GIAC app to track progress and communicate with your mediator.
             </p>
-            <a href="https://giacghana.com" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#1F2A44;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-              View My Case
-            </a>
-            <p style="margin-top:32px;font-size:12px;color:#9AA3B2">Global Institute of ADR Center · Kasoa, Ghana</p>
+            ${EMAIL_FOOTER}
           </div>
         `,
       });
@@ -214,8 +242,8 @@ export const onCaseUpdated = onDocumentUpdated(
 
     // Case completed
     if (before.status !== 'completed' && after.status === 'completed') {
-      await getResend().emails.send({
-        from: FROM_EMAIL,
+      await sendTransactionalEmail({
+        label: 'case-completed',
         to: email,
         subject: 'Your GIAC Case Has Been Resolved',
         html: `
@@ -227,15 +255,112 @@ export const onCaseUpdated = onDocumentUpdated(
               ${after.resolution ? `<br/><br/><strong>Resolution:</strong> ${after.resolution}` : ''}
             </p>
             <p style="line-height:1.6;color:#4A5468">
-              Thank you for trusting GIAC with your dispute resolution needs.
+              Thank you for trusting GIAC with your dispute resolution needs. Open the GIAC app to view the full resolution details.
             </p>
-            <a href="https://giacghana.com" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#2D6A4F;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-              View Resolution
-            </a>
-            <p style="margin-top:32px;font-size:12px;color:#9AA3B2">Global Institute of ADR Center · Kasoa, Ghana</p>
+            ${EMAIL_FOOTER}
           </div>
         `,
       });
     }
   }
 );
+
+// Certificate issued — course completed email
+export const onCertificateCreated = onDocumentCreated(
+  { document: 'Certificates/{id}', secrets: ['RESEND_API_KEY'] },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data?.userId) return;
+
+    const userSnap = await db.collection('users').doc(data.userId).get();
+    const email = userSnap.data()?.email;
+    if (!email) return;
+
+    const name = userSnap.data()?.fullName || email;
+    const courseTitle = data.courseTitle || 'your GIAC programme';
+
+    await sendTransactionalEmail({
+      label: 'certificate-issued',
+      to: email,
+      subject: `Congratulations — You've Completed ${courseTitle}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#14213A">
+          <h2 style="margin:0 0 12px;color:#2D6A4F">Course Completed! 🎓</h2>
+          <p style="line-height:1.6;color:#4A5468">
+            Dear ${name},<br/><br/>
+            Congratulations on successfully completing <strong>${courseTitle}</strong>.
+            Your certificate has been issued and is available in the GIAC app.
+          </p>
+          ${data.credentialId ? `<p style="line-height:1.6;color:#4A5468">Credential ID: <strong>${data.credentialId}</strong></p>` : ''}
+          <p style="line-height:1.6;color:#4A5468">
+            Open the GIAC app to view and download your certificate.
+          </p>
+          ${EMAIL_FOOTER}
+        </div>
+      `,
+    });
+  }
+);
+
+// Admission letter sent email
+export const onAdmissionLetterSent = onDocumentUpdated(
+  { document: 'CourseRegistrations/{id}', secrets: ['RESEND_API_KEY'] },
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after) return;
+    if (before.status === after.status) return;
+    if (after.status !== 'letter_sent') return;
+
+    const { email, fullName, courseInterest } = after;
+    if (!email) return;
+
+    const name = fullName || email;
+    const courseName = courseInterest === 'pecadr'
+      ? 'Professional Executive Certificate in ADR'
+      : 'Professional Executive Masters in ADR';
+
+    await sendTransactionalEmail({
+      label: 'admission-letter',
+      to: email,
+      subject: 'Your GIAC Admission Letter is Ready',
+      html: `
+        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#14213A">
+          <h2 style="margin:0 0 12px">Your Admission Letter is Ready</h2>
+          <p style="line-height:1.6;color:#4A5468">
+            Dear ${name},<br/><br/>
+            Your admission letter for <strong>${courseName}</strong> has been issued.
+            Please open the GIAC app to view and download your letter.
+          </p>
+          ${EMAIL_FOOTER}
+        </div>
+      `,
+    });
+  }
+);
+
+// Password changed security alert (callable from app after successful password change)
+export const onPasswordChanged = onCall({ secrets: ['RESEND_API_KEY'] }, async (request) => {
+  const { email, name } = request.data;
+  if (!email) return;
+
+  await sendTransactionalEmail({
+    label: 'password-changed',
+    to: email,
+    subject: 'Your GIAC Password Was Changed',
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#14213A">
+        <h2 style="margin:0 0 12px">Password Changed</h2>
+        <p style="line-height:1.6;color:#4A5468">
+          Dear ${name || email},<br/><br/>
+          Your GIAC account password was recently changed.
+          If you made this change, no action is needed.
+        </p>
+        <p style="line-height:1.6;color:#4A5468">
+          If you did <strong>not</strong> make this change, please reset your password immediately via the GIAC app or contact us at <a href="mailto:${CONTACT_EMAIL}" style="color:#C0392B">${CONTACT_EMAIL}</a>.
+        </p>
+        ${EMAIL_FOOTER}
+      </div>
+    `,
+  });
+});

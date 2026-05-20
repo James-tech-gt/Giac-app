@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Fonts } from '@/constants/theme';
 import { getDisplayRole } from '@/services/access';
-import { getUserProfile, logOut, resetPassword, sendVerificationEmail, UserProfile } from '@/services/auth';
+import { logOut, resetPassword, sendVerificationEmail } from '@/services/auth';
+import { useUserProfile } from '@/context/user-profile';
 import { auth } from '@/services/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
@@ -126,7 +127,7 @@ function SettingRow({
 export default function SettingsScreen() {
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const { profile } = useUserProfile();
   const [applications, setApplications] = useState<Application[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [banner, setBanner] = useState<{ text: string; kind: 'success' | 'error' } | null>(null);
@@ -156,31 +157,20 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     let active = true;
-
-    async function loadProfileContext() {
+    async function loadData() {
       if (!user?.uid) return;
       try {
-        const [profileData, applicationData, serviceData] = await Promise.all([
-          getUserProfile(user.uid),
+        const [applicationData, serviceData] = await Promise.all([
           getUserApplications(user.uid),
           getUserServices(user.uid),
         ]);
         if (!active) return;
-        setProfile(profileData);
         setApplications(applicationData ?? []);
         setServices(serviceData ?? []);
-      } catch {
-        if (!active) return;
-        setProfile(null);
-        setApplications([]);
-        setServices([]);
-      }
+      } catch {}
     }
-
-    loadProfileContext();
-    return () => {
-      active = false;
-    };
+    loadData();
+    return () => { active = false; };
   }, [user?.uid]);
 
   const displayRole = useMemo(

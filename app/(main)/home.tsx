@@ -1,6 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Fonts } from '@/constants/theme';
-import { getUserProfile, UserProfile } from '@/services/auth';
 import { getDisplayRole, getEffectiveRole } from '@/services/access';
+import { useUserProfile } from '@/context/user-profile';
 import { auth } from '@/services/firebase';
 import {
   Announcement,
@@ -13,6 +14,7 @@ import {
   subscribeUserRegistration,
   subscribeUserServices,
   acceptAdmissionLetter,
+  declineAdmissionLetter,
 } from '@/services/firestore';
 import NotificationBell from '@/components/notification-bell';
 import { FontAwesome6 } from '@expo/vector-icons';
@@ -20,6 +22,7 @@ import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   ImageBackground,
   Linking,
   Modal,
@@ -130,20 +133,26 @@ export default function HomeScreen() {
   const isCompact = width < 390;
   const horizontalPadding = width < 380 ? 16 : 20;
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const { profile } = useUserProfile();
   const [applications, setApplications] = useState<Application[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [loading, setLoading] = useState(false);
   const [pendingApps, setPendingApps] = useState<Application[]>([]);
   const [expandedAnnId, setExpandedAnnId] = useState<string | null>(null);
   const [registration, setRegistration] = useState<CourseRegistration | null | undefined>(undefined);
   const [acceptingLetter, setAcceptingLetter] = useState(false);
+  const [rejectingLetter, setRejectingLetter] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) { setApplications([]); return; }
-    return subscribeUserApplications(user.uid, setApplications);
+    AsyncStorage.getItem(`@giac:apps:${user.uid}`)
+      .then(raw => { if (raw) setApplications(JSON.parse(raw)); })
+      .catch(() => {});
+    return subscribeUserApplications(user.uid, (apps) => {
+      setApplications(apps);
+      AsyncStorage.setItem(`@giac:apps:${user.uid}`, JSON.stringify(apps)).catch(() => {});
+    });
   }, [user?.uid]);
 
   useEffect(() => {
@@ -151,21 +160,18 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
+    if (!user?.uid) { setServices([]); return; }
+    AsyncStorage.getItem(`@giac:svcs:${user.uid}`)
+      .then(raw => { if (raw) setServices(JSON.parse(raw)); })
+      .catch(() => {});
     let active = true;
-    const load = async () => {
-      if (!user?.uid) { if (active) setLoading(false); return; }
-      try {
-        const profileData = await getUserProfile(user.uid);
-        if (active) setProfile(profileData);
-      } catch {} finally {
-        if (active) setLoading(false);
-      }
-    };
-    load();
-    const unsub = user?.uid
-      ? subscribeUserServices(user.uid, (d) => { if (active) setServices(d ?? []); })
-      : null;
-    return () => { active = false; unsub?.(); };
+    const unsub = subscribeUserServices(user.uid, (d) => {
+      if (!active) return;
+      const svcs = d ?? [];
+      setServices(svcs);
+      AsyncStorage.setItem(`@giac:svcs:${user.uid}`, JSON.stringify(svcs)).catch(() => {});
+    });
+    return () => { active = false; unsub(); };
   }, [user?.uid]);
 
   const displayName = useMemo(() => {
@@ -211,6 +217,29 @@ export default function HomeScreen() {
     } finally {
       setAcceptingLetter(false);
     }
+  };
+
+  const handleDeclineLetter = () => {
+    if (!registration) return;
+    Alert.alert(
+      'Decline Admission',
+      'Are you sure you want to decline your admission offer? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Decline',
+          style: 'destructive',
+          onPress: async () => {
+            setRejectingLetter(true);
+            try {
+              await declineAdmissionLetter(registration.id);
+            } finally {
+              setRejectingLetter(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const adminTiles = [
@@ -496,20 +525,32 @@ export default function HomeScreen() {
                 <Text style={styles.letterDownloadText}>Download Admission Letter</Text>
               </Pressable>
             ) : null}
-            <Pressable
-              onPress={handleAcceptLetter}
-              disabled={acceptingLetter}
-              style={({ pressed }) => [styles.letterAcceptBtn, (pressed || acceptingLetter) && styles.pressed]}
-            >
-              {acceptingLetter
-                ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={styles.letterAcceptBtnText}>Accept Admission →</Text>
-              }
-            </Pressable>
+            <View style={styles.letterBtnRow}>
+              <Pressable
+                onPress={handleDeclineLetter}
+                disabled={rejectingLetter || acceptingLetter}
+                style={({ pressed }) => [styles.letterDeclineBtn, (pressed || rejectingLetter) && styles.pressed]}
+              >
+                {rejectingLetter
+                  ? <ActivityIndicator size="small" color={C.danger} />
+                  : <Text style={styles.letterDeclineBtnText}>Decline</Text>
+                }
+              </Pressable>
+              <Pressable
+                onPress={handleAcceptLetter}
+                disabled={acceptingLetter || rejectingLetter}
+                style={({ pressed }) => [styles.letterAcceptBtn, (pressed || acceptingLetter) && styles.pressed]}
+              >
+                {acceptingLetter
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={styles.letterAcceptBtnText}>Accept Admission →</Text>
+                }
+              </Pressable>
+            </View>
           </View>
         )}
 
-        {/* Rejected registration */}
+        {/* Rejected by admin */}
         {!isAdmin && registration?.status === 'rejected' && (
           <View style={[styles.regPendingCard, styles.regRejectedCard]}>
             <FontAwesome6 name="circle-xmark" size={16} color={C.danger} />
@@ -517,6 +558,19 @@ export default function HomeScreen() {
               <Text style={[styles.regPendingTitle, { color: C.danger }]}>Registration Not Approved</Text>
               <Text style={styles.regPendingSubtitle}>
                 Contact GIAC support for more information.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Declined by student */}
+        {!isAdmin && registration?.status === 'declined' && (
+          <View style={[styles.regPendingCard, styles.regRejectedCard]}>
+            <FontAwesome6 name="circle-xmark" size={16} color={C.danger} />
+            <View style={styles.regCardBody}>
+              <Text style={[styles.regPendingTitle, { color: C.danger }]}>Admission Declined</Text>
+              <Text style={styles.regPendingSubtitle}>
+                You declined your admission offer. Contact GIAC if you changed your mind.
               </Text>
             </View>
           </View>
@@ -923,8 +977,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 10,
   },
   letterDownloadText: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.success },
+  letterBtnRow: { flexDirection: 'row', gap: 10 },
+  letterDeclineBtn: {
+    flex: 1, borderRadius: 12, borderWidth: 1, borderColor: C.danger,
+    paddingVertical: 12, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: C.dangerSoft,
+  },
+  letterDeclineBtnText: { fontSize: 14, fontFamily: Fonts.sansBold, color: C.danger },
   letterAcceptBtn: {
-    backgroundColor: C.success, borderRadius: 12,
+    flex: 2, backgroundColor: C.success, borderRadius: 12,
     paddingVertical: 12, alignItems: 'center', justifyContent: 'center',
   },
   letterAcceptBtnText: { fontSize: 14, fontFamily: Fonts.sansBold, color: '#FFFFFF' },

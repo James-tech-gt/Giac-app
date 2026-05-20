@@ -11,6 +11,7 @@ import {
     orderBy,
     query,
     serverTimestamp,
+    setDoc,
     updateDoc,
     where,
     writeBatch,
@@ -139,6 +140,7 @@ export interface Service {
   mediatorAssigned: string;
   mediatorName?: string;
   mediatorNote?: string;
+  meetingLink?: string;
   scheduledDate?: any;
   resolution?: string;
   statusUpdatedAt?: any;
@@ -837,6 +839,7 @@ export function subscribeUserServices(
             mediatorAssigned: pickField<string>(data, 'mediatorAssigned', 'MediatorAssigned') ?? '',
             mediatorName: pickField<string>(data, 'mediatorName') ?? '',
             mediatorNote: pickField<string>(data, 'mediatorNote') ?? '',
+            meetingLink: pickField<string>(data, 'meetingLink') ?? '',
             scheduledDate: pickField<any>(data, 'scheduledDate'),
             resolution: pickField<string>(data, 'resolution') ?? '',
             statusUpdatedAt: pickField<any>(data, 'statusUpdatedAt'),
@@ -1405,7 +1408,7 @@ export interface CourseRegistration {
   email: string;
   phone: string;
   courseInterest: 'pecadr' | 'pemadr';
-  status: 'pending' | 'letter_sent' | 'accepted' | 'rejected';
+  status: 'pending' | 'letter_sent' | 'accepted' | 'rejected' | 'declined';
   studentNumber: string;
   letterUrl?: string;
   submittedAt: any;
@@ -1493,6 +1496,13 @@ export async function sendAdmissionLetter(
 export async function acceptAdmissionLetter(registrationId: string): Promise<void> {
   await updateDoc(doc(db, 'CourseRegistrations', registrationId), {
     status: 'accepted',
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function declineAdmissionLetter(registrationId: string): Promise<void> {
+  await updateDoc(doc(db, 'CourseRegistrations', registrationId), {
+    status: 'declined',
     updatedAt: serverTimestamp(),
   });
 }
@@ -1669,6 +1679,7 @@ export function subscribeAllServices(
             mediatorAssigned: pickField<string>(data, 'mediatorAssigned', 'MediatorAssigned') ?? '',
             mediatorName: pickField<string>(data, 'mediatorName') ?? '',
             mediatorNote: pickField<string>(data, 'mediatorNote') ?? '',
+            meetingLink: pickField<string>(data, 'meetingLink') ?? '',
             scheduledDate: pickField<any>(data, 'scheduledDate'),
             resolution: pickField<string>(data, 'resolution') ?? '',
             statusUpdatedAt: pickField<any>(data, 'statusUpdatedAt'),
@@ -1796,7 +1807,14 @@ export async function updateUserRole(
 }
 
 export async function updateUserPushToken(uid: string, pushToken: string): Promise<void> {
-  await updateDoc(doc(db, COLLECTIONS.users, uid), { pushToken });
+  await setDoc(
+    doc(db, COLLECTIONS.users, uid),
+    {
+      pushToken,
+      pushTokenUpdatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
 
 export function subscribeAdminNotifications(
@@ -1892,11 +1910,13 @@ export async function assignMediator(
   serviceId: string,
   mediatorName: string,
   mediatorNote: string,
-  clientUserId: string
+  clientUserId: string,
+  meetingLink?: string
 ): Promise<void> {
   await updateDoc(doc(db, COLLECTIONS.services, serviceId), {
     mediatorName: mediatorName.trim(),
     mediatorAssigned: mediatorName.trim(),
+    meetingLink: meetingLink?.trim() || '',
     mediatorNote: mediatorNote.trim(),
     status: 'in-progress',
     statusUpdatedAt: serverTimestamp(),

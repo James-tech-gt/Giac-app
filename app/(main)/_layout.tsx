@@ -1,19 +1,21 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Fonts } from '@/constants/theme';
-import { getUserProfile } from '@/services/auth';
-import { UserRole, getEffectiveRole } from '@/services/access';
-import { auth } from '@/services/firebase';
+import { getEffectiveRole } from '@/services/access';
 import {
   Application,
   Service,
   subscribeUserApplications,
   subscribeUserServices,
 } from '@/services/firestore';
+import { useUserProfile } from '@/context/user-profile';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { onAuthStateChanged } from 'firebase/auth';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const appsKey = (uid: string) => `@giac:apps:${uid}`;
+const svcsKey = (uid: string) => `@giac:svcs:${uid}`;
 
 const C = {
   bg: '#F8FAFD',
@@ -28,54 +30,35 @@ export default function MainLayout() {
   const { width } = useWindowDimensions();
   const isCompact = width < 390;
   const insets = useSafeAreaInsets();
-  const [currentUserId, setCurrentUserId] = useState<string | null>(auth.currentUser?.uid ?? null);
-  const [profileRole, setProfileRole] = useState<UserRole | null>(null);
+  const { profile, uid: currentUserId } = useUserProfile();
+  const profileRole = profile?.role ?? null;
   const [applications, setApplications] = useState<Application[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [roleReady, setRoleReady] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUserId(user?.uid ?? null);
-      if (!user?.uid) {
-        setProfileRole(null);
-        setApplications([]);
-        setServices([]);
-        setRoleReady(true);
-      }
-    });
-
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
     if (!currentUserId) {
+      setApplications([]);
+      setServices([]);
       return;
     }
 
-    // Show tabs immediately with a default role, then update when profile loads
-    setRoleReady(true);
+    // Load cached data first so tabs render correctly before Firestore responds
+    AsyncStorage.getItem(appsKey(currentUserId))
+      .then(raw => { if (raw) setApplications(JSON.parse(raw)); })
+      .catch(() => {});
+    AsyncStorage.getItem(svcsKey(currentUserId))
+      .then(raw => { if (raw) setServices(JSON.parse(raw)); })
+      .catch(() => {});
 
-    const loadProfile = async () => {
-      try {
-        const profile = await getUserProfile(currentUserId);
-        if (!active) return;
-        setProfileRole(profile?.role ?? 'applicant');
-      } catch {
-        if (!active) return;
-        setProfileRole('applicant');
-      }
-    };
-
-    loadProfile();
-
-    const unsubscribeApplications = subscribeUserApplications(currentUserId, setApplications);
-    const unsubscribeServices = subscribeUserServices(currentUserId, setServices);
-
+    const unsubscribeApplications = subscribeUserApplications(currentUserId, (apps) => {
+      setApplications(apps);
+      AsyncStorage.setItem(appsKey(currentUserId), JSON.stringify(apps)).catch(() => {});
+    });
+    const unsubscribeServices = subscribeUserServices(currentUserId, (svcs) => {
+      setServices(svcs);
+      AsyncStorage.setItem(svcsKey(currentUserId), JSON.stringify(svcs)).catch(() => {});
+    });
     return () => {
-      active = false;
       unsubscribeApplications();
       unsubscribeServices();
     };
@@ -93,9 +76,21 @@ export default function MainLayout() {
     [applications, currentUserId, profileRole, services]
   );
 
-  const isAdmin = resolvedRole === 'admin';
-  const isStudent = resolvedRole === 'student';
-  const hasServices = services.length > 0;
+  // Ratchet: once a role/tab is earned it never disappears mid-session.
+  // Tabs vanishing and reappearing causes Expo Router to reset to the home tab.
+  const resolvedRoleRef = useRef(resolvedRole);
+  const hasServicesRef = useRef(services.length > 0);
+  if (resolvedRole === 'admin' ||
+      (resolvedRole === 'student' && resolvedRoleRef.current !== 'admin') ||
+      (resolvedRole === 'client' && resolvedRoleRef.current !== 'admin' && resolvedRoleRef.current !== 'student') ||
+      (resolvedRole === 'applicant' && resolvedRoleRef.current === null)) {
+    resolvedRoleRef.current = resolvedRole;
+  }
+  if (services.length > 0) hasServicesRef.current = true;
+
+  const isAdmin = resolvedRoleRef.current === 'admin';
+  const isStudent = resolvedRoleRef.current === 'student';
+  const hasServices = hasServicesRef.current;
 
   return (
     <Tabs
@@ -132,7 +127,7 @@ export default function MainLayout() {
         name="explore"
         options={{
           title: 'Explore',
-          href: roleReady ? (isAdmin || isStudent || hasServices ? null : '/(main)/explore') : null,
+          href: isAdmin || isStudent || hasServices ? null : '/(main)/explore',
           tabBarIcon: ({ color, size }) => (
             <FontAwesome6 name="compass" size={size} color={color} />
           ),
@@ -142,7 +137,7 @@ export default function MainLayout() {
         name="study"
         options={{
           title: 'Study',
-          href: roleReady && isStudent ? '/(main)/study' : null,
+          href: isStudent ? '/(main)/study' : null,
           tabBarIcon: ({ color, size }) => (
             <FontAwesome6 name="graduation-cap" size={size} color={color} />
           ),
@@ -152,7 +147,7 @@ export default function MainLayout() {
         name="cases"
         options={{
           title: 'My Cases',
-          href: roleReady && hasServices ? '/(main)/cases' : null,
+          href: hasServices ? '/(main)/cases' : null,
           tabBarIcon: ({ color, size }) => (
             <FontAwesome6 name="scale-balanced" size={size} color={color} />
           ),
@@ -162,7 +157,7 @@ export default function MainLayout() {
         name="operations"
         options={{
           title: 'Operations',
-          href: roleReady && isAdmin ? '/(main)/operations' : null,
+          href: isAdmin ? '/(main)/operations' : null,
           tabBarIcon: ({ color, size }) => (
             <FontAwesome6 name="shield-halved" size={size} color={color} />
           ),

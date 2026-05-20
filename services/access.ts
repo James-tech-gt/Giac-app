@@ -44,6 +44,9 @@ export function getEffectiveRole({
   services = [],
 }: RoleSignals): UserRole {
   if (profileRole === 'admin') return 'admin';
+  if (profileRole === 'student') return 'student';
+  if (profileRole === 'client') return 'client';
+  // Fallback for users whose role field predates explicit assignment
   if (getApprovedApplicationCount(applications) > 0) return 'student';
   if (applications.length > 0) return 'applicant';
   if (services.length > 0) return 'client';

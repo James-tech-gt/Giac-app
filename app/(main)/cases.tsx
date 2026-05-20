@@ -8,6 +8,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -92,7 +93,9 @@ function CaseCard({ service, user, autoOpen = false }: { service: Service; user:
   }, [expanded, service.id]);
 
   const handleSend = async () => {
-    if (!text.trim()) return;
+    const msg = text.trim();
+    if (!msg) return;
+    setText('');
     setSending(true);
     try {
       await sendCaseMessage(
@@ -100,7 +103,7 @@ function CaseCard({ service, user, autoOpen = false }: { service: Service; user:
         user.uid,
         user.displayName ?? user.email ?? 'Client',
         'client',
-        text.trim(),
+        msg,
       );
       createAdminNotification({
         type: 'service',
@@ -108,7 +111,8 @@ function CaseCard({ service, user, autoOpen = false }: { service: Service; user:
         referenceId: service.id,
         userId: user.uid,
       }).catch(() => {});
-      setText('');
+    } catch {
+      setText(msg);
     } finally {
       setSending(false);
     }
@@ -213,6 +217,16 @@ function CaseCard({ service, user, autoOpen = false }: { service: Service; user:
                   <FontAwesome6 name="calendar-check" size={12} color={C.secondary} />
                   <Text style={styles.scheduledText}>Session: {formatDate(service.scheduledDate)}</Text>
                 </View>
+              ) : null}
+              {service.meetingLink ? (
+                <TouchableOpacity
+                  style={styles.joinBtn}
+                  onPress={() => Linking.openURL(service.meetingLink!)}
+                  activeOpacity={0.82}
+                >
+                  <FontAwesome6 name="video" size={13} color="#fff" />
+                  <Text style={styles.joinBtnText}>Join Session</Text>
+                </TouchableOpacity>
               ) : null}
             </View>
           ) : null}
@@ -466,6 +480,12 @@ const styles = StyleSheet.create({
   mediatorNote: { fontSize: 13, lineHeight: 20, fontFamily: Fonts.sans, color: C.textSecondary },
   scheduledRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   scheduledText: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.secondary },
+  joinBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: C.secondary, borderRadius: 12,
+    paddingVertical: 10, paddingHorizontal: 16, marginTop: 4,
+  },
+  joinBtnText: { fontSize: 14, fontFamily: Fonts.sansBold, color: '#fff' },
 
   resolutionBlock: {
     marginHorizontal: 16, marginBottom: 12,

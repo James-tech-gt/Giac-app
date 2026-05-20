@@ -43,9 +43,16 @@ export default function LoginScreen() {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
 
+  const scrollRef = useRef<ScrollView>(null);
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  const showError = (msg: string) => {
+    setError(msg);
+    shake();
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -65,8 +72,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      setError('Please enter your email and password.');
-      shake();
+      showError('Please enter your email and password.');
       return;
     }
     setLoading(true);
@@ -86,8 +92,7 @@ export default function LoginScreen() {
         ? 'Too many attempts. Please try again later.'
         : 'Something went wrong. Please try again.';
       setShowSignUpHint(isCredential);
-      setError(msg);
-      shake();
+      showError(msg);
     } finally {
       setLoading(false);
     }
@@ -95,8 +100,7 @@ export default function LoginScreen() {
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
-      setError('Enter your email address above, then tap Forgot password.');
-      shake();
+      showError('Enter your email address above, then tap Forgot password.');
       return;
     }
     setLoading(true);
@@ -109,8 +113,7 @@ export default function LoginScreen() {
         ['auth/network-request-failed', 'auth/internal-error'].includes(err.code)
           ? 'No internet connection. Check your connection and try again.'
           : 'Could not send reset email. Check the address and try again.';
-      setError(msg);
-      shake();
+      showError(msg);
     } finally {
       setLoading(false);
     }
@@ -140,8 +143,7 @@ export default function LoginScreen() {
           : err.code === 'auth/no-account'
           ? 'No account found. Please sign up first.'
           : 'Google sign-in failed. Please try again.';
-      setError(msg);
-      shake();
+      showError(msg);
     } finally {
       setLoading(false);
     }
@@ -155,6 +157,7 @@ export default function LoginScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={C.bgWarm} />
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[
           styles.scroll,
           { paddingHorizontal: dimensions.width < 380 ? 16 : 20 },

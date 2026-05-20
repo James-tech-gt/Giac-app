@@ -8,7 +8,7 @@ import {
   GoogleAuthProvider,
   initializeAuth,
 } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { Platform } from "react-native";
 
@@ -53,7 +53,14 @@ function createAuthInstance() {
 
 // Keep one Auth instance alive across dev reloads so persistence survives.
 export const auth = globalFirebaseState.__giacAuth ?? (globalFirebaseState.__giacAuth = createAuthInstance());
-export const db = getFirestore(app);
+function createDb() {
+  try {
+    return initializeFirestore(app, { experimentalForceLongPolling: true });
+  } catch {
+    return getFirestore(app);
+  }
+}
+export const db = createDb();
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 

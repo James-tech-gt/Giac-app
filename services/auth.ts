@@ -20,6 +20,10 @@ import type { UserRole } from './access';
 const USERS_COLLECTION = 'users';
 const GOOGLE_NATIVE_UNAVAILABLE_MESSAGE =
   'Google sign-in needs the web flow or a development build with native Google Sign-In enabled.';
+
+// Shared flag: prevents _layout.tsx from navigating while Google sign-in
+// is still verifying whether the user has an existing account.
+export const googleSignInState = { inProgress: false };
 export type { UserRole } from './access';
 
 export interface UserProfile {
@@ -58,11 +62,7 @@ async function ensureUserProfile(
   } = {}
 ) {
   const userRef = doc(db, USERS_COLLECTION, user.uid);
-  const userDoc = await getDoc(userRef);
-
-  if (!userDoc.exists()) {
-    await setDoc(userRef, buildUserProfile(user, overrides));
-  }
+  await setDoc(userRef, buildUserProfile(user, overrides), { merge: true });
 }
 
 /**
@@ -82,7 +82,7 @@ export async function signUp(
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Create user profile in Firestore
+    // Create user profile in Firestore (merge so a concurrent pushToken write isn't erased)
     await setDoc(
       doc(db, USERS_COLLECTION, user.uid),
       buildUserProfile(user, {
@@ -90,7 +90,8 @@ export async function signUp(
         phone: userData.phone,
         role: userData.role,
         email,
-      })
+      }),
+      { merge: true }
     );
 
     return user;
@@ -169,6 +170,7 @@ export async function updateUserProfile(
  * @returns The Firebase user
  */
 export async function signInWithGoogle(idToken: string): Promise<User> {
+  googleSignInState.inProgress = true;
   try {
     if (!idToken) {
       if (Platform.OS !== 'web') {
@@ -191,8 +193,8 @@ export async function signInWithGoogle(idToken: string): Promise<User> {
       throw Object.assign(new Error('No account found. Please sign up first.'), { code: 'auth/no-account' });
     }
     return userCredential.user;
-  } catch (error) {
-    throw error;
+  } finally {
+    googleSignInState.inProgress = false;
   }
 }
 

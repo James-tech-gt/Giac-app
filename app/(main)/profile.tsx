@@ -1,7 +1,7 @@
 import { Fonts } from '@/constants/theme';
-import { getUserProfile, UserProfile } from '@/services/auth';
 import { getDisplayRole } from '@/services/access';
 import { auth } from '@/services/firebase';
+import { useUserProfile } from '@/context/user-profile';
 import { Application, Service, getUserApplications, getUserServices } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -82,7 +82,7 @@ export default function ProfileScreen() {
   const isCompact = width < 390;
   const horizontalPadding = width < 380 ? 16 : 20;
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const { profile } = useUserProfile();
   const [applications, setApplications] = useState<Application[]>([]);
   const [services, setServices] = useState<Service[]>([]);
 
@@ -91,24 +91,16 @@ export default function ProfileScreen() {
 
     const loadProfile = async () => {
       if (!user?.uid) return;
-
       try {
-        const [profileData, applicationData, serviceData] = await Promise.all([
-          getUserProfile(user.uid),
+        const [applicationData, serviceData] = await Promise.all([
           getUserApplications(user.uid),
           getUserServices(user.uid),
         ]);
-
         if (active) {
-          setProfile(profileData);
           setApplications(applicationData ?? []);
           setServices(serviceData ?? []);
         }
-      } catch {
-        if (active) {
-          setProfile(null);
-        }
-      }
+      } catch {}
     };
 
     loadProfile();

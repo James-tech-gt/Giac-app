@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Fonts } from '@/constants/theme';
-import { getUserProfile } from '@/services/auth';
-import { auth } from '@/services/firebase';
+import { useUserProfile } from '@/context/user-profile';
 import {
   AdminNotification,
   Announcement,
@@ -12,7 +11,6 @@ import {
 } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { onAuthStateChanged } from 'firebase/auth';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -29,14 +27,12 @@ function toMs(ts: unknown): number | null {
 }
 
 export default function NotificationBell({ color = '#14213A' }: { color?: string }) {
-  const [uid, setUid] = useState<string | null>(auth.currentUser?.uid ?? null);
+  const { profile, uid } = useUserProfile();
+  const isAdmin = profile?.role === 'admin';
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [studentNotifs, setStudentNotifs] = useState<StudentNotification[]>([]);
   const [adminNotifs, setAdminNotifs] = useState<AdminNotification[]>([]);
   const [lastSeenMs, setLastSeenMs] = useState<number | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => onAuthStateChanged(auth, (user) => setUid(user?.uid ?? null)), []);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,45 +50,19 @@ export default function NotificationBell({ color = '#14213A' }: { color?: string
   }, []);
 
   useEffect(() => {
-    let active = true;
-    let unsubscribeNotifications: (() => void) | undefined;
-
-    async function loadNotificationSource() {
-      if (!uid) {
-        if (active) {
-          setIsAdmin(false);
-          setStudentNotifs([]);
-          setAdminNotifs([]);
-        }
-        return;
-      }
-
-      try {
-        const profile = await getUserProfile(uid);
-        const admin = profile?.role === 'admin';
-        if (!active) return;
-        setIsAdmin(admin);
-        unsubscribeNotifications = admin
-          ? subscribeAdminNotifications(setAdminNotifs)
-          : subscribeStudentNotifications(uid, setStudentNotifs);
-      } catch {
-        if (!active) return;
-        setIsAdmin(false);
-        unsubscribeNotifications = subscribeStudentNotifications(uid, setStudentNotifs);
-      }
+    if (!uid) {
+      setStudentNotifs([]);
+      setAdminNotifs([]);
+      return;
     }
-
-    loadNotificationSource();
-
-    return () => {
-      active = false;
-      unsubscribeNotifications?.();
-    };
-  }, [uid]);
+    return isAdmin
+      ? subscribeAdminNotifications(setAdminNotifs)
+      : subscribeStudentNotifications(uid, setStudentNotifs);
+  }, [uid, isAdmin]);
 
   const unread = useMemo(() => {
     if (isAdmin) {
-      return adminNotifs.length;
+      return adminNotifs.filter((n) => !n.read).length;
     }
     const newAnnouncements = lastSeenMs === null
       ? announcements.length
