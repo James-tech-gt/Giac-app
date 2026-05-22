@@ -2,11 +2,14 @@ import { Fonts } from '@/constants/theme';
 import { updateUserProfile } from '@/services/auth';
 import { useUserProfile } from '@/context/user-profile';
 import { auth } from '@/services/firebase';
+import { uploadFile } from '@/services/storage';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -33,6 +36,7 @@ const C = {
   textSecondary: '#4A5468',
   textMuted: '#6B7689',
   border: '#E3E9F2',
+  primarySoft: '#E8ECF4',
 };
 
 export default function EditProfileScreen() {
@@ -44,14 +48,34 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  // Sync fields if profile loads after mount
   useEffect(() => {
     if (profile) {
       setFullName(profile.fullName || '');
       setPhone(profile.phone || '');
     }
   }, [profile?.fullName, profile?.phone]);
+
+  const pickPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      setError('Permission to access photos is required.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setPhotoUri(result.assets[0].uri);
+      setSuccess('');
+      setError('');
+    }
+  };
 
   const handleSave = async () => {
     if (!user?.uid) return;
@@ -65,16 +89,27 @@ export default function EditProfileScreen() {
     setError('');
     setSuccess('');
     try {
-      await updateUserProfile(user.uid, { fullName, phone });
+      let photoURL = profile?.photoURL;
+      if (photoUri) {
+        setUploadingPhoto(true);
+        photoURL = await uploadFile(`profilePhotos/${user.uid}.jpg`, photoUri);
+        setUploadingPhoto(false);
+      }
+      await updateUserProfile(user.uid, { fullName, phone, photoURL });
       await reload();
+      setPhotoUri(null);
       setSuccess('Profile updated successfully.');
     } catch {
       setError('Could not update profile. Please try again.');
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     } finally {
       setSaving(false);
+      setUploadingPhoto(false);
     }
   };
+
+  const currentPhoto = photoUri || profile?.photoURL || user?.photoURL || null;
+  const initials = (profile?.fullName || user?.displayName || 'U').slice(0, 1).toUpperCase();
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -90,19 +125,32 @@ export default function EditProfileScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-            <FontAwesome6 name="arrow-left" size={16} color={C.primary} />
-          </TouchableOpacity>
-        </View>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+              <FontAwesome6 name="arrow-left" size={16} color={C.primary} />
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Account</Text>
-          <Text style={styles.title}>Edit Profile</Text>
-          <Text style={styles.subtitle}>Update your name and contact information.</Text>
-        </View>
+          <View style={styles.hero}>
+            <Text style={styles.eyebrow}>Account</Text>
+            <Text style={styles.title}>Edit Profile</Text>
+            <Text style={styles.subtitle}>Update your name, photo, and contact information.</Text>
+          </View>
 
-        <View style={styles.card}>
+          <Pressable onPress={pickPhoto} style={styles.avatarWrap}>
+            {currentPhoto ? (
+              <Image source={{ uri: currentPhoto }} style={styles.avatarImg} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarInitials}>{initials}</Text>
+              </View>
+            )}
+            <View style={styles.avatarEditBadge}>
+              <FontAwesome6 name="camera" size={12} color="#fff" />
+            </View>
+          </Pressable>
+
+          <View style={styles.card}>
             {error ? (
               <View style={[styles.banner, { backgroundColor: C.dangerSoft }]}>
                 <Text style={[styles.bannerText, { color: C.danger }]}>{error}</Text>
@@ -150,10 +198,14 @@ export default function EditProfileScreen() {
               disabled={saving}
               style={({ pressed }) => [styles.saveBtn, (saving || pressed) && styles.saveBtnDisabled]}
             >
-              {saving
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.saveBtnText}>Save Changes</Text>
-              }
+              {saving ? (
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                  <ActivityIndicator color="#fff" size="small" />
+                  <Text style={styles.saveBtnText}>{uploadingPhoto ? 'Uploading photo...' : 'Saving...'}</Text>
+                </View>
+              ) : (
+                <Text style={styles.saveBtnText}>Save Changes</Text>
+              )}
             </Pressable>
           </View>
         </ScrollView>
@@ -182,9 +234,44 @@ const styles = StyleSheet.create({
   title: { fontSize: 34, lineHeight: 40, fontFamily: Fonts.displayBold, color: C.textPrimary },
   subtitle: { fontSize: 15, lineHeight: 24, fontFamily: Fonts.sans, color: C.textSecondary },
 
-  stateCard: {
-    backgroundColor: C.surface, borderRadius: 22, padding: 24,
-    borderWidth: 1, borderColor: C.border, alignItems: 'center',
+  avatarWrap: {
+    alignSelf: 'center',
+    position: 'relative',
+  },
+  avatarImg: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 3,
+    borderColor: C.border,
+  },
+  avatarPlaceholder: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: C.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: C.border,
+  },
+  avatarInitials: {
+    fontSize: 34,
+    fontFamily: Fonts.displayBold,
+    color: C.secondary,
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: C.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: C.bg,
   },
 
   card: {

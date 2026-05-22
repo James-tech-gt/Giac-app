@@ -1,5 +1,6 @@
 import { Fonts } from '@/constants/theme';
-import { Course, getCourseById } from '@/services/firestore';
+import { auth } from '@/services/firebase';
+import { Course, getCourseById, subscribeUserRegistration } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -45,6 +46,14 @@ export default function CourseDetailsScreen() {
   const horizontalPadding = width < 380 ? 16 : 20;
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
+  const [registration, setRegistration] = useState<{ status: string } | null>(null);
+  const canApply = registration?.status === 'accepted';
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user?.uid) return;
+    return subscribeUserRegistration(user.uid, setRegistration);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -172,14 +181,15 @@ export default function CourseDetailsScreen() {
 
             <Pressable
               onPress={() =>
-                router.push({
-                  pathname: '/(main)/application',
-                  params: { courseId: course.id },
-                })
+                canApply
+                  ? router.push({ pathname: '/(main)/application', params: { courseId: course.id } })
+                  : null
               }
-              style={({ pressed }) => [styles.brassButton, pressed ? styles.pressed : null]}
+              style={({ pressed }) => [styles.brassButton, !canApply && styles.brassButtonDisabled, canApply && pressed ? styles.pressed : null]}
             >
-              <Text style={styles.brassButtonText}>Apply Now</Text>
+              <Text style={[styles.brassButtonText, !canApply && { opacity: 0.5 }]}>
+                {canApply ? 'Apply Now' : 'Register First'}
+              </Text>
             </Pressable>
           </>
         ) : null}
@@ -279,6 +289,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sansSemiBold,
     color: C.textPrimary,
     textAlign: 'right',
+    flexWrap: 'wrap',
   },
   noteBlock: {
     gap: 6,
@@ -328,6 +339,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  brassButtonDisabled: {
+    opacity: 0.5,
   },
   brassButtonText: {
     fontSize: 14,

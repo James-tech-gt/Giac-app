@@ -11,7 +11,13 @@
       "supportsTablet": true,
       "icon": "./assets/images/giac-logo.png",
       "bundleIdentifier": "com.giac.app",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "NSCameraUsageDescription": "GIAC needs camera access to upload documents.",
+        "NSPhotoLibraryUsageDescription": "GIAC needs photo library access to upload documents.",
+        "NSUserNotificationUsageDescription": "GIAC sends notifications for application updates and course activity."
+      }
     },
     "android": {
       "googleServicesFile": "./google-services.json",
@@ -44,7 +50,9 @@
           }
         }
       ],
-      "@react-native-google-signin/google-signin",
+      ["@react-native-google-signin/google-signin", {
+        "iosUrlScheme": "com.googleusercontent.apps.529116845053-cn2m3r575rcvtno1iitim4u786tgnghn"
+      }],
       [
         "expo-notifications",
         {

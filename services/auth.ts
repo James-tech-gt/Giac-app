@@ -31,6 +31,7 @@ export interface UserProfile {
   phone: string;
   role: UserRole;
   email: string;
+  photoURL?: string;
   createdAt: Date | null;
 }
 
@@ -136,6 +137,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
         phone: data.phone || '',
         role: normalizeUserRole(data.role ?? data.Role),
         email: data.email || '',
+        photoURL: data.photoURL || undefined,
         createdAt: data.createdAt?.toDate?.() ?? data.createdAt ?? null,
       } as UserProfile;
     }
@@ -151,11 +153,12 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
  */
 export async function updateUserProfile(
   uid: string,
-  updates: { fullName?: string; phone?: string }
+  updates: { fullName?: string; phone?: string; photoURL?: string }
 ): Promise<void> {
   const updateData: Record<string, string> = {};
   if (updates.fullName !== undefined) updateData.fullName = updates.fullName.trim();
   if (updates.phone !== undefined) updateData.phone = updates.phone.trim();
+  if (updates.photoURL !== undefined) updateData.photoURL = updates.photoURL;
 
   if (Object.keys(updateData).length === 0) {
     return;

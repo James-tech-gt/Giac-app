@@ -68,9 +68,8 @@ const EDUCATION_LEVELS = [
 const PAYMENT_MODES = ['MoMo', 'Bank Transfer', 'Other'];
 
 const MOMO_DETAILS = [
-  { network: 'MTN MoMo', number: '055 000 0000', name: 'GIAC Ghana' },
-  { network: 'Telecel Cash', number: '050 000 0000', name: 'GIAC Ghana' },
-  { network: 'AirtelTigo Money', number: '027 000 0000', name: 'GIAC Ghana' },
+  { network: 'MTN MoMo', number: '0554670757', name: 'Global Institute of ADR Center' },
+  { network: 'Merchant (All Networks)', number: 'Merchant ID: 883031', name: 'Global Institute of ADR Center LTD' },
 ];
 
 const BANK_DETAILS = {
@@ -531,7 +530,7 @@ export default function ApplicationScreen() {
             <Text style={styles.backButtonText}>Back</Text>
           </Pressable>
           <Text style={styles.heroEyebrow}>Application Form</Text>
-          <Text style={[styles.heroTitle, isCompact && styles.heroTitleCompact]}>Apply for Training</Text>
+          <Text style={[styles.heroTitle, isCompact && styles.heroTitleCompact]}>Apply for a Programme</Text>
           <Text style={styles.heroDescription}>
             Complete all sections below. Fields marked with <Text style={styles.required}>*</Text> are required.
           </Text>
@@ -873,7 +872,7 @@ const styles = StyleSheet.create({
   },
   courseCardSelected: { backgroundColor: C.primarySoft, borderColor: C.secondary },
   courseContent: { flex: 1, gap: 4 },
-  courseTitle: { fontSize: 14, lineHeight: 20, fontFamily: Fonts.sansBold, color: C.textPrimary },
+  courseTitle: { fontSize: 14, lineHeight: 20, fontFamily: Fonts.sansBold, color: C.textPrimary, flexWrap: 'wrap', flexShrink: 1 },
   courseDuration: { fontSize: 12, fontFamily: Fonts.sans, color: C.textSecondary },
   courseFee: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.secondary },
 
@@ -926,10 +925,10 @@ const styles = StyleSheet.create({
   },
   payDetailsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   payDetailsTitle: { fontSize: 14, fontFamily: Fonts.sansBold, color: C.secondary },
-  payDetailsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
-  payDetailsNetwork: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.textSecondary, flex: 1 },
-  payDetailsNumber: { fontSize: 14, fontFamily: Fonts.sansBold, color: C.textPrimary, flex: 1, textAlign: 'right' },
-  payDetailsName: { fontSize: 12, fontFamily: Fonts.sans, color: C.textMuted, flex: 1, textAlign: 'right' },
+  payDetailsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' },
+  payDetailsNetwork: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.textSecondary, flexShrink: 0 },
+  payDetailsNumber: { fontSize: 14, fontFamily: Fonts.sansBold, color: C.textPrimary, flex: 1, textAlign: 'right', flexWrap: 'wrap' },
+  payDetailsName: { fontSize: 12, fontFamily: Fonts.sans, color: C.textMuted, flex: 1, textAlign: 'right', flexWrap: 'wrap' },
   payDetailsNote: { fontSize: 12, fontFamily: Fonts.sans, color: C.textMuted, fontStyle: 'italic' },
 
   reviewCard: {
@@ -942,7 +941,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border, gap: 12,
   },
   reviewLabel: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.textSecondary, flex: 1 },
-  reviewValue: { fontSize: 13, fontFamily: Fonts.sans, color: C.textPrimary, flex: 2, textAlign: 'right' },
+  reviewValue: { fontSize: 13, fontFamily: Fonts.sans, color: C.textPrimary, flex: 2, textAlign: 'right', flexWrap: 'wrap' },
   reviewBody: { fontSize: 14, lineHeight: 22, fontFamily: Fonts.sans, color: C.textSecondary },
 
   uploadBtn: {

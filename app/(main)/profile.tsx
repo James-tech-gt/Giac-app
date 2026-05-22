@@ -7,6 +7,7 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -134,11 +135,15 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {displayName.slice(0, 1).toUpperCase()}
-            </Text>
-          </View>
+          {profile?.photoURL || user?.photoURL ? (
+            <Image source={{ uri: profile?.photoURL || user?.photoURL! }} style={styles.avatarImg} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {displayName.slice(0, 1).toUpperCase()}
+              </Text>
+            </View>
+          )}
           <Text style={[styles.heroTitle, isCompact ? styles.heroTitleCompact : null]}>
             {displayName}
           </Text>
@@ -226,6 +231,13 @@ const styles = StyleSheet.create({
     backgroundColor: C.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImg: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2,
+    borderColor: C.border,
   },
   avatarText: {
     fontSize: 28,

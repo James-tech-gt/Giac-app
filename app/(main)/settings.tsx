@@ -570,7 +570,7 @@ export default function SettingsScreen() {
                   </View>
                   <View style={styles.settingBody}>
                     <Text style={styles.settingTitle}>Account ID</Text>
-                    <Text style={styles.settingSubtitle}>{user.uid}</Text>
+                    <Text style={styles.settingSubtitle} numberOfLines={1} ellipsizeMode="middle">{user.uid}</Text>
                   </View>
                 </View>
               </>

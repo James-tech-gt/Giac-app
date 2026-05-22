@@ -384,31 +384,58 @@ export async function hasPendingAccountDeletionRequest(userId: string): Promise<
 }
 
 // ─── Courses ────────────────────────────────────────────────────────────────
-/**
- * Fetch all courses from Firestore
- */
+
+function mergeCourses(firestoreCourses: Course[]): Course[] {
+  const merged = [...CURATED_COURSES];
+  firestoreCourses.forEach(fc => {
+    const idx = merged.findIndex(c => c.id === fc.id);
+    if (idx >= 0) merged[idx] = fc;
+    else merged.push(fc);
+  });
+  return merged;
+}
+
+export function getCoursesSync(): Course[] {
+  return [...CURATED_COURSES];
+}
+
 export async function getCourses(): Promise<Course[]> {
   try {
+    const snap = await getDocs(collection(db, COLLECTIONS.courses));
+    if (snap.empty) return CURATED_COURSES;
+    return mergeCourses(snap.docs.map(d => ({ id: d.id, ...d.data() } as Course)));
+  } catch {
     return CURATED_COURSES;
-  } catch (error) {
-    throw error;
   }
 }
 
-/**
- * Fetch a single course by ID
- */
 export async function getCourseById(courseId: string): Promise<Course | null> {
   try {
-    const curatedCourse = CURATED_COURSES.find((course) => course.id === courseId);
-    if (curatedCourse) {
-      return curatedCourse;
-    }
-
-    return null;
-  } catch (error) {
-    throw error;
+    const docSnap = await getDoc(doc(db, COLLECTIONS.courses, courseId));
+    if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() } as Course;
+    return CURATED_COURSES.find(c => c.id === courseId) ?? null;
+  } catch {
+    return CURATED_COURSES.find(c => c.id === courseId) ?? null;
   }
+}
+
+export function subscribeCourses(onUpdate: (courses: Course[]) => void): () => void {
+  return onSnapshot(collection(db, COLLECTIONS.courses), (snap) => {
+    onUpdate(mergeCourses(snap.docs.map(d => ({ id: d.id, ...d.data() } as Course))));
+  });
+}
+
+export async function createCourse(input: Omit<Course, 'id' | 'createdAt'>): Promise<string> {
+  const ref = await addDoc(collection(db, COLLECTIONS.courses), { ...input, createdAt: serverTimestamp() });
+  return ref.id;
+}
+
+export async function updateCourse(courseId: string, input: Partial<Omit<Course, 'id' | 'createdAt'>>): Promise<void> {
+  await setDoc(doc(db, COLLECTIONS.courses, courseId), { ...input, createdAt: serverTimestamp() }, { merge: true });
+}
+
+export async function deleteCourse(courseId: string): Promise<void> {
+  await deleteDoc(doc(db, COLLECTIONS.courses, courseId));
 }
 
 // ─── Announcements ──────────────────────────────────────────────────────────
@@ -499,6 +526,10 @@ export async function createAnnouncement(input: AnnouncementInput): Promise<void
   } catch (error) {
     throw error;
   }
+}
+
+export async function deleteAnnouncement(id: string): Promise<void> {
+  await deleteDoc(doc(db, COLLECTIONS.announcements, id));
 }
 
 // ─── Applications ───────────────────────────────────────────────────────────

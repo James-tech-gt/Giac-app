@@ -64,6 +64,12 @@ import {
   isPaymentLocked,
   type Session,
   type CreateSessionInput,
+  Course,
+  subscribeCourses,
+  createCourse,
+  updateCourse,
+  deleteCourse,
+  deleteAnnouncement,
 } from '@/services/firestore';
 import { uploadFile, deleteFile } from '@/services/storage';
 import { FontAwesome6 } from '@expo/vector-icons';
@@ -88,7 +94,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type AdminView = 'overview' | 'admissions' | 'cases' | 'announcements' | 'materials' | 'assignments' | 'tests' | 'deletions' | 'team' | 'registrations';
+type AdminView = 'overview' | 'admissions' | 'cases' | 'announcements' | 'materials' | 'assignments' | 'tests' | 'deletions' | 'team' | 'registrations' | 'courses';
 
 type StatusTone = {
   bg: string;
@@ -1033,6 +1039,26 @@ function AdminPanel() {
   const [busyRegId, setBusyRegId] = useState<string | null>(null);
   useEffect(() => subscribeAllRegistrations(setRegistrations), []);
 
+  // Courses
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
+  const [savingCourse, setSavingCourse] = useState(false);
+  const [courseMsg, setCourseMsg] = useState<{ text: string; kind: 'success' | 'error' } | null>(null);
+  const [courseTitle, setCourseTitle] = useState('');
+  const [courseProgram, setCourseProgram] = useState('');
+  const [courseLevel, setCourseLevel] = useState('');
+  const [courseDuration, setCourseDuration] = useState('');
+  const [courseFees, setCourseFees] = useState('');
+  const [courseSchedule, setCourseSchedule] = useState('');
+  const [coursePlatform, setCoursePlatform] = useState('');
+  const [courseDescription, setCourseDescription] = useState('');
+  const [coursePractical, setCoursePractical] = useState('');
+  const [courseIdealFor, setCourseIdealFor] = useState('');
+  const [courseContentRaw, setCourseContentRaw] = useState('');
+  const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
+  const [deletingAnnouncementId, setDeletingAnnouncementId] = useState<string | null>(null);
+  useEffect(() => subscribeCourses(setCourses), []);
+
   const applicationCounts = useMemo(() => {
     return {
       approved: applications.filter((item) => item.status === 'approved' || item.status === 'completed').length,
@@ -1097,6 +1123,26 @@ function AdminPanel() {
     () => services.filter((item) => item.status !== 'completed'),
     [services]
   );
+
+  const analytics = useMemo(() => {
+    const revenue = applications
+      .filter((a) => a.status === 'approved' || a.status === 'completed')
+      .reduce((sum, a) => {
+        const course = courses.find((c) => c.id === a.courseId);
+        return sum + (course?.fees ?? 0);
+      }, 0);
+
+    const courseBreakdown = courses.map((c) => ({
+      id: c.id,
+      program: c.program,
+      title: c.title,
+      registrations: registrations.filter((r) => r.courseInterest === c.id).length,
+      applications: applications.filter((a) => a.courseId === c.id && a.status !== 'withdrawn').length,
+      enrolled: applications.filter((a) => a.courseId === c.id && (a.status === 'approved' || a.status === 'completed')).length,
+    }));
+
+    return { revenue, courseBreakdown };
+  }, [applications, courses, registrations]);
 
   const materialsForSelectedCourse = useMemo(() => {
     return materials
@@ -1733,6 +1779,99 @@ function AdminPanel() {
     }
   };
 
+  const CURATED_IDS = ['pecadr', 'pemadr'];
+
+  const resetCourseForm = () => {
+    setEditingCourseId(null);
+    setCourseTitle('');
+    setCourseProgram('');
+    setCourseLevel('');
+    setCourseDuration('');
+    setCourseFees('');
+    setCourseSchedule('');
+    setCoursePlatform('');
+    setCourseDescription('');
+    setCoursePractical('');
+    setCourseIdealFor('');
+    setCourseContentRaw('');
+  };
+
+  const startEditCourse = (c: Course) => {
+    setEditingCourseId(c.id);
+    setCourseTitle(c.title);
+    setCourseProgram(c.program);
+    setCourseLevel(c.level);
+    setCourseDuration(c.duration);
+    setCourseFees(c.fees != null ? String(c.fees) : '');
+    setCourseSchedule(c.schedule);
+    setCoursePlatform(c.platform ?? '');
+    setCourseDescription(c.description ?? '');
+    setCoursePractical(c.practicalSessions ?? '');
+    setCourseIdealFor(c.idealFor ?? '');
+    setCourseContentRaw((c.content ?? []).join('\n'));
+    setCourseMsg(null);
+  };
+
+  const handleSaveCourse = async () => {
+    if (!courseTitle.trim() || !courseProgram.trim() || !courseLevel.trim() || !courseDuration.trim() || !courseSchedule.trim()) {
+      setCourseMsg({ text: 'Title, program, level, duration, and schedule are required.', kind: 'error' });
+      return;
+    }
+    setSavingCourse(true);
+    setCourseMsg(null);
+    const feesNum = parseFloat(courseFees);
+    const payload: Omit<Course, 'id' | 'createdAt'> = {
+      title: courseTitle.trim(),
+      program: courseProgram.trim(),
+      level: courseLevel.trim(),
+      duration: courseDuration.trim(),
+      schedule: courseSchedule.trim(),
+      ...(coursePlatform.trim() ? { platform: coursePlatform.trim() } : {}),
+      ...(courseDescription.trim() ? { description: courseDescription.trim() } : {}),
+      ...(coursePractical.trim() ? { practicalSessions: coursePractical.trim() } : {}),
+      ...(courseIdealFor.trim() ? { idealFor: courseIdealFor.trim() } : {}),
+      ...(!isNaN(feesNum) && courseFees.trim() ? { fees: feesNum } : {}),
+      ...(courseContentRaw.trim() ? { content: courseContentRaw.split('\n').map(l => l.trim()).filter(Boolean) } : {}),
+    };
+    try {
+      if (editingCourseId) {
+        await updateCourse(editingCourseId, payload);
+        setCourseMsg({ text: 'Course updated.', kind: 'success' });
+      } else {
+        await createCourse(payload);
+        setCourseMsg({ text: 'Course created.', kind: 'success' });
+      }
+      resetCourseForm();
+    } catch {
+      setCourseMsg({ text: 'Could not save course. Please try again.', kind: 'error' });
+    } finally {
+      setSavingCourse(false);
+    }
+  };
+
+  const handleDeleteCourse = async (courseId: string) => {
+    setDeletingCourseId(courseId);
+    setCourseMsg(null);
+    try {
+      await deleteCourse(courseId);
+    } catch {
+      setCourseMsg({ text: 'Could not delete course. Check your connection.', kind: 'error' });
+    } finally {
+      setDeletingCourseId(null);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (id: string) => {
+    setDeletingAnnouncementId(id);
+    try {
+      await deleteAnnouncement(id);
+    } catch {
+      setAnnouncementError('Could not delete announcement. Please try again.');
+    } finally {
+      setDeletingAnnouncementId(null);
+    }
+  };
+
   const handlePublishAnnouncement = async () => {
     if (!announcementTitle.trim() || !announcementDetail.trim()) {
       setAnnouncementError('Please provide both a title and detail before publishing.');
@@ -1837,20 +1976,21 @@ function AdminPanel() {
           />
           <SectionButton
             active={activeView === 'admissions'}
-            count={applicationCounts.total > 0 ? applicationCounts.total : undefined}
+            count={applications.length > 0 ? applications.length : undefined}
             icon="user-graduate"
             label="Admissions"
             onPress={() => setActiveView('admissions')}
           />
           <SectionButton
             active={activeView === 'cases'}
-            count={actionableCases.length}
+            count={services.length > 0 ? services.length : undefined}
             icon="scale-balanced"
             label="ADR Cases"
             onPress={() => setActiveView('cases')}
           />
           <SectionButton
             active={activeView === 'announcements'}
+            count={announcements.length > 0 ? announcements.length : undefined}
             icon="bullhorn"
             label="Announcements"
             onPress={() => setActiveView('announcements')}
@@ -1878,7 +2018,7 @@ function AdminPanel() {
           />
           <SectionButton
             active={activeView === 'registrations'}
-            count={registrations.filter(r => r.status === 'pending').length > 0 ? registrations.filter(r => r.status === 'pending').length : undefined}
+            count={registrations.length > 0 ? registrations.length : undefined}
             icon="id-card"
             label="Registrations"
             onPress={() => setActiveView('registrations')}
@@ -1895,6 +2035,13 @@ function AdminPanel() {
             icon="users"
             label="Team"
             onPress={() => { setActiveView('team'); loadTeamUsers(); }}
+          />
+          <SectionButton
+            active={activeView === 'courses'}
+            count={courses.length > 0 ? courses.length : undefined}
+            icon="book"
+            label="Courses"
+            onPress={() => { setActiveView('courses'); resetCourseForm(); setCourseMsg(null); }}
           />
         </View>
 
@@ -2011,26 +2158,49 @@ function AdminPanel() {
               </View>
 
               <View style={[styles.workspaceCard, isWide ? styles.workspaceCardWide : null]}>
-                <Text style={styles.workspaceTitle}>Admin Scope</Text>
-                <Text style={styles.workspaceBody}>
-                  This mobile admin workspace now owns admissions, ADR case handling, and announcements. User management, course authoring, and deeper reporting should be the next admin slices we build.
+                <Text style={styles.workspaceTitle}>Revenue Estimate</Text>
+                <Text style={styles.workspaceBody}>Based on approved and completed applications.</Text>
+                <Text style={{ fontSize: 36, fontFamily: Fonts.displayBold, color: C.textPrimary, marginTop: 4 }}>
+                  {new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS', maximumFractionDigits: 0 }).format(analytics.revenue)}
                 </Text>
-                <View style={styles.iconBadgeRow}>
-                  <View style={[styles.iconBadge, { backgroundColor: C.primarySoft }]}>
-                    <FontAwesome6 name="book-open" size={16} color={C.secondary} />
-                  </View>
-                  <View style={[styles.iconBadge, { backgroundColor: C.warningSoft }]}>
-                    <FontAwesome6 name="file-pen" size={16} color={C.warning} />
-                  </View>
-                  <View style={[styles.iconBadge, { backgroundColor: C.successSoft }]}>
-                    <FontAwesome6 name="user-graduate" size={16} color={C.success} />
-                  </View>
-                  <View style={[styles.iconBadge, { backgroundColor: '#E8ECF4' }]}>
-                    <FontAwesome6 name="scale-balanced" size={16} color={C.secondary} />
-                  </View>
+                <View style={styles.workspaceMetricRow}>
+                  <MetaChip icon="user-graduate" label={`${applicationCounts.approved} enrolled`} />
+                  <MetaChip icon="clock" label={`${applicationCounts.pending} pending`} subtle />
                 </View>
               </View>
             </View>
+
+            <View style={[styles.summaryGrid, isWide ? styles.summaryGridWide : null]}>
+              <SummaryCard
+                accent={C.secondary}
+                icon="id-card"
+                label="Total Registrations"
+                value={`${registrations.length}`}
+                helper="Users who registered for a course"
+              />
+              <SummaryCard
+                accent={C.success}
+                icon="file-circle-check"
+                label="Total Applications"
+                value={`${applicationCounts.total}`}
+                helper="Non-withdrawn applications submitted"
+              />
+              <SummaryCard
+                accent={C.warning}
+                icon="trophy"
+                label="Completed Cases"
+                value={`${serviceCounts.completed}`}
+                helper="ADR cases resolved and closed"
+              />
+              <SummaryCard
+                accent={C.accentStrong}
+                icon="book"
+                label="Active Courses"
+                value={`${courses.length}`}
+                helper="Courses available to students"
+              />
+            </View>
+
           </>
         ) : null}
 
@@ -3643,11 +3813,177 @@ function AdminPanel() {
             </View>
 
             <View style={[styles.workspaceCard, isWide ? styles.workspaceCardWide : null]}>
-              <Text style={styles.workspaceTitle}>Recent Feed</Text>
+              <Text style={styles.workspaceTitle}>Published Announcements</Text>
               <Text style={styles.workspaceBody}>
-                This is what the latest institute communication stream currently looks like.
+                All active announcements visible to students. Tap Delete to remove one permanently.
               </Text>
-              <AnnouncementListCard announcements={announcements} />
+              {announcements.length === 0 ? (
+                <EmptyState
+                  icon="bullhorn"
+                  title="No announcements yet"
+                  body="Publish your first operational update and it will appear here."
+                />
+              ) : (
+                <View style={styles.feedCard}>
+                  {announcements.map((ann, index) => (
+                    <React.Fragment key={ann.id}>
+                      <View style={styles.feedRow}>
+                        <View style={[styles.feedMarker, { backgroundColor: ann.urgent ? C.warning : C.secondary }]} />
+                        <View style={[styles.feedCopy, { flex: 1 }]}>
+                          <View style={styles.feedTopRow}>
+                            <Text style={[styles.feedTitle, { flex: 1, flexShrink: 1 }]}>{ann.title}</Text>
+                            <Text style={styles.feedTime}>{formatDate(ann.createdAt)}</Text>
+                          </View>
+                          <Text style={styles.feedBody}>{ann.detail}</Text>
+                          <Pressable
+                            onPress={() => handleDeleteAnnouncement(ann.id)}
+                            disabled={deletingAnnouncementId === ann.id}
+                            style={({ pressed }) => [
+                              styles.dangerButton,
+                              { marginTop: 8, alignSelf: 'flex-start', minHeight: 36, paddingVertical: 8, paddingHorizontal: 16 },
+                              (deletingAnnouncementId === ann.id || pressed) ? styles.pressed : null,
+                            ]}
+                          >
+                            {deletingAnnouncementId === ann.id
+                              ? <ActivityIndicator size="small" color={C.textInverse} />
+                              : <Text style={styles.dangerButtonText}>Delete</Text>}
+                          </Pressable>
+                        </View>
+                      </View>
+                      {index < announcements.length - 1 ? <View style={styles.feedDivider} /> : null}
+                    </React.Fragment>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+        ) : null}
+
+        {activeView === 'courses' ? (
+          <View style={[styles.dualGrid, isWide ? styles.dualGridWide : null]}>
+            <View style={[styles.workspaceCard, isWide ? styles.workspaceCardWide : null]}>
+              <Text style={styles.workspaceTitle}>
+                {editingCourseId ? 'Edit Course' : 'Add New Course'}
+              </Text>
+              <Text style={styles.workspaceBody}>
+                Changes here merge with the built-in courses. Leave optional fields blank to inherit defaults.
+              </Text>
+
+              {courseMsg ? (
+                <View style={[styles.banner, { backgroundColor: courseMsg.kind === 'error' ? C.dangerSoft : C.successSoft }]}>
+                  <Text style={[styles.bannerText, { color: courseMsg.kind === 'error' ? C.danger : C.success }]}>{courseMsg.text}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Title *</Text>
+                <TextInput value={courseTitle} onChangeText={setCourseTitle} placeholder="Professional Executive Certificate in ADR" placeholderTextColor={C.textMuted} style={styles.input} />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Program * (e.g. PECADR)</Text>
+                <TextInput value={courseProgram} onChangeText={setCourseProgram} placeholder="PECADR" placeholderTextColor={C.textMuted} style={styles.input} />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Level * (e.g. Certificate)</Text>
+                <TextInput value={courseLevel} onChangeText={setCourseLevel} placeholder="Certificate" placeholderTextColor={C.textMuted} style={styles.input} />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Duration * (e.g. 4 weeks)</Text>
+                <TextInput value={courseDuration} onChangeText={setCourseDuration} placeholder="4 weeks" placeholderTextColor={C.textMuted} style={styles.input} />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Schedule *</Text>
+                <TextInput value={courseSchedule} onChangeText={setCourseSchedule} placeholder="Mondays, Wednesdays, and Fridays | 5:30 PM - 8:30 PM" placeholderTextColor={C.textMuted} style={styles.input} />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Fees (GHS, numbers only)</Text>
+                <TextInput value={courseFees} onChangeText={setCourseFees} placeholder="3200" placeholderTextColor={C.textMuted} keyboardType="numeric" style={styles.input} />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Platform</Text>
+                <TextInput value={coursePlatform} onChangeText={setCoursePlatform} placeholder="Virtual (Google Meet/Zoom)" placeholderTextColor={C.textMuted} style={styles.input} />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Practical Sessions</Text>
+                <TextInput value={coursePractical} onChangeText={setCoursePractical} placeholder="In-person sessions at Kasoa" placeholderTextColor={C.textMuted} style={styles.input} />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Description</Text>
+                <TextInput value={courseDescription} onChangeText={setCourseDescription} placeholder="Short description of the course..." placeholderTextColor={C.textMuted} multiline textAlignVertical="top" style={styles.textArea} />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Ideal For</Text>
+                <TextInput value={courseIdealFor} onChangeText={setCourseIdealFor} placeholder="Beginners and professionals seeking foundational knowledge..." placeholderTextColor={C.textMuted} multiline textAlignVertical="top" style={styles.textArea} />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>Course Content (one item per line)</Text>
+                <TextInput value={courseContentRaw} onChangeText={setCourseContentRaw} placeholder={"Introduction to ADR & its benefits\nNegotiation techniques\nMediation principles and practice"} placeholderTextColor={C.textMuted} multiline textAlignVertical="top" style={[styles.textArea, { minHeight: 120 }]} />
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <Pressable
+                  onPress={handleSaveCourse}
+                  disabled={savingCourse}
+                  style={({ pressed }) => [styles.primaryButton, { flex: 1 }, (savingCourse || pressed) ? styles.pressed : null]}
+                >
+                  {savingCourse ? (
+                    <ActivityIndicator size="small" color={C.textInverse} />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>{editingCourseId ? 'Save Changes' : 'Create Course'}</Text>
+                  )}
+                </Pressable>
+                {editingCourseId ? (
+                  <Pressable onPress={resetCourseForm} style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null]}>
+                    <Text style={styles.secondaryButtonText}>Cancel</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+
+            <View style={[styles.workspaceCard, isWide ? styles.workspaceCardWide : null]}>
+              <Text style={styles.workspaceTitle}>All Courses ({courses.length})</Text>
+              <Text style={styles.workspaceBody}>
+                Built-in courses can be overridden. Only Firestore-added or overridden courses can be deleted.
+              </Text>
+              {courses.length === 0 ? (
+                <Text style={[styles.workspaceBody, { fontStyle: 'italic' }]}>No courses yet.</Text>
+              ) : (
+                courses.map((c) => {
+                  const isBuiltIn = CURATED_IDS.includes(c.id) && !c.createdAt;
+                  return (
+                    <View key={c.id} style={[styles.panelCard, { gap: 8 }]}>
+                      <View style={{ flex: 1, gap: 4 }}>
+                        <Text style={styles.panelTitle}>{c.title}</Text>
+                        <Text style={styles.panelSubtitle}>{c.program} · {c.level} · {c.duration}</Text>
+                        {isBuiltIn ? (
+                          <View style={{ alignSelf: 'flex-start', backgroundColor: C.primarySoft, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginTop: 2 }}>
+                            <Text style={{ fontSize: 11, fontFamily: Fonts.sansSemiBold, color: C.secondary }}>Built-in</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <Pressable
+                          onPress={() => startEditCourse(c)}
+                          style={({ pressed }) => [styles.secondaryButton, pressed ? styles.pressed : null]}
+                        >
+                          <Text style={styles.secondaryButtonText}>Edit</Text>
+                        </Pressable>
+                        {!isBuiltIn ? (
+                          <Pressable
+                            onPress={() => handleDeleteCourse(c.id)}
+                            disabled={deletingCourseId === c.id}
+                            style={({ pressed }) => [styles.dangerButton, (deletingCourseId === c.id || pressed) ? styles.pressed : null]}
+                          >
+                            {deletingCourseId === c.id
+                              ? <ActivityIndicator size="small" color={C.textInverse} />
+                              : <Text style={styles.dangerButtonText}>Delete</Text>}
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
             </View>
           </View>
         ) : null}
@@ -3822,6 +4158,8 @@ const styles = StyleSheet.create({
   },
   summaryGrid: {
     gap: 12,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   summaryGridWide: {
     flexDirection: 'row',
@@ -3829,7 +4167,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    minWidth: 180,
+    minWidth: 140,
     backgroundColor: C.surface,
     borderWidth: 1,
     borderColor: C.border,

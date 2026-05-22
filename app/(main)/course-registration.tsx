@@ -255,9 +255,9 @@ const styles = StyleSheet.create({
     backgroundColor: C.surface, padding: 14, gap: 4,
   },
   courseChipActive: { borderColor: C.secondary, backgroundColor: '#EEF2F9' },
-  courseChipLabel: { fontSize: 15, fontFamily: Fonts.sansBold, color: C.textMuted },
+  courseChipLabel: { fontSize: 15, fontFamily: Fonts.sansBold, color: C.textMuted, flexWrap: 'wrap' },
   courseChipLabelActive: { color: C.secondary },
-  courseChipDesc: { fontSize: 11, lineHeight: 16, fontFamily: Fonts.sans, color: C.textMuted },
+  courseChipDesc: { fontSize: 11, lineHeight: 16, fontFamily: Fonts.sans, color: C.textMuted, flexWrap: 'wrap' },
   courseChipDescActive: { color: C.secondary },
 
   input: {

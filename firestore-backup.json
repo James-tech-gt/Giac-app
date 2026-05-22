@@ -1,0 +1,4627 @@
+{
+  "users": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/users/A4RiA2bgwVfeYzBiWnQ4opItEd03",
+      "fields": {
+        "fullName": {
+          "stringValue": "Big Wave"
+        },
+        "role": {
+          "stringValue": "applicant"
+        },
+        "email": {
+          "stringValue": "waveb619@gmail.com"
+        },
+        "phone": {
+          "stringValue": ""
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-14T12:38:39.881Z"
+        }
+      },
+      "createTime": "2026-05-14T12:38:47.183401Z",
+      "updateTime": "2026-05-14T12:38:47.183401Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/users/MbBw81hsGLcwtCzNUi6XCpKStkG3",
+      "fields": {
+        "phone": {
+          "stringValue": ""
+        },
+        "email": {
+          "stringValue": "asantejames900@gmail.com"
+        },
+        "role": {
+          "stringValue": "admin"
+        },
+        "fullName": {
+          "stringValue": "James Asante"
+        },
+        "createdAt": {
+          "timestampValue": "2026-04-28T10:24:19.166Z"
+        }
+      },
+      "createTime": "2026-04-28T10:24:22.428045Z",
+      "updateTime": "2026-05-06T20:53:28.110509Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/users/OOfC8JHXKERGNCVCls9t0KwNjTl2",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-18T13:04:57.729Z"
+        },
+        "phone": {
+          "stringValue": ""
+        },
+        "pushTokenUpdatedAt": {
+          "timestampValue": "2026-05-18T13:58:51.050Z"
+        },
+        "email": {
+          "stringValue": "lordbenjamin650@gmail.com"
+        },
+        "pushToken": {
+          "stringValue": "ExponentPushToken[mXdqMHHPZB3VaFfyzmpapd]"
+        },
+        "role": {
+          "stringValue": "applicant"
+        },
+        "fullName": {
+          "stringValue": "Lord Benjamin"
+        }
+      },
+      "createTime": "2026-05-18T13:05:02.023423Z",
+      "updateTime": "2026-05-18T13:58:51.064693Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/users/XrSzN9UFxnZB3glao4BxLXnxe9P2",
+      "fields": {
+        "fullName": {
+          "stringValue": "enerstina okpattah"
+        },
+        "role": {
+          "stringValue": "student"
+        },
+        "pushToken": {
+          "stringValue": "ExponentPushToken[Mi5nVICkaUNRaXoQIxs-JV]"
+        },
+        "email": {
+          "stringValue": "okpattahenerstina@gmail.com"
+        },
+        "pushTokenUpdatedAt": {
+          "timestampValue": "2026-05-17T01:26:50.336Z"
+        },
+        "phone": {
+          "stringValue": ""
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T22:59:48.880Z"
+        }
+      },
+      "createTime": "2026-05-16T23:00:10.770479Z",
+      "updateTime": "2026-05-17T01:26:50.350321Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/users/dyZYeYA73hQoKn19Uuocyt5YmTI2",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-04-30T18:29:36.297Z"
+        },
+        "phone": {
+          "stringValue": ""
+        },
+        "email": {
+          "stringValue": "elikem6666@gmail.com"
+        },
+        "fullName": {
+          "stringValue": "elikem"
+        },
+        "role": {
+          "stringValue": "applicant"
+        }
+      },
+      "createTime": "2026-04-30T18:29:40.957485Z",
+      "updateTime": "2026-05-12T03:48:44.737251Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/users/eWVbMGnxGQMYYR73kcgIL1CLLVy1",
+      "fields": {
+        "role": {
+          "stringValue": "applicant"
+        },
+        "fullName": {
+          "stringValue": "Kofi Asante"
+        },
+        "email": {
+          "stringValue": "kofihuncho598@gmail.com"
+        },
+        "phone": {
+          "stringValue": ""
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-14T18:51:11.492Z"
+        }
+      },
+      "createTime": "2026-05-14T18:51:19.883575Z",
+      "updateTime": "2026-05-14T18:51:19.883575Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/users/fS3kS2TsTWRXBv4UJPvmEyzXqRD3",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-20T17:56:44.574Z"
+        },
+        "role": {
+          "stringValue": "student"
+        },
+        "fullName": {
+          "stringValue": "Nathan Edward Siebu"
+        },
+        "phone": {
+          "stringValue": ""
+        },
+        "pushTokenUpdatedAt": {
+          "timestampValue": "2026-05-20T18:44:48.991Z"
+        },
+        "email": {
+          "stringValue": "pasiebu@gmail.com"
+        },
+        "pushToken": {
+          "stringValue": "ExponentPushToken[a_UlShHYY8YFNGk7luapco]"
+        }
+      },
+      "createTime": "2026-05-20T17:56:46.244767Z",
+      "updateTime": "2026-05-20T18:44:49.010469Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/users/q4lQ4cKwilMMzcqTmfqbJYUHiVG2",
+      "fields": {
+        "pushToken": {
+          "stringValue": "ExponentPushToken[E_nwNsE6g9GIoBRy5xgezW]"
+        },
+        "phone": {
+          "stringValue": ""
+        },
+        "email": {
+          "stringValue": "kofi7465967@gmail.com"
+        },
+        "pushTokenUpdatedAt": {
+          "timestampValue": "2026-05-18T12:58:18.682Z"
+        },
+        "fullName": {
+          "stringValue": "Kofi Asante"
+        },
+        "role": {
+          "stringValue": "applicant"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-05T10:02:59.199Z"
+        }
+      },
+      "createTime": "2026-05-05T22:03:11.263567Z",
+      "updateTime": "2026-05-18T12:58:18.696354Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/users/xkv26sN4NjdDBTFCKBEUltgoHLs1",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-02T23:22:17.256Z"
+        },
+        "fullName": {
+          "stringValue": "Josephine Osabutey"
+        },
+        "role": {
+          "stringValue": "applicant"
+        },
+        "phone": {
+          "stringValue": ""
+        },
+        "email": {
+          "stringValue": "josephineosabutey107@gmail.com"
+        }
+      },
+      "createTime": "2026-05-02T23:22:26.070872Z",
+      "updateTime": "2026-05-02T23:22:26.070872Z"
+    }
+  ],
+  "APPLICATIONS": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/APPLICATIONS/HkNBXCCaiz4z5cCyPwKr",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-16T23:18:17.174Z"
+        },
+        "certificateLink": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/edu-proofs%2FXrSzN9UFxnZB3glao4BxLXnxe9P2%2F1778973444282_Screenshot_20260516-215412.jpg?alt=media&token=30e23124-f03d-40be-9412-c0e3e5a0a95c"
+        },
+        "courseDuration": {
+          "stringValue": "4 weeks"
+        },
+        "completedAt": {
+          "timestampValue": "2026-05-17T00:16:51.160Z"
+        },
+        "email": {
+          "stringValue": "okpattahenerstina@gmail.com"
+        },
+        "accessLocked": {
+          "booleanValue": false
+        },
+        "fullName": {
+          "stringValue": "enerstina okpattah"
+        },
+        "areaOfStudy": {
+          "stringValue": "Law"
+        },
+        "whatsapp": {
+          "stringValue": "0242286115"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "location": {
+          "stringValue": "Kasoa"
+        },
+        "motivation": {
+          "stringValue": "Tgwgwhegevewywgw"
+        },
+        "educationLevel": {
+          "stringValue": "Bachelor's Degree"
+        },
+        "receiptLink": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/receipts%2FXrSzN9UFxnZB3glao4BxLXnxe9P2%2F1778973476566_Screenshot_20260516-215353.jpg?alt=media&token=27fdad08-4ce0-4bbd-b448-fdd8357999a9"
+        },
+        "transactionRef": {
+          "stringValue": "1234567"
+        },
+        "courseProgram": {
+          "stringValue": "PECADR"
+        },
+        "status": {
+          "stringValue": "completed"
+        },
+        "courseCompleted": {
+          "booleanValue": true
+        },
+        "courseTitle": {
+          "stringValue": "Professional Executive Certificate in ADR"
+        },
+        "paymentMode": {
+          "stringValue": "MoMo"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-16T23:18:17.174Z"
+        },
+        "decidedAt": {
+          "timestampValue": "2026-05-16T23:19:04.965Z"
+        },
+        "phone": {
+          "stringValue": "0242286115"
+        },
+        "paymentStatus": {
+          "stringValue": "full"
+        },
+        "feedback": {
+          "stringValue": ""
+        },
+        "organization": {
+          "stringValue": "School"
+        },
+        "documents": {
+          "arrayValue": {}
+        },
+        "occupation": {
+          "stringValue": "Teacher"
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        }
+      },
+      "createTime": "2026-05-16T23:18:17.208930Z",
+      "updateTime": "2026-05-17T00:16:51.178687Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/APPLICATIONS/ZOCQyiJOxE0T4czT6V2L",
+      "fields": {
+        "Status": {
+          "stringValue": "pending"
+        },
+        "Documents": {
+          "arrayValue": {}
+        },
+        "CourseId": {
+          "stringValue": "OQrEStXQQlwnuMhWwkju"
+        },
+        "UserId": {
+          "stringValue": ""
+        },
+        "SubmittedAt": {
+          "timestampValue": "2026-04-30T09:35:58Z"
+        },
+        "DecidedAt": {
+          "stringValue": ""
+        },
+        "Feedback": {
+          "stringValue": ""
+        }
+      },
+      "createTime": "2026-04-30T09:37:09.136560Z",
+      "updateTime": "2026-04-30T09:37:09.136560Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/APPLICATIONS/gFgTOxAfgmay5BZ71mHs",
+      "fields": {
+        "occupation": {
+          "stringValue": "Designer"
+        },
+        "organization": {
+          "stringValue": "Banku"
+        },
+        "documents": {
+          "arrayValue": {}
+        },
+        "feedback": {
+          "stringValue": ""
+        },
+        "paymentStatus": {
+          "stringValue": "partial"
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-20T18:09:16.654Z"
+        },
+        "phone": {
+          "stringValue": "0539657804"
+        },
+        "decidedAt": {
+          "timestampValue": "2026-05-20T18:09:43.434Z"
+        },
+        "courseProgram": {
+          "stringValue": "PECADR"
+        },
+        "status": {
+          "stringValue": "completed"
+        },
+        "paymentMode": {
+          "stringValue": "MoMo"
+        },
+        "courseTitle": {
+          "stringValue": "Professional Executive Certificate in ADR"
+        },
+        "courseCompleted": {
+          "booleanValue": true
+        },
+        "transactionRef": {
+          "stringValue": "1234679008"
+        },
+        "receiptLink": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/receipts%2FfS3kS2TsTWRXBv4UJPvmEyzXqRD3%2F1779300527408_Screenshot_20260520_180157_GIAC.jpg?alt=media&token=1405aa78-41f1-4f08-bb99-c4b0ffcef837"
+        },
+        "motivation": {
+          "stringValue": "I wanna be a physician"
+        },
+        "location": {
+          "stringValue": "Accra/Ghana"
+        },
+        "educationLevel": {
+          "stringValue": "HND / Diploma"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "whatsapp": {
+          "stringValue": "0539657804"
+        },
+        "accessLocked": {
+          "booleanValue": false
+        },
+        "fullName": {
+          "stringValue": "Loop Hole"
+        },
+        "areaOfStudy": {
+          "stringValue": "Law"
+        },
+        "courseDuration": {
+          "stringValue": "4 weeks"
+        },
+        "certificateLink": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/edu-proofs%2FfS3kS2TsTWRXBv4UJPvmEyzXqRD3%2F1779300427744_Screenshot_20260520_180157_GIAC.jpg?alt=media&token=4dee1587-addb-4d49-ae84-5edd3d9b5ca7"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:09:16.654Z"
+        },
+        "email": {
+          "stringValue": "pasiebu@gmail.com"
+        },
+        "certificateUrl": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/certificates%2FfS3kS2TsTWRXBv4UJPvmEyzXqRD3%2F1779301042125.pdf?alt=media&token=4b6a0943-fe4c-4cb3-ae4f-dafb07122704"
+        },
+        "completedAt": {
+          "timestampValue": "2026-05-20T18:17:26.945Z"
+        }
+      },
+      "createTime": "2026-05-20T18:09:16.665015Z",
+      "updateTime": "2026-05-20T18:17:27.964495Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/APPLICATIONS/oEhz6IVG14ixdle7W35f",
+      "fields": {
+        "courseTitle": {
+          "stringValue": "Professional Executive Master's in ADR"
+        },
+        "fullName": {
+          "stringValue": "james"
+        },
+        "status": {
+          "stringValue": "rejected"
+        },
+        "courseId": {
+          "stringValue": "pemadr"
+        },
+        "courseProgram": {
+          "stringValue": "PEMADR"
+        },
+        "email": {
+          "stringValue": "waveb619@gmail.com"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-07T16:50:01.984Z"
+        },
+        "courseDuration": {
+          "stringValue": "3 months"
+        },
+        "userId": {
+          "stringValue": "J2m0OOAtngZYQFyoOp7kMr7FmDd2"
+        },
+        "feedback": {
+          "stringValue": ""
+        },
+        "documents": {
+          "arrayValue": {}
+        },
+        "decidedAt": {
+          "timestampValue": "2026-05-07T17:07:54.253Z"
+        },
+        "phone": {
+          "stringValue": "0548211011"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-07T16:50:01.984Z"
+        }
+      },
+      "createTime": "2026-05-07T16:50:02.007202Z",
+      "updateTime": "2026-05-07T17:07:54.267562Z"
+    }
+  ],
+  "AdminNotifications": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/0wnAWz55CaWT09fi1vem",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-11T15:53:29.724Z"
+        },
+        "message": {
+          "stringValue": "New arbitration request — category: Child maintenance & family disputes"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "referenceId": {
+          "stringValue": "78Rt5K5GvTuv8yIylDBd"
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "userId": {
+          "stringValue": "aWeiHbXfZFV1nSMbzT5ORzyZZeZ2"
+        }
+      },
+      "createTime": "2026-05-11T15:53:29.760906Z",
+      "updateTime": "2026-05-11T16:06:06.053833Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/2uwjkmnUKsOUEM1gb55E",
+      "fields": {
+        "message": {
+          "stringValue": "New mediation request — category: Rent & tenant conflicts"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-17T00:33:40.478Z"
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        },
+        "referenceId": {
+          "stringValue": "DPIUsJnrJOiCp0yALgac"
+        },
+        "type": {
+          "stringValue": "service"
+        }
+      },
+      "createTime": "2026-05-17T00:33:40.488527Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/5aoivI3pdpiW8Az2AblB",
+      "fields": {
+        "referenceId": {
+          "stringValue": "zPX5yX7o9JYF0FqpQiNa"
+        },
+        "type": {
+          "stringValue": "registration"
+        },
+        "userId": {
+          "stringValue": "OOfC8JHXKERGNCVCls9t0KwNjTl2"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-18T13:05:52.425Z"
+        },
+        "message": {
+          "stringValue": "Lord Benjamin submitted a course registration for PECADR."
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-18T13:05:52.437743Z",
+      "updateTime": "2026-05-18T13:11:21.192586Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/7B7CiWBWiVfbM97UB7PA",
+      "fields": {
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "referenceId": {
+          "stringValue": "HHykDbpLDJF8CZgjXEiL"
+        },
+        "message": {
+          "stringValue": "New arbitration request — category: Commercial & debt recovery cases"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-11T14:56:27.700Z"
+        }
+      },
+      "createTime": "2026-05-11T14:56:27.732209Z",
+      "updateTime": "2026-05-11T14:56:46.919081Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/7YU3ZONIaWfk4fhn1KNh",
+      "fields": {
+        "type": {
+          "stringValue": "application"
+        },
+        "referenceId": {
+          "stringValue": "L5BfNPKIOIY0SCX38FN7"
+        },
+        "userId": {
+          "stringValue": "J2m0OOAtngZYQFyoOp7kMr7FmDd2"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-07T16:50:00.782Z"
+        },
+        "message": {
+          "stringValue": "New application from james for Professional Executive Master's in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-07T16:50:00.793694Z",
+      "updateTime": "2026-05-07T17:14:04.855785Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/92U4gaQoZmwzZOBsUdv1",
+      "fields": {
+        "message": {
+          "stringValue": "New arbitration request — category: Rent & tenant conflicts"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-09T15:19:31.703Z"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "referenceId": {
+          "stringValue": "9Q6B1p11X9V0Zm538Ju9"
+        }
+      },
+      "createTime": "2026-05-09T15:19:31.715049Z",
+      "updateTime": "2026-05-09T15:24:40.793592Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/93dlJ8zTTsx2gyqiV0kx",
+      "fields": {
+        "message": {
+          "stringValue": "New message from client in arbitration case (Rent & tenant conflicts)"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-09T15:53:55.468Z"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "referenceId": {
+          "stringValue": "9Q6B1p11X9V0Zm538Ju9"
+        },
+        "type": {
+          "stringValue": "service"
+        }
+      },
+      "createTime": "2026-05-09T15:53:55.494932Z",
+      "updateTime": "2026-05-09T15:54:09.139832Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/94dkh9kKLO3ijIt5cTpz",
+      "fields": {
+        "message": {
+          "stringValue": "Kofi Doe withdrew their application for Professional Executive Master's in ADR."
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-11T00:12:01.658Z"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "referenceId": {
+          "stringValue": "Sg2QfYfHC2XrdClKB2H6"
+        }
+      },
+      "createTime": "2026-05-11T00:12:01.671236Z",
+      "updateTime": "2026-05-11T00:12:12.170824Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/AdFWCoFDPCiCBVjdRBnI",
+      "fields": {
+        "message": {
+          "stringValue": "New arbitration request — category: Marriage & domestic issues"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:03:28.485Z"
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "referenceId": {
+          "stringValue": "YKy4Nz4kLs4KplZAggEm"
+        },
+        "type": {
+          "stringValue": "service"
+        }
+      },
+      "createTime": "2026-05-20T18:03:28.494367Z",
+      "updateTime": "2026-05-20T18:31:41.736093Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/Dg0T2TWFK0wdtzfBQRF2",
+      "fields": {
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "referenceId": {
+          "stringValue": "oOA3Jk5e2UUaXl7Re46b"
+        },
+        "type": {
+          "stringValue": "registration"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "message": {
+          "stringValue": "Nathan Edward Siebu submitted a course registration for PECADR."
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T17:59:27.064Z"
+        }
+      },
+      "createTime": "2026-05-20T17:59:27.077999Z",
+      "updateTime": "2026-05-20T18:31:41.736093Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/E54kgmxfLvK9U0sNSr8H",
+      "fields": {
+        "message": {
+          "stringValue": "New mediation request — category: Land disputes"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T22:01:44.724Z"
+        },
+        "userId": {
+          "stringValue": "JYCLEOpsbHU2LwsXGJLsbE9DtCD3"
+        },
+        "referenceId": {
+          "stringValue": "oh6GZPxHIACNLwAlVXWU"
+        },
+        "type": {
+          "stringValue": "service"
+        }
+      },
+      "createTime": "2026-05-16T22:01:44.733279Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/Glq6p3M0z8LWOmQxHtaE",
+      "fields": {
+        "referenceId": {
+          "stringValue": "HkNBXCCaiz4z5cCyPwKr"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T23:18:17.587Z"
+        },
+        "message": {
+          "stringValue": "New application from enerstina okpattah for Professional Executive Certificate in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-16T23:18:17.597679Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/HO9fGEfiyJLyxMEzxRt5",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-14T15:50:33.357Z"
+        },
+        "message": {
+          "stringValue": "New application from Kofi Doe for Professional Executive Certificate in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "referenceId": {
+          "stringValue": "5gUzkxqN5Efqdg88hq16"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        }
+      },
+      "createTime": "2026-05-14T15:50:33.365159Z",
+      "updateTime": "2026-05-14T17:45:26.740195Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/IbVtQJEDyJmMbGUsH17G",
+      "fields": {
+        "referenceId": {
+          "stringValue": "oK8rXiZ4tlzCukYVGr69"
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-14T08:55:13.616Z"
+        },
+        "message": {
+          "stringValue": "New arbitration request — category: Land disputes"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-14T08:55:13.641615Z",
+      "updateTime": "2026-05-14T17:45:26.740195Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/IgQZSDitMDLPGlsGigCt",
+      "fields": {
+        "referenceId": {
+          "stringValue": "oEhz6IVG14ixdle7W35f"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "userId": {
+          "stringValue": "J2m0OOAtngZYQFyoOp7kMr7FmDd2"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-07T16:50:02.343Z"
+        },
+        "message": {
+          "stringValue": "New application from james for Professional Executive Master's in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-07T16:50:02.359389Z",
+      "updateTime": "2026-05-07T17:14:04.855785Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/J3M1jegsWKwnpBCo4GHJ",
+      "fields": {
+        "type": {
+          "stringValue": "application"
+        },
+        "referenceId": {
+          "stringValue": "K7j9yDB29M9LqR8OKBY9"
+        },
+        "userId": {
+          "stringValue": "aWeiHbXfZFV1nSMbzT5ORzyZZeZ2"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-15T02:36:01.429Z"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "message": {
+          "stringValue": "New application from enerstina okpattah for Professional Executive Certificate in ADR"
+        }
+      },
+      "createTime": "2026-05-15T02:36:01.469615Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/JX9VyGqbTCnuiRVfqb9p",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-09T14:39:29.707Z"
+        },
+        "message": {
+          "stringValue": "New mediation request — category: Land disputes"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "referenceId": {
+          "stringValue": "Aq3q73TNWqn7xAfpSssx"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        }
+      },
+      "createTime": "2026-05-09T14:39:29.727319Z",
+      "updateTime": "2026-05-09T14:41:01.721427Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/LMsckZGN2l8W8e8c3rY5",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "message": {
+          "stringValue": "enerstina okpattah submitted a course registration for PECADR."
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T23:00:35.881Z"
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        },
+        "referenceId": {
+          "stringValue": "l4CNST3uIDtoTNpladP2"
+        },
+        "type": {
+          "stringValue": "registration"
+        }
+      },
+      "createTime": "2026-05-16T23:00:35.915215Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/M4f5ts57q3dZt87H5fNd",
+      "fields": {
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "referenceId": {
+          "stringValue": "oK8rXiZ4tlzCukYVGr69"
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "message": {
+          "stringValue": "New message from client in arbitration case (Land disputes)"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-14T08:56:17.253Z"
+        }
+      },
+      "createTime": "2026-05-14T08:56:17.284669Z",
+      "updateTime": "2026-05-14T17:45:26.740195Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/M5E9HTSF6JGwfTz7LKDR",
+      "fields": {
+        "referenceId": {
+          "stringValue": "r9qmknRETUWea0wUv2Ng"
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "userId": {
+          "stringValue": "OOfC8JHXKERGNCVCls9t0KwNjTl2"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-18T13:25:35.837Z"
+        },
+        "message": {
+          "stringValue": "New message from client in mediation case (Rent & tenant conflicts)"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-18T13:25:35.853199Z",
+      "updateTime": "2026-05-18T13:30:19.334559Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/OHocOKHnYj7pQnRoRxup",
+      "fields": {
+        "message": {
+          "stringValue": "New message from client in arbitration case (Land disputes)"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-15T22:57:55.695Z"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        }
+      },
+      "createTime": "2026-05-15T22:57:55.719263Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/OKz1zFuAuXKuszinOlKw",
+      "fields": {
+        "userId": {
+          "stringValue": "J2m0OOAtngZYQFyoOp7kMr7FmDd2"
+        },
+        "referenceId": {
+          "stringValue": "C5X2kOjB1evSxSPYRjbw"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "message": {
+          "stringValue": "New application from james for Professional Executive Master's in ADR"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-07T16:50:17.712Z"
+        }
+      },
+      "createTime": "2026-05-07T16:50:17.719602Z",
+      "updateTime": "2026-05-07T17:14:04.855785Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/Oqi8i1JkzYd9YcZiHMDs",
+      "fields": {
+        "userId": {
+          "stringValue": "J2m0OOAtngZYQFyoOp7kMr7FmDd2"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "referenceId": {
+          "stringValue": "ovbkO0GZ2iz8kGBAOMTJ"
+        },
+        "message": {
+          "stringValue": "New application from james for Professional Executive Master's in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-07T16:50:03.004Z"
+        }
+      },
+      "createTime": "2026-05-07T16:50:03.016314Z",
+      "updateTime": "2026-05-07T17:14:04.855785Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/QbH6kihtXF7ttleq7Mk2",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "message": {
+          "stringValue": "New message from client in arbitration case (Land disputes)"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T02:47:51.216Z"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "type": {
+          "stringValue": "service"
+        }
+      },
+      "createTime": "2026-05-16T02:47:51.233743Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/VaigVcjeAoKE6WAexTTW",
+      "fields": {
+        "type": {
+          "stringValue": "registration"
+        },
+        "referenceId": {
+          "stringValue": "5WRlLamTKaxQcq7Uaii0"
+        },
+        "userId": {
+          "stringValue": "JYCLEOpsbHU2LwsXGJLsbE9DtCD3"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T21:51:49.865Z"
+        },
+        "message": {
+          "stringValue": "enerstina okpattah submitted a course registration for PECADR."
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-16T21:51:49.885775Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/X1S7UUIo0h6amgCaiMTP",
+      "fields": {
+        "referenceId": {
+          "stringValue": "xn5ay2jUptq1uWPk8kot"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "userId": {
+          "stringValue": "J2m0OOAtngZYQFyoOp7kMr7FmDd2"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-07T16:52:08.660Z"
+        },
+        "message": {
+          "stringValue": "New application from james for Professional Executive Certificate in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-07T16:52:08.679847Z",
+      "updateTime": "2026-05-07T17:14:04.855785Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/X6565W6l2f6RHyPsvcbo",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-15T22:42:28.044Z"
+        },
+        "message": {
+          "stringValue": "New message from client in arbitration case (Land disputes)"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        }
+      },
+      "createTime": "2026-05-15T22:42:28.064863Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/X6ZVnRooATW7vGUzmRak",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "message": {
+          "stringValue": "New message from client in arbitration case (Child maintenance & family disputes)"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-11T15:54:20.920Z"
+        },
+        "userId": {
+          "stringValue": "aWeiHbXfZFV1nSMbzT5ORzyZZeZ2"
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "referenceId": {
+          "stringValue": "78Rt5K5GvTuv8yIylDBd"
+        }
+      },
+      "createTime": "2026-05-11T15:54:20.951238Z",
+      "updateTime": "2026-05-11T16:06:06.053833Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/Y9tSPPxCg37ffq4kPf0a",
+      "fields": {
+        "referenceId": {
+          "stringValue": "2sD3yvWle0keI6LPQRp1"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "userId": {
+          "stringValue": "aWeiHbXfZFV1nSMbzT5ORzyZZeZ2"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-11T15:48:59.351Z"
+        },
+        "message": {
+          "stringValue": "New application from enerstina okpattah for Professional Executive Master's in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-11T15:48:59.387076Z",
+      "updateTime": "2026-05-11T16:06:06.053833Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/ZAyGgyWCeNpHsJCfNCGe",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:09:17.017Z"
+        },
+        "message": {
+          "stringValue": "New application from Loop Hole for Professional Executive Certificate in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "referenceId": {
+          "stringValue": "gFgTOxAfgmay5BZ71mHs"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        }
+      },
+      "createTime": "2026-05-20T18:09:17.029183Z",
+      "updateTime": "2026-05-20T18:31:41.736093Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/c4NVBm6ZAiUaNMzp2eBe",
+      "fields": {
+        "message": {
+          "stringValue": "enerstina okpattah submitted a course registration for PECADR."
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-15T02:28:57.049Z"
+        },
+        "userId": {
+          "stringValue": "aWeiHbXfZFV1nSMbzT5ORzyZZeZ2"
+        },
+        "referenceId": {
+          "stringValue": "r3dtymECGoQ5x091ja90"
+        },
+        "type": {
+          "stringValue": "registration"
+        }
+      },
+      "createTime": "2026-05-15T02:28:57.065087Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/d75JXjtuTnjMZvPDFlhy",
+      "fields": {
+        "message": {
+          "stringValue": "New message from client in arbitration case (Marriage & domestic issues)"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:05:18.871Z"
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "referenceId": {
+          "stringValue": "YKy4Nz4kLs4KplZAggEm"
+        }
+      },
+      "createTime": "2026-05-20T18:05:18.880847Z",
+      "updateTime": "2026-05-20T18:31:41.736093Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/f1lVC1JDnVOsokVSv91g",
+      "fields": {
+        "message": {
+          "stringValue": "enerstina okpattah submitted a course registration for PECADR."
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-15T22:38:18.595Z"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "referenceId": {
+          "stringValue": "m2Am7I6k7sHb1ZYweNdU"
+        },
+        "type": {
+          "stringValue": "registration"
+        }
+      },
+      "createTime": "2026-05-15T22:38:18.624335Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/gM9NaeBVQUejQpfBqmK1",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-15T22:40:11.796Z"
+        },
+        "message": {
+          "stringValue": "New arbitration request — category: Land disputes"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        }
+      },
+      "createTime": "2026-05-15T22:40:11.823791Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/heoeViv2jbMp2KhI1pHm",
+      "fields": {
+        "userId": {
+          "stringValue": "q4lQ4cKwilMMzcqTmfqbJYUHiVG2"
+        },
+        "type": {
+          "stringValue": "registration"
+        },
+        "referenceId": {
+          "stringValue": "3ZDffUVNSVgupBomdUTv"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "message": {
+          "stringValue": "Kofi Asante submitted a course registration for PECADR."
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-18T12:54:42.548Z"
+        }
+      },
+      "createTime": "2026-05-18T12:54:42.559615Z",
+      "updateTime": "2026-05-18T12:54:43.921816Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/hx7BlCm7jDnhjy8Z3Ww9",
+      "fields": {
+        "userId": {
+          "stringValue": "J2m0OOAtngZYQFyoOp7kMr7FmDd2"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "referenceId": {
+          "stringValue": "JuqKMERCwOdisPiB2NZ3"
+        },
+        "message": {
+          "stringValue": "New application from james for Professional Executive Certificate in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-07T16:53:29.514Z"
+        }
+      },
+      "createTime": "2026-05-07T16:53:29.527952Z",
+      "updateTime": "2026-05-07T17:14:04.855785Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/iDqm2oUHfB9jEiTHrYTk",
+      "fields": {
+        "message": {
+          "stringValue": "New application from james for Professional Executive Master's in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-07T16:49:52.850Z"
+        },
+        "userId": {
+          "stringValue": "J2m0OOAtngZYQFyoOp7kMr7FmDd2"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "referenceId": {
+          "stringValue": "evD2JjwE8DBrtD13JNgT"
+        }
+      },
+      "createTime": "2026-05-07T16:49:52.862542Z",
+      "updateTime": "2026-05-07T17:14:04.855785Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/ifnvFbdIUzK51SITFch7",
+      "fields": {
+        "userId": {
+          "stringValue": "q4lQ4cKwilMMzcqTmfqbJYUHiVG2"
+        },
+        "referenceId": {
+          "stringValue": "HbhfUI8kCaJ3yFhhQ2In"
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "message": {
+          "stringValue": "New mediation request — category: Land disputes"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-18T12:56:53.665Z"
+        }
+      },
+      "createTime": "2026-05-18T12:56:53.674735Z",
+      "updateTime": "2026-05-18T13:11:21.192586Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/kwJLBzqk2S6RVFNfU7uX",
+      "fields": {
+        "message": {
+          "stringValue": "New message from client in arbitration case (Rent & tenant conflicts)"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-09T16:09:31.517Z"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "referenceId": {
+          "stringValue": "9Q6B1p11X9V0Zm538Ju9"
+        },
+        "type": {
+          "stringValue": "service"
+        }
+      },
+      "createTime": "2026-05-09T16:09:31.537419Z",
+      "updateTime": "2026-05-09T16:09:37.612625Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/n3aCcVFSMGpPSf8XCTZx",
+      "fields": {
+        "message": {
+          "stringValue": "New message from client in arbitration case (Rent & tenant conflicts)"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-09T16:21:44.085Z"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "referenceId": {
+          "stringValue": "9Q6B1p11X9V0Zm538Ju9"
+        },
+        "type": {
+          "stringValue": "service"
+        }
+      },
+      "createTime": "2026-05-09T16:21:44.097485Z",
+      "updateTime": "2026-05-09T16:21:49.085705Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/nk1eww5xUCG0Yc0BoRjo",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-07T17:05:52.017Z"
+        },
+        "message": {
+          "stringValue": "New arbitration request — category: Commercial & debt recovery cases"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "referenceId": {
+          "stringValue": "C1TKAGFuH8bCCKtYLUYl"
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "userId": {
+          "stringValue": "J2m0OOAtngZYQFyoOp7kMr7FmDd2"
+        }
+      },
+      "createTime": "2026-05-07T17:05:52.050206Z",
+      "updateTime": "2026-05-07T17:14:04.855785Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/o26HUz2CtUQjwQFLtU5t",
+      "fields": {
+        "message": {
+          "stringValue": "New application from Kofi Doe for Professional Executive Certificate in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-14T08:36:09.627Z"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "referenceId": {
+          "stringValue": "GL8SHls1xoFa91UjHLL7"
+        }
+      },
+      "createTime": "2026-05-14T08:36:09.657881Z",
+      "updateTime": "2026-05-14T08:49:07.254406Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/odjPMhKZLfFHWxXm8ifV",
+      "fields": {
+        "type": {
+          "stringValue": "service"
+        },
+        "referenceId": {
+          "stringValue": "YKy4Nz4kLs4KplZAggEm"
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:04:39.413Z"
+        },
+        "message": {
+          "stringValue": "New message from client in arbitration case (Marriage & domestic issues)"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-20T18:04:39.429199Z",
+      "updateTime": "2026-05-20T18:31:41.736093Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/pOAVu0Xz0DVPEt1LNvgx",
+      "fields": {
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "type": {
+          "stringValue": "service"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "message": {
+          "stringValue": "New message from client in arbitration case (Land disputes)"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T02:16:01.970Z"
+        }
+      },
+      "createTime": "2026-05-16T02:16:01.983935Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/sFFxFIQchcCSLKw9bM9q",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-15T23:00:35.906Z"
+        },
+        "message": {
+          "stringValue": "New application from enerstina okpattah for Professional Executive Certificate in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "referenceId": {
+          "stringValue": "Le3dLxcUrem5WrMHWORa"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        }
+      },
+      "createTime": "2026-05-15T23:00:35.936047Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/txm1fYECOPXAmSwKNL2b",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "message": {
+          "stringValue": "New application from Kofi Doe for Professional Executive Master's in ADR"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-13T00:02:35.478Z"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "referenceId": {
+          "stringValue": "X0imJN8vzooIaAU41E35"
+        },
+        "type": {
+          "stringValue": "application"
+        }
+      },
+      "createTime": "2026-05-13T00:02:35.493314Z",
+      "updateTime": "2026-05-13T19:47:45.651650Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/uX1k5yTbhjKmdzxGf8Dg",
+      "fields": {
+        "userId": {
+          "stringValue": "aWeiHbXfZFV1nSMbzT5ORzyZZeZ2"
+        },
+        "referenceId": {
+          "stringValue": "aPAGI0o5boFJU3Np0g1r"
+        },
+        "type": {
+          "stringValue": "registration"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "message": {
+          "stringValue": "enerstina okpattah submitted a course registration for PECADR."
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-15T02:21:34.184Z"
+        }
+      },
+      "createTime": "2026-05-15T02:21:34.198879Z",
+      "updateTime": "2026-05-15T02:22:42.994758Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/ubJFdttvtcMga6oVPNvH",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-13T18:16:20.583Z"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "message": {
+          "stringValue": "New application from enerstina okpattah for Professional Executive Master's in ADR"
+        },
+        "referenceId": {
+          "stringValue": "sLTM11Q53DDgRcULJoQk"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "userId": {
+          "stringValue": "aWeiHbXfZFV1nSMbzT5ORzyZZeZ2"
+        }
+      },
+      "createTime": "2026-05-13T18:16:20.619046Z",
+      "updateTime": "2026-05-13T19:47:45.651650Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/urnQLGUQWgfSVgabtTeu",
+      "fields": {
+        "message": {
+          "stringValue": "New application from Kofi Doe for Professional Executive Master's in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-10T22:53:44.529Z"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "referenceId": {
+          "stringValue": "Sg2QfYfHC2XrdClKB2H6"
+        }
+      },
+      "createTime": "2026-05-10T22:53:44.537289Z",
+      "updateTime": "2026-05-10T22:53:45.523851Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/vyqS9CR0CGa8LAy1JoVo",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-12T22:32:12.559Z"
+        },
+        "message": {
+          "stringValue": "New application from Kofi Doe for Professional Executive Master's in ADR"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "referenceId": {
+          "stringValue": "vYoBzvZNXPVP8fBV2YDC"
+        },
+        "type": {
+          "stringValue": "application"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        }
+      },
+      "createTime": "2026-05-12T22:32:12.578961Z",
+      "updateTime": "2026-05-12T22:46:55.112763Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/wGbTGxRJilM4hrjiOBD9",
+      "fields": {
+        "message": {
+          "stringValue": "New message from client in arbitration case (Commercial & debt recovery cases)"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-11T14:58:23.007Z"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "referenceId": {
+          "stringValue": "HHykDbpLDJF8CZgjXEiL"
+        },
+        "type": {
+          "stringValue": "service"
+        }
+      },
+      "createTime": "2026-05-11T14:58:23.048795Z",
+      "updateTime": "2026-05-11T16:06:06.053833Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AdminNotifications/z3wbOjyhDNnzruorwiUc",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-16T21:43:40.445Z"
+        },
+        "message": {
+          "stringValue": "enerstina okpattah submitted a course registration for PEMADR."
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "referenceId": {
+          "stringValue": "x9rl7civFci4VBmwSW6f"
+        },
+        "type": {
+          "stringValue": "registration"
+        },
+        "userId": {
+          "stringValue": "CBUt50puWuSNi68N93Pm2moEJ8p2"
+        }
+      },
+      "createTime": "2026-05-16T21:43:40.476415Z",
+      "updateTime": "2026-05-17T00:36:18.890615Z"
+    }
+  ],
+  "Announcements": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/Announcements/R2F6fLR1PeIMzclHtode",
+      "fields": {
+        "CreatedAt": {
+          "timestampValue": "2026-04-30T09:50:20Z"
+        },
+        "Title": {
+          "stringValue": "Cohort 5 applications now open"
+        },
+        "Detail": {
+          "stringValue": "Apply before May 15 to secure your spot in the next ADR training cohort"
+        },
+        "Urgent": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-04-30T09:50:33.085212Z",
+      "updateTime": "2026-04-30T09:50:33.085212Z"
+    }
+  ],
+  "AssignmentSubmissions": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AssignmentSubmissions/1RFGwRN7fd1hadiV3u9L",
+      "fields": {
+        "studentName": {
+          "stringValue": "enerstina okpattah"
+        },
+        "studentEmail": {
+          "stringValue": "okpattahenerstina@gmail.com"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "attachmentLink": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/submissions%2FOHCNz1Lv3c2zWQLh0aLe%2F9q33rqNJVbOQ0y7CY5qCsEqljH23%2F1778887801277_Screenshot_20260515-221928.jpg?alt=media&token=45438108-c937-4842-8e86-b1ca9049f4fe"
+        },
+        "status": {
+          "stringValue": "submitted"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-15T23:30:09.754Z"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "submissionText": {
+          "stringValue": "Hhhh"
+        },
+        "assignmentId": {
+          "stringValue": "OHCNz1Lv3c2zWQLh0aLe"
+        }
+      },
+      "createTime": "2026-05-15T23:30:09.771046Z",
+      "updateTime": "2026-05-15T23:30:09.771046Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AssignmentSubmissions/Qr2Qm7qlgy5ieBFRLXLj",
+      "fields": {
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "studentEmail": {
+          "stringValue": "kofihuncho598@gmail.com"
+        },
+        "studentName": {
+          "stringValue": "Kofi Asante"
+        },
+        "assignmentId": {
+          "stringValue": "FFzSEiyhYMe9mWHh5Ig8"
+        },
+        "submissionText": {
+          "stringValue": "22222222222222222222222222"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-12T23:34:16.053Z"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "attachmentLink": {
+          "stringValue": ""
+        },
+        "status": {
+          "stringValue": "submitted"
+        }
+      },
+      "createTime": "2026-05-12T23:34:16.076955Z",
+      "updateTime": "2026-05-12T23:34:16.076955Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AssignmentSubmissions/hNyuvSMAQZJmKvefRUBy",
+      "fields": {
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "studentEmail": {
+          "stringValue": "okpattahenerstina@gmail.com"
+        },
+        "studentName": {
+          "stringValue": "enerstina okpattah"
+        },
+        "assignmentId": {
+          "stringValue": "FNCtX5eYiQL8eDUn9T4c"
+        },
+        "submissionText": {
+          "stringValue": "Yyyy"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-15T23:04:37.104Z"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "status": {
+          "stringValue": "submitted"
+        },
+        "attachmentLink": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/submissions%2FFNCtX5eYiQL8eDUn9T4c%2F9q33rqNJVbOQ0y7CY5qCsEqljH23%2F1778886267927_Screenshot_20260515-221733.jpg?alt=media&token=0f33347e-be54-4ddf-8a0c-ec44d10bfdba"
+        }
+      },
+      "createTime": "2026-05-15T23:04:37.120238Z",
+      "updateTime": "2026-05-15T23:04:37.120238Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AssignmentSubmissions/iQ97rIgvk5hnvnH9YG8B",
+      "fields": {
+        "studentEmail": {
+          "stringValue": "kofihuncho598@gmail.com"
+        },
+        "studentName": {
+          "stringValue": "Kofi Doe"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-14T16:09:31.895Z"
+        },
+        "status": {
+          "stringValue": "submitted"
+        },
+        "attachmentLink": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/submissions%2Fm6ubSYbFlR22tq21kb0h%2F9Le3X5J9hXVZrqyqKrnZ8mykV8c2%2F1778774958205_CMCS_PRD_MAIN.docx?alt=media&token=15934e31-7217-4890-9676-3cbe6e63274b"
+        },
+        "assignmentId": {
+          "stringValue": "m6ubSYbFlR22tq21kb0h"
+        },
+        "submissionText": {
+          "stringValue": ""
+        }
+      },
+      "createTime": "2026-05-14T16:09:31.912483Z",
+      "updateTime": "2026-05-14T16:09:31.912483Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AssignmentSubmissions/kuxKPLE8VzHgoMAVHIWw",
+      "fields": {
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "studentName": {
+          "stringValue": "Kofi Doe"
+        },
+        "studentEmail": {
+          "stringValue": "kofihuncho598@gmail.com"
+        },
+        "submissionText": {
+          "stringValue": "fffffffffffffffffff"
+        },
+        "assignmentId": {
+          "stringValue": "wcrqriJo51pnPmNhV6lT"
+        },
+        "status": {
+          "stringValue": "submitted"
+        },
+        "attachmentLink": {
+          "stringValue": "fffffffffffffffffff"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-14T08:49:07.148Z"
+        }
+      },
+      "createTime": "2026-05-14T08:49:07.176199Z",
+      "updateTime": "2026-05-14T08:49:07.176199Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AssignmentSubmissions/m5MuF6k2qVoRSgGBNID1",
+      "fields": {
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "submissionText": {
+          "stringValue": "This is the answer"
+        },
+        "assignmentId": {
+          "stringValue": "BpAC5hptZpu2cNOiUdUb"
+        },
+        "status": {
+          "stringValue": "submitted"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-10T23:08:07.239Z"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        }
+      },
+      "createTime": "2026-05-10T23:08:07.253099Z",
+      "updateTime": "2026-05-10T23:08:07.253099Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AssignmentSubmissions/neQlILsa0ZqylRugvip2",
+      "fields": {
+        "studentName": {
+          "stringValue": "enerstina okpattah"
+        },
+        "studentEmail": {
+          "stringValue": "okpattahenerstina@gmail.com"
+        },
+        "userId": {
+          "stringValue": "aWeiHbXfZFV1nSMbzT5ORzyZZeZ2"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-15T02:49:16.316Z"
+        },
+        "status": {
+          "stringValue": "submitted"
+        },
+        "attachmentLink": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/submissions%2FyDNYEMrcuUwpy3kpYjtl%2FaWeiHbXfZFV1nSMbzT5ORzyZZeZ2%2F1778813344326_1778811778396_Open%20letter.pdf?alt=media&token=209e98fa-0768-46d3-818d-cd2fca49c359"
+        },
+        "assignmentId": {
+          "stringValue": "yDNYEMrcuUwpy3kpYjtl"
+        },
+        "submissionText": {
+          "stringValue": "Shehs"
+        }
+      },
+      "createTime": "2026-05-15T02:49:16.327113Z",
+      "updateTime": "2026-05-15T02:49:16.327113Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/AssignmentSubmissions/ujFod76AvoVYQD7FDVXm",
+      "fields": {
+        "status": {
+          "stringValue": "submitted"
+        },
+        "attachmentLink": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/submissions%2FOB2eWzA9YMEs9Fkc3bmd%2FXrSzN9UFxnZB3glao4BxLXnxe9P2%2F1778974829048_Screenshot_20260516-232108.jpg?alt=media&token=8ca29d23-9a42-4dee-9beb-27ffadc5acf6"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-16T23:40:41.984Z"
+        },
+        "submissionText": {
+          "stringValue": "Shahsjwwssbhswhsshhsshs"
+        },
+        "assignmentId": {
+          "stringValue": "OB2eWzA9YMEs9Fkc3bmd"
+        },
+        "studentEmail": {
+          "stringValue": "okpattahenerstina@gmail.com"
+        },
+        "studentName": {
+          "stringValue": "enerstina okpattah"
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        }
+      },
+      "createTime": "2026-05-16T23:40:42.000445Z",
+      "updateTime": "2026-05-16T23:40:42.000445Z"
+    }
+  ],
+  "Assignments": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/Assignments/OB2eWzA9YMEs9Fkc3bmd",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-16T23:39:54.071Z"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "description": {
+          "stringValue": "glugjvu j  jm"
+        },
+        "deadline": {
+          "timestampValue": "2026-05-08T00:00:00Z"
+        },
+        "fileUrl": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/assignment-files%2Fpecadr%2F1778974780553_tithe_report_2026-04-23.pdf?alt=media&token=ebdc225d-8e65-4002-8e8c-d11797eef018"
+        },
+        "sub_XrSzN9UFxnZB3glao4BxLXnxe9P2": {
+          "mapValue": {
+            "fields": {
+              "studentEmail": {
+                "stringValue": "okpattahenerstina@gmail.com"
+              },
+              "grade": {
+                "integerValue": "100"
+              },
+              "submittedAt": {
+                "timestampValue": "2026-05-16T23:40:42.447Z"
+              },
+              "text": {
+                "stringValue": "Shahsjwwssbhswhsshhsshs"
+              },
+              "attachmentLink": {
+                "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/submissions%2FOB2eWzA9YMEs9Fkc3bmd%2FXrSzN9UFxnZB3glao4BxLXnxe9P2%2F1778974829048_Screenshot_20260516-232108.jpg?alt=media&token=8ca29d23-9a42-4dee-9beb-27ffadc5acf6"
+              },
+              "studentName": {
+                "stringValue": "enerstina okpattah"
+              },
+              "feedback": {
+                "stringValue": "nilhilvljvu"
+              }
+            }
+          }
+        },
+        "title": {
+          "stringValue": "jjjjjjjjjj"
+        },
+        "maxGrade": {
+          "integerValue": "100"
+        }
+      },
+      "createTime": "2026-05-16T23:39:54.103294Z",
+      "updateTime": "2026-05-16T23:41:45.965660Z"
+    }
+  ],
+  "CaseMessages": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CaseMessages/4WKXxLmmmeotTIHLGbPT",
+      "fields": {
+        "caseId": {
+          "stringValue": "Aq3q73TNWqn7xAfpSssx"
+        },
+        "senderName": {
+          "stringValue": "Kofi Asante"
+        },
+        "senderType": {
+          "stringValue": "client"
+        },
+        "senderId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-09T15:12:24.311Z"
+        },
+        "text": {
+          "stringValue": "ok"
+        }
+      },
+      "createTime": "2026-05-09T15:12:24.329813Z",
+      "updateTime": "2026-05-09T15:12:24.329813Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CaseMessages/51hrjB2JhvJv2Z3Ae4eC",
+      "fields": {
+        "text": {
+          "stringValue": "so what"
+        },
+        "senderId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-09T14:59:14.240Z"
+        },
+        "senderType": {
+          "stringValue": "client"
+        },
+        "caseId": {
+          "stringValue": "Aq3q73TNWqn7xAfpSssx"
+        },
+        "senderName": {
+          "stringValue": "Kofi Asante"
+        }
+      },
+      "createTime": "2026-05-09T14:59:14.261974Z",
+      "updateTime": "2026-05-09T14:59:14.261974Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CaseMessages/ISR4QoPVqSwzeJ0rPX8u",
+      "fields": {
+        "senderType": {
+          "stringValue": "admin"
+        },
+        "caseId": {
+          "stringValue": "Aq3q73TNWqn7xAfpSssx"
+        },
+        "senderName": {
+          "stringValue": "Desmond"
+        },
+        "text": {
+          "stringValue": "okay sure so............"
+        },
+        "senderId": {
+          "stringValue": "MbBw81hsGLcwtCzNUi6XCpKStkG3"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-09T14:55:31.732Z"
+        }
+      },
+      "createTime": "2026-05-09T14:55:31.774144Z",
+      "updateTime": "2026-05-09T14:55:31.774144Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CaseMessages/L8doTzfvUipIn5NDD3yH",
+      "fields": {
+        "text": {
+          "stringValue": "calm down"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-09T15:10:30.164Z"
+        },
+        "senderId": {
+          "stringValue": "MbBw81hsGLcwtCzNUi6XCpKStkG3"
+        },
+        "senderType": {
+          "stringValue": "admin"
+        },
+        "caseId": {
+          "stringValue": "Aq3q73TNWqn7xAfpSssx"
+        },
+        "senderName": {
+          "stringValue": "Desmond"
+        }
+      },
+      "createTime": "2026-05-09T15:10:30.202497Z",
+      "updateTime": "2026-05-09T15:10:30.202497Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CaseMessages/NX3OteCS2Ye6wEyK15Qz",
+      "fields": {
+        "senderType": {
+          "stringValue": "admin"
+        },
+        "senderName": {
+          "stringValue": "john"
+        },
+        "caseId": {
+          "stringValue": "YKy4Nz4kLs4KplZAggEm"
+        },
+        "text": {
+          "stringValue": "okay"
+        },
+        "senderId": {
+          "stringValue": "MbBw81hsGLcwtCzNUi6XCpKStkG3"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:05:31.037Z"
+        }
+      },
+      "createTime": "2026-05-20T18:05:31.053788Z",
+      "updateTime": "2026-05-20T18:05:31.053788Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CaseMessages/TpngCm0M5bJl9UmbW7gD",
+      "fields": {
+        "senderId": {
+          "stringValue": "MbBw81hsGLcwtCzNUi6XCpKStkG3"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:04:53.515Z"
+        },
+        "text": {
+          "stringValue": "how can i help you"
+        },
+        "caseId": {
+          "stringValue": "YKy4Nz4kLs4KplZAggEm"
+        },
+        "senderName": {
+          "stringValue": "john"
+        },
+        "senderType": {
+          "stringValue": "admin"
+        }
+      },
+      "createTime": "2026-05-20T18:04:53.527107Z",
+      "updateTime": "2026-05-20T18:04:53.527107Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CaseMessages/cLRjdwZAmHsLVRoMQVUy",
+      "fields": {
+        "caseId": {
+          "stringValue": "Aq3q73TNWqn7xAfpSssx"
+        },
+        "senderName": {
+          "stringValue": "GIAC Admin"
+        },
+        "senderType": {
+          "stringValue": "admin"
+        },
+        "senderId": {
+          "stringValue": "MbBw81hsGLcwtCzNUi6XCpKStkG3"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-09T14:46:24.188Z"
+        },
+        "text": {
+          "stringValue": "Hi,how can i help you ??"
+        }
+      },
+      "createTime": "2026-05-09T14:46:24.209280Z",
+      "updateTime": "2026-05-09T14:46:24.209280Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CaseMessages/q35RjU6fddDN1OypODu5",
+      "fields": {
+        "senderId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:05:18.423Z"
+        },
+        "text": {
+          "stringValue": "Buy me pota"
+        },
+        "caseId": {
+          "stringValue": "YKy4Nz4kLs4KplZAggEm"
+        },
+        "senderName": {
+          "stringValue": "Nathan Edward Siebu"
+        },
+        "senderType": {
+          "stringValue": "client"
+        }
+      },
+      "createTime": "2026-05-20T18:05:18.439099Z",
+      "updateTime": "2026-05-20T18:05:18.439099Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CaseMessages/rrkLmkzj8oQjg4a4yHYp",
+      "fields": {
+        "senderType": {
+          "stringValue": "client"
+        },
+        "senderName": {
+          "stringValue": "Nathan Edward Siebu"
+        },
+        "caseId": {
+          "stringValue": "YKy4Nz4kLs4KplZAggEm"
+        },
+        "text": {
+          "stringValue": "John is not a name"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:04:39.143Z"
+        },
+        "senderId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        }
+      },
+      "createTime": "2026-05-20T18:04:39.157607Z",
+      "updateTime": "2026-05-20T18:04:39.157607Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CaseMessages/sWrvJ0hnBZwRl9UXvmdc",
+      "fields": {
+        "senderId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-09T14:59:51.181Z"
+        },
+        "text": {
+          "stringValue": "so what"
+        },
+        "senderName": {
+          "stringValue": "Kofi Asante"
+        },
+        "caseId": {
+          "stringValue": "Aq3q73TNWqn7xAfpSssx"
+        },
+        "senderType": {
+          "stringValue": "client"
+        }
+      },
+      "createTime": "2026-05-09T14:59:51.217848Z",
+      "updateTime": "2026-05-09T14:59:51.217848Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CaseMessages/w1cmVm4lfhozZlBgeoiy",
+      "fields": {
+        "caseId": {
+          "stringValue": "Aq3q73TNWqn7xAfpSssx"
+        },
+        "senderName": {
+          "stringValue": "Kofi Asante"
+        },
+        "senderType": {
+          "stringValue": "client"
+        },
+        "senderId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-09T14:52:56.173Z"
+        },
+        "text": {
+          "stringValue": "the cases i submitted i need solutions"
+        }
+      },
+      "createTime": "2026-05-09T14:52:56.204939Z",
+      "updateTime": "2026-05-09T14:52:56.204939Z"
+    }
+  ],
+  "Certificates": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/Certificates/QV9HzYwmlAu2xoNBSi9l",
+      "fields": {
+        "program": {
+          "stringValue": "PECADR"
+        },
+        "certificateUrl": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/certificates%2FfS3kS2TsTWRXBv4UJPvmEyzXqRD3%2F1779301042125.pdf?alt=media&token=4b6a0943-fe4c-4cb3-ae4f-dafb07122704"
+        },
+        "credentialId": {
+          "stringValue": "GIAC-PECADR-MPEDWJ4K"
+        },
+        "issueDate": {
+          "timestampValue": "2026-05-20T18:17:27.781Z"
+        },
+        "courseTitle": {
+          "stringValue": "Professional Executive Certificate in ADR"
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        }
+      },
+      "createTime": "2026-05-20T18:17:27.794671Z",
+      "updateTime": "2026-05-20T18:17:27.794671Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/Certificates/k6roMap5oKaE0ymLIBWt",
+      "fields": {
+        "userId": {
+          "stringValue": "aWeiHbXfZFV1nSMbzT5ORzyZZeZ2"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "courseTitle": {
+          "stringValue": "Professional Executive Certificate in ADR"
+        },
+        "program": {
+          "stringValue": "PECADR"
+        },
+        "certificateUrl": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/certificates%2FaWeiHbXfZFV1nSMbzT5ORzyZZeZ2%2F1778817672748.pdf?alt=media&token=050d28ee-2119-4628-b1c8-b16118de14cf"
+        },
+        "credentialId": {
+          "stringValue": "GIAC-PECADR-MP6E48WS"
+        },
+        "issueDate": {
+          "timestampValue": "2026-05-15T04:01:25.802Z"
+        }
+      },
+      "createTime": "2026-05-15T04:01:25.813519Z",
+      "updateTime": "2026-05-15T04:01:25.813519Z"
+    }
+  ],
+  "CourseRegistrations": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CourseRegistrations/3ZDffUVNSVgupBomdUTv",
+      "fields": {
+        "updatedAt": {
+          "timestampValue": "2026-05-18T12:55:46.497Z"
+        },
+        "fullName": {
+          "stringValue": "Kofi Asante"
+        },
+        "studentNumber": {
+          "stringValue": "1234"
+        },
+        "status": {
+          "stringValue": "accepted"
+        },
+        "email": {
+          "stringValue": "kofi7465967@gmail.com"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-18T12:54:40.541Z"
+        },
+        "phone": {
+          "stringValue": "0242286115"
+        },
+        "courseInterest": {
+          "stringValue": "pecadr"
+        },
+        "userId": {
+          "stringValue": "q4lQ4cKwilMMzcqTmfqbJYUHiVG2"
+        },
+        "letterUrl": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/admission-letters%2F3ZDffUVNSVgupBomdUTv%2F1779108929445_tithe_report_2026-04-23.pdf?alt=media&token=2a373824-5ef6-478f-88ef-401eb9162b92"
+        }
+      },
+      "createTime": "2026-05-18T12:54:40.581283Z",
+      "updateTime": "2026-05-18T12:55:46.547727Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CourseRegistrations/5WRlLamTKaxQcq7Uaii0",
+      "fields": {
+        "phone": {
+          "stringValue": "0242286115"
+        },
+        "courseInterest": {
+          "stringValue": "pecadr"
+        },
+        "letterUrl": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/admission-letters%2F5WRlLamTKaxQcq7Uaii0%2F1778968331402_Open%20letter.pdf?alt=media&token=34713c98-0598-4b24-9dd1-763cf3aa2f5f"
+        },
+        "userId": {
+          "stringValue": "JYCLEOpsbHU2LwsXGJLsbE9DtCD3"
+        },
+        "updatedAt": {
+          "timestampValue": "2026-05-16T21:52:55.852Z"
+        },
+        "fullName": {
+          "stringValue": "enerstina okpattah"
+        },
+        "studentNumber": {
+          "stringValue": "789"
+        },
+        "status": {
+          "stringValue": "accepted"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-16T21:51:49.327Z"
+        },
+        "email": {
+          "stringValue": "okpattahenerstina@gmail.com"
+        }
+      },
+      "createTime": "2026-05-16T21:51:49.359768Z",
+      "updateTime": "2026-05-16T21:52:55.871135Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CourseRegistrations/l4CNST3uIDtoTNpladP2",
+      "fields": {
+        "submittedAt": {
+          "timestampValue": "2026-05-16T23:00:35.363Z"
+        },
+        "email": {
+          "stringValue": "okpattahenerstina@gmail.com"
+        },
+        "fullName": {
+          "stringValue": "enerstina okpattah"
+        },
+        "status": {
+          "stringValue": "accepted"
+        },
+        "studentNumber": {
+          "stringValue": "786"
+        },
+        "updatedAt": {
+          "timestampValue": "2026-05-16T23:01:35.517Z"
+        },
+        "letterUrl": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/admission-letters%2Fl4CNST3uIDtoTNpladP2%2F1778972442470_tithe_report_2026-04-23.pdf?alt=media&token=098d0dc2-1e7f-40d0-8106-75b07bb0f8ac"
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        },
+        "courseInterest": {
+          "stringValue": "pecadr"
+        },
+        "phone": {
+          "stringValue": "0242286115"
+        }
+      },
+      "createTime": "2026-05-16T23:00:35.377212Z",
+      "updateTime": "2026-05-16T23:01:35.533327Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CourseRegistrations/m2Am7I6k7sHb1ZYweNdU",
+      "fields": {
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "letterUrl": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/admission-letters%2Fm2Am7I6k7sHb1ZYweNdU%2F1778884720877_course%20registration.pdf?alt=media&token=17d8dfe7-0da5-4cc4-8318-f60de8c231e1"
+        },
+        "phone": {
+          "stringValue": "0242286115"
+        },
+        "courseInterest": {
+          "stringValue": "pecadr"
+        },
+        "email": {
+          "stringValue": "okpattahenerstina@gmail.com"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-15T22:38:17.957Z"
+        },
+        "updatedAt": {
+          "timestampValue": "2026-05-15T22:39:42.122Z"
+        },
+        "status": {
+          "stringValue": "accepted"
+        },
+        "studentNumber": {
+          "stringValue": "123"
+        },
+        "fullName": {
+          "stringValue": "enerstina okpattah"
+        }
+      },
+      "createTime": "2026-05-15T22:38:17.979087Z",
+      "updateTime": "2026-05-15T22:39:42.140301Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CourseRegistrations/oOA3Jk5e2UUaXl7Re46b",
+      "fields": {
+        "submittedAt": {
+          "timestampValue": "2026-05-20T17:59:26.447Z"
+        },
+        "email": {
+          "stringValue": "pasiebu@gmail.com"
+        },
+        "fullName": {
+          "stringValue": "Nathan Edward Siebu"
+        },
+        "studentNumber": {
+          "stringValue": "234"
+        },
+        "status": {
+          "stringValue": "accepted"
+        },
+        "updatedAt": {
+          "timestampValue": "2026-05-20T18:00:19.789Z"
+        },
+        "letterUrl": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/admission-letters%2FoOA3Jk5e2UUaXl7Re46b%2F1779300001843_Screenshot%202026-05-20%20161354.png?alt=media&token=12e98821-bd7c-4263-b6eb-1c92ac54fbe8"
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "courseInterest": {
+          "stringValue": "pecadr"
+        },
+        "phone": {
+          "stringValue": "0539657804"
+        }
+      },
+      "createTime": "2026-05-20T17:59:26.456132Z",
+      "updateTime": "2026-05-20T18:00:19.800751Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CourseRegistrations/x9rl7civFci4VBmwSW6f",
+      "fields": {
+        "userId": {
+          "stringValue": "CBUt50puWuSNi68N93Pm2moEJ8p2"
+        },
+        "letterUrl": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/admission-letters%2Fx9rl7civFci4VBmwSW6f%2F1778967852798_kofi.pdf?alt=media&token=358c3b6c-ed55-48c9-9a37-0978a5a31015"
+        },
+        "phone": {
+          "stringValue": "0242286115"
+        },
+        "courseInterest": {
+          "stringValue": "pemadr"
+        },
+        "email": {
+          "stringValue": "okpattahenerstina@gmail.com"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-16T21:43:39.922Z"
+        },
+        "updatedAt": {
+          "timestampValue": "2026-05-16T21:46:38.622Z"
+        },
+        "studentNumber": {
+          "stringValue": "456"
+        },
+        "status": {
+          "stringValue": "accepted"
+        },
+        "fullName": {
+          "stringValue": "enerstina okpattah"
+        }
+      },
+      "createTime": "2026-05-16T21:43:39.933265Z",
+      "updateTime": "2026-05-16T21:46:38.645871Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/CourseRegistrations/zPX5yX7o9JYF0FqpQiNa",
+      "fields": {
+        "submittedAt": {
+          "timestampValue": "2026-05-18T13:05:49.422Z"
+        },
+        "email": {
+          "stringValue": "lordbenjamin650@gmail.com"
+        },
+        "updatedAt": {
+          "timestampValue": "2026-05-18T13:12:50.440Z"
+        },
+        "fullName": {
+          "stringValue": "Lord Benjamin"
+        },
+        "studentNumber": {
+          "stringValue": "234"
+        },
+        "status": {
+          "stringValue": "accepted"
+        },
+        "letterUrl": {
+          "stringValue": "https://firebasestorage.googleapis.com/v0/b/giac-app-9752c.firebasestorage.app/o/admission-letters%2FzPX5yX7o9JYF0FqpQiNa%2F1779109614900_tithe_report_2026-04-23.pdf?alt=media&token=02176b1f-2323-43e0-b864-e72baa3647e5"
+        },
+        "userId": {
+          "stringValue": "OOfC8JHXKERGNCVCls9t0KwNjTl2"
+        },
+        "phone": {
+          "stringValue": "0537366660"
+        },
+        "courseInterest": {
+          "stringValue": "pecadr"
+        }
+      },
+      "createTime": "2026-05-18T13:05:49.433878Z",
+      "updateTime": "2026-05-18T13:12:50.458559Z"
+    }
+  ],
+  "Courses": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/Courses/OQrEStXQOlwnuMhWwkju",
+      "fields": {
+        "PROGRAM": {
+          "stringValue": "PECADR"
+        },
+        "DURATION": {
+          "stringValue": "4 WEEKS"
+        },
+        "LEVEL": {
+          "stringValue": "BEGINNER"
+        },
+        "MODULES": {
+          "integerValue": "12"
+        },
+        "FEES": {
+          "integerValue": "2500"
+        },
+        "SCHEDULE": {
+          "stringValue": "FLEXIBLE ONLINE"
+        },
+        "createdAt": {
+          "timestampValue": "2026-04-30T09:02:22Z"
+        },
+        "Title": {
+          "stringValue": "Foundations of Alternative Dispute Resolution"
+        }
+      },
+      "createTime": "2026-04-30T09:02:44.976538Z",
+      "updateTime": "2026-04-30T09:02:44.976538Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/Courses/hK2D91zSdojkIun7Ajkh",
+      "fields": {
+        "LEVEL": {
+          "stringValue": "ADVANCED"
+        },
+        "MODULES": {
+          "integerValue": "24"
+        },
+        "PROGRAM": {
+          "stringValue": "MASTERS"
+        },
+        "DURATION": {
+          "stringValue": "3 MONTHS"
+        },
+        "SCHEDULE": {
+          "stringValue": "MONDAY-FRIDAY,9AM-5PM"
+        },
+        "createdAt": {
+          "timestampValue": "2026-04-30T09:22:04Z"
+        },
+        "TITLE": {
+          "stringValue": "Master's in ADR & Conflict Resolution"
+        },
+        "FEES": {
+          "integerValue": "7500"
+        }
+      },
+      "createTime": "2026-04-30T09:22:18.144858Z",
+      "updateTime": "2026-04-30T09:22:18.144858Z"
+    }
+  ],
+  "LearningProgress": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/LearningProgress/IIQ4TziwFNqJPr5p0Rm8",
+      "fields": {
+        "progressPercentage": {
+          "integerValue": "100"
+        },
+        "lastAccessed": {
+          "timestampValue": "2026-05-16T23:19:05.633Z"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "totalModules": {
+          "integerValue": "0"
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        },
+        "completedModules": {
+          "arrayValue": {}
+        }
+      },
+      "createTime": "2026-05-16T23:19:05.664304Z",
+      "updateTime": "2026-05-16T23:43:34.164397Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/LearningProgress/iIXmUd3kQVDPL3bH2U3E",
+      "fields": {
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "completedModules": {
+          "arrayValue": {}
+        },
+        "totalModules": {
+          "integerValue": "0"
+        },
+        "progressPercentage": {
+          "integerValue": "100"
+        },
+        "lastAccessed": {
+          "timestampValue": "2026-05-20T18:09:43.938Z"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        }
+      },
+      "createTime": "2026-05-20T18:09:43.946512Z",
+      "updateTime": "2026-05-20T18:17:27.465546Z"
+    }
+  ],
+  "PersonalSessions": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/PersonalSessions/4G31SYRfotl8ZFoHSaI4",
+      "fields": {
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "title": {
+          "stringValue": "tttttttttttttt"
+        },
+        "zoomLink": {
+          "stringValue": "wwwwwwwwwwwwwwwwwwww"
+        },
+        "scheduledDate": {
+          "timestampValue": "2026-05-13T00:00:00Z"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-14T08:41:04.838Z"
+        }
+      },
+      "createTime": "2026-05-14T08:41:04.873352Z",
+      "updateTime": "2026-05-14T08:41:04.873352Z"
+    }
+  ],
+  "Services": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/Services/DPIUsJnrJOiCp0yALgac",
+      "fields": {
+        "mediatorNote": {
+          "stringValue": ""
+        },
+        "meetingLink": {
+          "stringValue": ""
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        },
+        "mediatorAssigned": {
+          "stringValue": "james"
+        },
+        "mediatorName": {
+          "stringValue": "james"
+        },
+        "updatedAt": {
+          "timestampValue": "2026-05-17T00:37:02.915Z"
+        },
+        "serviceType": {
+          "stringValue": "mediation"
+        },
+        "clientEmail": {
+          "stringValue": "okpattahenerstina@gmail.com"
+        },
+        "caseDetails": {
+          "stringValue": "Ggtrghfudhddhdhdbshshssvdvebsjesbsnsbendjebd dn"
+        },
+        "documents": {
+          "arrayValue": {}
+        },
+        "clientName": {
+          "stringValue": "enerstina okpattah"
+        },
+        "category": {
+          "stringValue": "Rent & tenant conflicts"
+        },
+        "status": {
+          "stringValue": "in-progress"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-17T00:32:41.817Z"
+        },
+        "statusUpdatedAt": {
+          "timestampValue": "2026-05-17T00:37:02.915Z"
+        }
+      },
+      "createTime": "2026-05-17T00:32:41.826497Z",
+      "updateTime": "2026-05-17T00:37:02.935903Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/Services/YKy4Nz4kLs4KplZAggEm",
+      "fields": {
+        "clientName": {
+          "stringValue": "Nathan Edward Siebu"
+        },
+        "caseDetails": {
+          "stringValue": "He dey foolej2ij3eorbe3jxjdidjdvdjdd.  Sjdbdidbd. Bfodvddjd. Hi dodjbd"
+        },
+        "documents": {
+          "arrayValue": {}
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:03:28.044Z"
+        },
+        "statusUpdatedAt": {
+          "timestampValue": "2026-05-20T18:05:40.632Z"
+        },
+        "status": {
+          "stringValue": "completed"
+        },
+        "category": {
+          "stringValue": "Marriage & domestic issues"
+        },
+        "mediatorAssigned": {
+          "stringValue": "john"
+        },
+        "mediatorName": {
+          "stringValue": "john"
+        },
+        "mediatorNote": {
+          "stringValue": ""
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "meetingLink": {
+          "stringValue": ""
+        },
+        "serviceType": {
+          "stringValue": "arbitration"
+        },
+        "updatedAt": {
+          "timestampValue": "2026-05-20T18:05:40.632Z"
+        },
+        "clientEmail": {
+          "stringValue": "pasiebu@gmail.com"
+        }
+      },
+      "createTime": "2026-05-20T18:03:28.058221Z",
+      "updateTime": "2026-05-20T18:05:40.647551Z"
+    }
+  ],
+  "StudentNotifications": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/0CYsOO4vyX0skUC01DE4",
+      "fields": {
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T02:41:57.996Z"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        }
+      },
+      "createTime": "2026-05-16T02:41:58.017727Z",
+      "updateTime": "2026-05-16T02:42:54.114346Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/213ZRlH4DPxjX8xFnzFr",
+      "fields": {
+        "type": {
+          "stringValue": "case_message"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "userId": {
+          "stringValue": "JYCLEOpsbHU2LwsXGJLsbE9DtCD3"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "referenceId": {
+          "stringValue": "oh6GZPxHIACNLwAlVXWU"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T22:03:14.039Z"
+        }
+      },
+      "createTime": "2026-05-16T22:03:14.093903Z",
+      "updateTime": "2026-05-16T22:12:22.490471Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/40A0tCjACBnJDkRlDL0k",
+      "fields": {
+        "referenceId": {
+          "stringValue": "DPIUsJnrJOiCp0yALgac"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-17T00:37:03.252Z"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_assigned"
+        },
+        "message": {
+          "stringValue": "A mediator has been assigned to your case: james"
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        }
+      },
+      "createTime": "2026-05-17T00:37:03.271215Z",
+      "updateTime": "2026-05-17T01:08:05.295791Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/5XV0eoHGmCaVpheMb5gh",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-15T04:01:26.722Z"
+        },
+        "referenceId": {
+          "stringValue": "k6roMap5oKaE0ymLIBWt"
+        },
+        "message": {
+          "stringValue": "Your certificate for \"Professional Executive Certificate in ADR\" is ready. Tap to download."
+        },
+        "userId": {
+          "stringValue": "aWeiHbXfZFV1nSMbzT5ORzyZZeZ2"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "certificate_issued"
+        }
+      },
+      "createTime": "2026-05-15T04:01:26.733583Z",
+      "updateTime": "2026-05-15T04:01:42.325049Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/6lUcXISmajiDdoo5vxcz",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-16T21:44:30.054Z"
+        },
+        "referenceId": {
+          "stringValue": "x9rl7civFci4VBmwSW6f"
+        },
+        "userId": {
+          "stringValue": "CBUt50puWuSNi68N93Pm2moEJ8p2"
+        },
+        "message": {
+          "stringValue": "Congratulations enerstina okpattah! Your student number is 456. Tap to accept your admission and begin your PEMADR journey."
+        },
+        "type": {
+          "stringValue": "admission_letter"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-16T21:44:30.065439Z",
+      "updateTime": "2026-05-16T21:45:29.783565Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/6vtay8BD66Cw80PlHOLj",
+      "fields": {
+        "type": {
+          "stringValue": "case_message"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T02:27:20.724Z"
+        }
+      },
+      "createTime": "2026-05-16T02:27:20.743759Z",
+      "updateTime": "2026-05-16T02:31:04.268917Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/A1FGxJpFYa2go9A7K75o",
+      "fields": {
+        "type": {
+          "stringValue": "case_message"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T02:47:25.676Z"
+        }
+      },
+      "createTime": "2026-05-16T02:47:25.688095Z",
+      "updateTime": "2026-05-16T02:47:49.752792Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/ATlYtFAyoyGeNR5rALWK",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_completed"
+        },
+        "message": {
+          "stringValue": "Your case has been resolved. View your resolution summary."
+        },
+        "userId": {
+          "stringValue": "JYCLEOpsbHU2LwsXGJLsbE9DtCD3"
+        },
+        "referenceId": {
+          "stringValue": "oh6GZPxHIACNLwAlVXWU"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T22:03:33.530Z"
+        }
+      },
+      "createTime": "2026-05-16T22:03:33.575583Z",
+      "updateTime": "2026-05-16T22:12:22.490471Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/Asyc07efkDPdVic96Ie4",
+      "fields": {
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T01:26:01.143Z"
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        }
+      },
+      "createTime": "2026-05-16T01:26:01.156143Z",
+      "updateTime": "2026-05-16T01:59:03.787662Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/BanFJpLbCQsvzHAaTdFd",
+      "fields": {
+        "referenceId": {
+          "stringValue": "r9qmknRETUWea0wUv2Ng"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-18T13:16:10.024Z"
+        },
+        "type": {
+          "stringValue": "case_assigned"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "userId": {
+          "stringValue": "OOfC8JHXKERGNCVCls9t0KwNjTl2"
+        },
+        "message": {
+          "stringValue": "A mediator has been assigned to your case: John"
+        }
+      },
+      "createTime": "2026-05-18T13:16:10.039135Z",
+      "updateTime": "2026-05-18T13:56:51.323786Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/CL3DrAr1nW5XRpC3t2n6",
+      "fields": {
+        "referenceId": {
+          "stringValue": "gFgTOxAfgmay5BZ71mHs"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:09:44.642Z"
+        },
+        "type": {
+          "stringValue": "application_approved"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "message": {
+          "stringValue": "Congratulations! Your application for Professional Executive Certificate in ADR has been approved."
+        }
+      },
+      "createTime": "2026-05-20T18:09:44.663663Z",
+      "updateTime": "2026-05-20T18:09:45.348908Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/CpaQq7tAUVtcAi6HC8ND",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "admission_letter"
+        },
+        "message": {
+          "stringValue": "Congratulations enerstina okpattah! Your student number is 789. Tap to accept your admission and begin your PECADR journey."
+        },
+        "userId": {
+          "stringValue": "JYCLEOpsbHU2LwsXGJLsbE9DtCD3"
+        },
+        "referenceId": {
+          "stringValue": "5WRlLamTKaxQcq7Uaii0"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T21:52:26.669Z"
+        }
+      },
+      "createTime": "2026-05-16T21:52:26.683695Z",
+      "updateTime": "2026-05-16T22:02:41.152050Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/Fl6QpIKJ3bmG5m8ktOax",
+      "fields": {
+        "message": {
+          "stringValue": "Your assignment \"ffff\" has been reviewed. Admin has left feedback for you."
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "assignment_graded"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-15T23:30:33.847Z"
+        },
+        "referenceId": {
+          "stringValue": "OHCNz1Lv3c2zWQLh0aLe"
+        }
+      },
+      "createTime": "2026-05-15T23:30:33.862063Z",
+      "updateTime": "2026-05-15T23:31:05.053618Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/FlgbLCOW0BknOJrTuQ62",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "message": {
+          "stringValue": "New message from John"
+        },
+        "userId": {
+          "stringValue": "OOfC8JHXKERGNCVCls9t0KwNjTl2"
+        },
+        "referenceId": {
+          "stringValue": "r9qmknRETUWea0wUv2Ng"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-18T13:26:15.174Z"
+        }
+      },
+      "createTime": "2026-05-18T13:26:15.190575Z",
+      "updateTime": "2026-05-18T13:56:51.323786Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/FxvduHFkEph3IvC4gOg2",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-17T00:16:52.250Z"
+        },
+        "referenceId": {
+          "stringValue": "HkNBXCCaiz4z5cCyPwKr"
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        },
+        "message": {
+          "stringValue": "Congratulations! You have completed \"Professional Executive Certificate in ADR\"."
+        },
+        "type": {
+          "stringValue": "course_completed"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-17T00:16:52.268623Z",
+      "updateTime": "2026-05-17T00:21:56.406656Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/GEXaBENPlGyn7O6hXDKS",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-16T23:44:15.722Z"
+        },
+        "referenceId": {
+          "stringValue": "fRnPnslmWo32HU69kmJa"
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        },
+        "message": {
+          "stringValue": "Your certificate for \"Professional Executive Certificate in ADR\" is ready. Tap to download."
+        },
+        "type": {
+          "stringValue": "certificate_issued"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-16T23:44:15.737887Z",
+      "updateTime": "2026-05-17T00:15:55.605590Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/GFULiZPIdvsVNz8WSiD0",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-15T22:42:54.204Z"
+        }
+      },
+      "createTime": "2026-05-15T22:42:54.243215Z",
+      "updateTime": "2026-05-15T22:48:17.771975Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/GNeQlraKEljk4Il2b8WL",
+      "fields": {
+        "message": {
+          "stringValue": "Your application for Professional Executive Certificate in ADR has been approved. Welcome to GIAC!"
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "application_approved"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T23:19:05.956Z"
+        },
+        "referenceId": {
+          "stringValue": "HkNBXCCaiz4z5cCyPwKr"
+        }
+      },
+      "createTime": "2026-05-16T23:19:05.985951Z",
+      "updateTime": "2026-05-16T23:38:47.053244Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/HzyPt8j4JzmAvUhPIX80",
+      "fields": {
+        "referenceId": {
+          "stringValue": "oh6GZPxHIACNLwAlVXWU"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T22:02:09.123Z"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_assigned"
+        },
+        "message": {
+          "stringValue": "A mediator has been assigned to your case: john"
+        },
+        "userId": {
+          "stringValue": "JYCLEOpsbHU2LwsXGJLsbE9DtCD3"
+        }
+      },
+      "createTime": "2026-05-16T22:02:09.149551Z",
+      "updateTime": "2026-05-16T22:02:41.152050Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/IO6tg1272K5AbHKkQr0q",
+      "fields": {
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T02:19:48.519Z"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        }
+      },
+      "createTime": "2026-05-16T02:19:48.567727Z",
+      "updateTime": "2026-05-16T02:31:04.268917Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/Kb3kZmDPol4idHT6sdeB",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-15T23:29:07.326Z"
+        },
+        "referenceId": {
+          "stringValue": "OHCNz1Lv3c2zWQLh0aLe"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "message": {
+          "stringValue": "New assignment posted: \"ffff\""
+        },
+        "type": {
+          "stringValue": "assignment_posted"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-15T23:29:07.342399Z",
+      "updateTime": "2026-05-15T23:29:51.288505Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/MFlKdQ3r6apN6YAl93hn",
+      "fields": {
+        "referenceId": {
+          "stringValue": "m2Am7I6k7sHb1ZYweNdU"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-15T22:38:56.722Z"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "admission_letter"
+        },
+        "message": {
+          "stringValue": "Congratulations enerstina okpattah! Your student number is 123. Tap to accept your admission and begin your PECADR journey."
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        }
+      },
+      "createTime": "2026-05-15T22:38:56.749087Z",
+      "updateTime": "2026-05-15T22:39:42.118362Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/MhpwNWxyBGiwRzB0X3UO",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:09:44.086Z"
+        },
+        "referenceId": {
+          "stringValue": "gFgTOxAfgmay5BZ71mHs"
+        },
+        "message": {
+          "stringValue": "Your application for Professional Executive Certificate in ADR has been approved. Welcome to GIAC!"
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "application_approved"
+        }
+      },
+      "createTime": "2026-05-20T18:09:44.099999Z",
+      "updateTime": "2026-05-20T18:09:44.723077Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/NCz5dMiGCmFnRFWvHsr5",
+      "fields": {
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:04:53.666Z"
+        },
+        "referenceId": {
+          "stringValue": "YKy4Nz4kLs4KplZAggEm"
+        }
+      },
+      "createTime": "2026-05-20T18:04:53.682767Z",
+      "updateTime": "2026-05-20T18:05:04.800922Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/NJLiFmfGhzQ06cgSSi6i",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T02:48:05.210Z"
+        }
+      },
+      "createTime": "2026-05-16T02:48:05.223407Z",
+      "updateTime": "2026-05-16T21:19:49.261115Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/T7iBHm9tYoeiKge2W8Z6",
+      "fields": {
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T02:37:52.040Z"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        }
+      },
+      "createTime": "2026-05-16T02:37:52.061711Z",
+      "updateTime": "2026-05-16T02:42:54.114346Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/TRlVN81A4r7iecR5hXUG",
+      "fields": {
+        "referenceId": {
+          "stringValue": "zPX5yX7o9JYF0FqpQiNa"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-18T13:07:00.251Z"
+        },
+        "type": {
+          "stringValue": "admission_letter"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "userId": {
+          "stringValue": "OOfC8JHXKERGNCVCls9t0KwNjTl2"
+        },
+        "message": {
+          "stringValue": "Congratulations Lord Benjamin! Your student number is 234. Tap to accept your admission and begin your PECADR journey."
+        }
+      },
+      "createTime": "2026-05-18T13:07:00.269583Z",
+      "updateTime": "2026-05-18T13:56:51.323786Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/TdARu66R3BuwVZM6LyeZ",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "application_approved"
+        },
+        "message": {
+          "stringValue": "Your application for Professional Executive Certificate in ADR has been approved. Welcome to GIAC!"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "referenceId": {
+          "stringValue": "Le3dLxcUrem5WrMHWORa"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-15T23:01:15.865Z"
+        }
+      },
+      "createTime": "2026-05-15T23:01:15.894527Z",
+      "updateTime": "2026-05-15T23:04:16.497528Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/UhMg40fn6pohOc6wlHFy",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T01:11:30.242Z"
+        }
+      },
+      "createTime": "2026-05-16T01:11:30.275423Z",
+      "updateTime": "2026-05-16T01:12:02.254202Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/VY9VWjCZwdVyBbs04Tqm",
+      "fields": {
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-15T22:40:33.774Z"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_assigned"
+        },
+        "message": {
+          "stringValue": "A mediator has been assigned to your case: john"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        }
+      },
+      "createTime": "2026-05-15T22:40:33.788175Z",
+      "updateTime": "2026-05-15T22:48:17.771975Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/VYgIFUyAizGuPeM8YtZe",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "course_completed"
+        },
+        "message": {
+          "stringValue": "Congratulations! You have completed \"Professional Executive Certificate in ADR\"."
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        },
+        "referenceId": {
+          "stringValue": "HkNBXCCaiz4z5cCyPwKr"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T23:43:34.491Z"
+        }
+      },
+      "createTime": "2026-05-16T23:43:34.511055Z",
+      "updateTime": "2026-05-17T00:15:55.605590Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/X0Yf3lmt8Tiu6KSdxugn",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_completed"
+        },
+        "message": {
+          "stringValue": "Your case has been resolved. View your resolution summary."
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "referenceId": {
+          "stringValue": "YKy4Nz4kLs4KplZAggEm"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:05:40.786Z"
+        }
+      },
+      "createTime": "2026-05-20T18:05:40.804591Z",
+      "updateTime": "2026-05-20T18:05:41.245597Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/Y31tT40H3vqThTsVAQg6",
+      "fields": {
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-15T22:56:54.744Z"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        }
+      },
+      "createTime": "2026-05-15T22:56:54.776031Z",
+      "updateTime": "2026-05-15T22:57:26.118671Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/ZseGYEscB3kpxLPMcpHW",
+      "fields": {
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:05:31.195Z"
+        },
+        "referenceId": {
+          "stringValue": "YKy4Nz4kLs4KplZAggEm"
+        }
+      },
+      "createTime": "2026-05-20T18:05:31.213215Z",
+      "updateTime": "2026-05-20T18:05:31.550191Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/buQUg2h1MRpVz5WR3oN2",
+      "fields": {
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T01:58:11.526Z"
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        }
+      },
+      "createTime": "2026-05-16T01:58:11.562031Z",
+      "updateTime": "2026-05-16T01:59:03.787662Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/dQ5A5OuIibBMy18isPSl",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-18T13:28:08.170Z"
+        },
+        "referenceId": {
+          "stringValue": "r9qmknRETUWea0wUv2Ng"
+        },
+        "userId": {
+          "stringValue": "OOfC8JHXKERGNCVCls9t0KwNjTl2"
+        },
+        "message": {
+          "stringValue": "Your case has been resolved. View your resolution summary."
+        },
+        "type": {
+          "stringValue": "case_completed"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-18T13:28:08.189887Z",
+      "updateTime": "2026-05-18T13:56:51.323786Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/dYNRtTdprurc2dGZAyfR",
+      "fields": {
+        "referenceId": {
+          "stringValue": "K7j9yDB29M9LqR8OKBY9"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-15T04:01:25.184Z"
+        },
+        "type": {
+          "stringValue": "course_completed"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "userId": {
+          "stringValue": "aWeiHbXfZFV1nSMbzT5ORzyZZeZ2"
+        },
+        "message": {
+          "stringValue": "Congratulations! You have completed \"Professional Executive Certificate in ADR\"."
+        }
+      },
+      "createTime": "2026-05-15T04:01:25.201487Z",
+      "updateTime": "2026-05-15T04:01:42.325049Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/dlkYZFVTUA9KJDHI8IIc",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "assignment_graded"
+        },
+        "message": {
+          "stringValue": "Your assignment \"ssssssss\" has been reviewed. Admin has left feedback for you."
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "referenceId": {
+          "stringValue": "FNCtX5eYiQL8eDUn9T4c"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-15T23:05:25.507Z"
+        }
+      },
+      "createTime": "2026-05-15T23:05:25.518399Z",
+      "updateTime": "2026-05-15T23:29:51.288505Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/gBP20v7dpIj10JqmU9CF",
+      "fields": {
+        "referenceId": {
+          "stringValue": "YKy4Nz4kLs4KplZAggEm"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:04:12.409Z"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_assigned"
+        },
+        "message": {
+          "stringValue": "A mediator has been assigned to your case: john"
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        }
+      },
+      "createTime": "2026-05-20T18:04:12.424127Z",
+      "updateTime": "2026-05-20T18:04:20.354782Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/hEMUosiR0RuTErPMBTvP",
+      "fields": {
+        "message": {
+          "stringValue": "New message from John"
+        },
+        "userId": {
+          "stringValue": "OOfC8JHXKERGNCVCls9t0KwNjTl2"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-18T13:18:55.567Z"
+        },
+        "referenceId": {
+          "stringValue": "r9qmknRETUWea0wUv2Ng"
+        }
+      },
+      "createTime": "2026-05-18T13:18:55.585759Z",
+      "updateTime": "2026-05-18T13:56:51.323786Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/hXDZf2XRRAVAxuFlR1qu",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:17:27.602Z"
+        },
+        "referenceId": {
+          "stringValue": "gFgTOxAfgmay5BZ71mHs"
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "message": {
+          "stringValue": "Congratulations! You have completed \"Professional Executive Certificate in ADR\"."
+        },
+        "type": {
+          "stringValue": "course_completed"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-20T18:17:27.642719Z",
+      "updateTime": "2026-05-20T18:18:38.026009Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/ho5IUSXaI05UDBHpcdUf",
+      "fields": {
+        "userId": {
+          "stringValue": "OOfC8JHXKERGNCVCls9t0KwNjTl2"
+        },
+        "message": {
+          "stringValue": "New message from John"
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-18T13:24:15.343Z"
+        },
+        "referenceId": {
+          "stringValue": "r9qmknRETUWea0wUv2Ng"
+        }
+      },
+      "createTime": "2026-05-18T13:24:15.356703Z",
+      "updateTime": "2026-05-18T13:56:51.323786Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/jcxHdIR7xn6haK7zbr59",
+      "fields": {
+        "read": {
+          "booleanValue": false
+        },
+        "type": {
+          "stringValue": "admission_letter"
+        },
+        "message": {
+          "stringValue": "Congratulations Kofi Asante! Your student number is 1234. Tap to accept your admission and begin your PECADR journey."
+        },
+        "userId": {
+          "stringValue": "q4lQ4cKwilMMzcqTmfqbJYUHiVG2"
+        },
+        "referenceId": {
+          "stringValue": "3ZDffUVNSVgupBomdUTv"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-18T12:55:37.874Z"
+        }
+      },
+      "createTime": "2026-05-18T12:55:37.902687Z",
+      "updateTime": "2026-05-18T12:55:37.902687Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/lG0JqR3xKfRDjGlUw5fk",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T01:23:43.261Z"
+        }
+      },
+      "createTime": "2026-05-16T01:23:43.289503Z",
+      "updateTime": "2026-05-16T01:25:12.494600Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/lK0zCtE62GtaDmQVr12i",
+      "fields": {
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T01:23:18.524Z"
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        }
+      },
+      "createTime": "2026-05-16T01:23:18.558975Z",
+      "updateTime": "2026-05-16T01:25:12.494600Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/lzgOIR1jcLnfB4YitSYS",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-16T22:02:58.639Z"
+        },
+        "referenceId": {
+          "stringValue": "oh6GZPxHIACNLwAlVXWU"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "userId": {
+          "stringValue": "JYCLEOpsbHU2LwsXGJLsbE9DtCD3"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_message"
+        }
+      },
+      "createTime": "2026-05-16T22:02:58.663631Z",
+      "updateTime": "2026-05-16T22:12:22.490471Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/nWoQbfUHkV7mP49bWxB5",
+      "fields": {
+        "message": {
+          "stringValue": "Congratulations enerstina okpattah! Your student number is 786. Tap to accept your admission and begin your PECADR journey."
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "admission_letter"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T23:00:57.647Z"
+        },
+        "referenceId": {
+          "stringValue": "l4CNST3uIDtoTNpladP2"
+        }
+      },
+      "createTime": "2026-05-16T23:00:57.664447Z",
+      "updateTime": "2026-05-16T23:01:28.739901Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/rQ2TjcTCqHtumNOzvn4N",
+      "fields": {
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "message": {
+          "stringValue": "Hello"
+        },
+        "type": {
+          "stringValue": "announcement"
+        },
+        "title": {
+          "stringValue": "Test"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T02:36:19Z"
+        }
+      },
+      "createTime": "2026-05-16T02:36:37.838591Z",
+      "updateTime": "2026-05-16T02:37:40.801420Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/rYguCfgMDqs7jKwvsBYI",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-16T23:39:54.923Z"
+        },
+        "referenceId": {
+          "stringValue": "OB2eWzA9YMEs9Fkc3bmd"
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        },
+        "message": {
+          "stringValue": "New assignment posted: \"jjjjjjjjjj\""
+        },
+        "type": {
+          "stringValue": "assignment_posted"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-16T23:39:54.959007Z",
+      "updateTime": "2026-05-16T23:41:10.735898Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/somuYLwlgC29IZ5hRtlH",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-15T03:54:31.507Z"
+        },
+        "referenceId": {
+          "stringValue": "uoA8fKq9QKUhVLZ4ZZP1"
+        },
+        "message": {
+          "stringValue": "Your certificate for \"Professional Executive Certificate in ADR\" is ready. Tap to download."
+        },
+        "userId": {
+          "stringValue": "aWeiHbXfZFV1nSMbzT5ORzyZZeZ2"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "certificate_issued"
+        }
+      },
+      "createTime": "2026-05-15T03:54:31.527327Z",
+      "updateTime": "2026-05-15T03:54:38.099611Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/u8jXQKyWEVdzvei8pbyY",
+      "fields": {
+        "createdAt": {
+          "timestampValue": "2026-05-15T23:03:24.679Z"
+        },
+        "referenceId": {
+          "stringValue": "FNCtX5eYiQL8eDUn9T4c"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "message": {
+          "stringValue": "New assignment posted: \"ssssssss\""
+        },
+        "type": {
+          "stringValue": "assignment_posted"
+        },
+        "read": {
+          "booleanValue": true
+        }
+      },
+      "createTime": "2026-05-15T23:03:24.707647Z",
+      "updateTime": "2026-05-15T23:04:16.497528Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/uVdYud1qZWzq3ij732bU",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T02:42:26.808Z"
+        }
+      },
+      "createTime": "2026-05-16T02:42:26.823183Z",
+      "updateTime": "2026-05-16T02:42:54.114346Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/vEtBk3m7afoyQBhJoqev",
+      "fields": {
+        "referenceId": {
+          "stringValue": "qMfEOWMNHQTSQMXVtSaF"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T02:15:15.735Z"
+        },
+        "type": {
+          "stringValue": "case_message"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "userId": {
+          "stringValue": "9q33rqNJVbOQ0y7CY5qCsEqljH23"
+        },
+        "message": {
+          "stringValue": "New message from john"
+        }
+      },
+      "createTime": "2026-05-16T02:15:15.756591Z",
+      "updateTime": "2026-05-16T02:15:30.584708Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/yKm8DNUGFW9OoSskIqUr",
+      "fields": {
+        "message": {
+          "stringValue": "Your certificate for \"Professional Executive Certificate in ADR\" is ready. Tap to download."
+        },
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "certificate_issued"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:17:28.101Z"
+        },
+        "referenceId": {
+          "stringValue": "QV9HzYwmlAu2xoNBSi9l"
+        }
+      },
+      "createTime": "2026-05-20T18:17:28.120175Z",
+      "updateTime": "2026-05-20T18:18:38.026009Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/z216MRaPRGdBEd2Zb5kx",
+      "fields": {
+        "read": {
+          "booleanValue": true
+        },
+        "type": {
+          "stringValue": "assignment_graded"
+        },
+        "message": {
+          "stringValue": "Your assignment \"jjjjjjjjjj\" has been reviewed. Admin has left feedback for you."
+        },
+        "userId": {
+          "stringValue": "XrSzN9UFxnZB3glao4BxLXnxe9P2"
+        },
+        "referenceId": {
+          "stringValue": "OB2eWzA9YMEs9Fkc3bmd"
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-16T23:41:46.263Z"
+        }
+      },
+      "createTime": "2026-05-16T23:41:46.281407Z",
+      "updateTime": "2026-05-17T00:15:55.605590Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/StudentNotifications/zO7C8PNUqUFVDza5KYI1",
+      "fields": {
+        "userId": {
+          "stringValue": "fS3kS2TsTWRXBv4UJPvmEyzXqRD3"
+        },
+        "message": {
+          "stringValue": "Congratulations Nathan Edward Siebu! Your student number is 234. Tap to accept your admission and begin your PECADR journey."
+        },
+        "type": {
+          "stringValue": "admission_letter"
+        },
+        "read": {
+          "booleanValue": true
+        },
+        "createdAt": {
+          "timestampValue": "2026-05-20T18:00:05.590Z"
+        },
+        "referenceId": {
+          "stringValue": "oOA3Jk5e2UUaXl7Re46b"
+        }
+      },
+      "createTime": "2026-05-20T18:00:05.612895Z",
+      "updateTime": "2026-05-20T18:00:19.018795Z"
+    }
+  ],
+  "TestGrades": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/TestGrades/UyBE72D0t7wLofNbkmDx",
+      "fields": {
+        "testTitle": {
+          "stringValue": "eeeeeeeeeeee"
+        },
+        "feedback": {
+          "stringValue": ""
+        },
+        "passMark": {
+          "integerValue": "50"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "gradedAt": {
+          "timestampValue": "2026-05-12T23:51:12.840Z"
+        },
+        "score": {
+          "integerValue": "100"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "testId": {
+          "stringValue": "v1b2tfM5UxxPusNsHY5h"
+        },
+        "totalMarks": {
+          "integerValue": "100"
+        }
+      },
+      "createTime": "2026-05-12T23:51:12.892754Z",
+      "updateTime": "2026-05-12T23:51:12.892754Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/TestGrades/VI1Xb35ulaFsNQa4DRZg",
+      "fields": {
+        "testTitle": {
+          "stringValue": "qqqqqqqqqqqq"
+        },
+        "feedback": {
+          "stringValue": "good"
+        },
+        "gradedAt": {
+          "timestampValue": "2026-05-13T00:28:17.653Z"
+        },
+        "score": {
+          "integerValue": "80"
+        },
+        "courseId": {
+          "stringValue": "pemadr"
+        },
+        "testId": {
+          "stringValue": "Y41v152nFkhpBMdxffZk"
+        },
+        "totalMarks": {
+          "integerValue": "100"
+        },
+        "passMark": {
+          "integerValue": "50"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        }
+      },
+      "createTime": "2026-05-13T00:28:17.674630Z",
+      "updateTime": "2026-05-13T00:28:17.674630Z"
+    }
+  ],
+  "TestSubmissions": [
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/TestSubmissions/BjGBcNZXrFXY6b4DJYa8",
+      "fields": {
+        "studentName": {
+          "stringValue": "Kofi Asante"
+        },
+        "studentEmail": {
+          "stringValue": "kofihuncho598@gmail.com"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "testId": {
+          "stringValue": "Y41v152nFkhpBMdxffZk"
+        },
+        "status": {
+          "stringValue": "submitted"
+        },
+        "attachmentLink": {
+          "stringValue": "hhhhhhhhhh"
+        },
+        "courseId": {
+          "stringValue": "pemadr"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-13T00:27:51.345Z"
+        },
+        "submissionText": {
+          "stringValue": "gggggggggggggggg"
+        }
+      },
+      "createTime": "2026-05-13T00:27:51.355096Z",
+      "updateTime": "2026-05-13T00:27:51.355096Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/TestSubmissions/GFlsw90mgAl8U1Edo40p",
+      "fields": {
+        "status": {
+          "stringValue": "submitted"
+        },
+        "attachmentLink": {
+          "stringValue": ""
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-12T23:37:20.129Z"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "submissionText": {
+          "stringValue": "33333333333333333333"
+        },
+        "studentEmail": {
+          "stringValue": "kofihuncho598@gmail.com"
+        },
+        "studentName": {
+          "stringValue": "Kofi Asante"
+        },
+        "testId": {
+          "stringValue": "v1b2tfM5UxxPusNsHY5h"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        }
+      },
+      "createTime": "2026-05-12T23:37:20.139260Z",
+      "updateTime": "2026-05-12T23:37:20.139260Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/TestSubmissions/XQtUvUAPepoz8oFwtfDk",
+      "fields": {
+        "testId": {
+          "stringValue": "v1b2tfM5UxxPusNsHY5h"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "studentEmail": {
+          "stringValue": "kofihuncho598@gmail.com"
+        },
+        "studentName": {
+          "stringValue": "Kofi Asante"
+        },
+        "submissionText": {
+          "stringValue": "33333333333333333333"
+        },
+        "status": {
+          "stringValue": "submitted"
+        },
+        "attachmentLink": {
+          "stringValue": ""
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-12T23:37:53.385Z"
+        }
+      },
+      "createTime": "2026-05-12T23:37:53.444634Z",
+      "updateTime": "2026-05-12T23:37:53.444634Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/TestSubmissions/tJksyl2ugFmJhISh9fPc",
+      "fields": {
+        "submissionText": {
+          "stringValue": "33333333333333333333"
+        },
+        "status": {
+          "stringValue": "submitted"
+        },
+        "attachmentLink": {
+          "stringValue": ""
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-12T23:37:28.723Z"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "testId": {
+          "stringValue": "v1b2tfM5UxxPusNsHY5h"
+        },
+        "studentName": {
+          "stringValue": "Kofi Asante"
+        },
+        "studentEmail": {
+          "stringValue": "kofihuncho598@gmail.com"
+        }
+      },
+      "createTime": "2026-05-12T23:37:28.752357Z",
+      "updateTime": "2026-05-12T23:37:28.752357Z"
+    },
+    {
+      "name": "projects/giac-app-9752c/databases/(default)/documents/TestSubmissions/ubfJsDSVgAXDMYJV1JZd",
+      "fields": {
+        "submissionText": {
+          "stringValue": "ssssssssssssssssssss"
+        },
+        "status": {
+          "stringValue": "submitted"
+        },
+        "attachmentLink": {
+          "stringValue": ""
+        },
+        "submittedAt": {
+          "timestampValue": "2026-05-12T23:44:48.988Z"
+        },
+        "courseId": {
+          "stringValue": "pecadr"
+        },
+        "testId": {
+          "stringValue": "v1b2tfM5UxxPusNsHY5h"
+        },
+        "userId": {
+          "stringValue": "9Le3X5J9hXVZrqyqKrnZ8mykV8c2"
+        },
+        "studentEmail": {
+          "stringValue": "kofihuncho598@gmail.com"
+        },
+        "studentName": {
+          "stringValue": "Kofi Asante"
+        }
+      },
+      "createTime": "2026-05-12T23:44:49.001757Z",
+      "updateTime": "2026-05-12T23:44:49.001757Z"
+    }
+  ]
+}

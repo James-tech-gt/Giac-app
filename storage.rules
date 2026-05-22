@@ -11,6 +11,13 @@ service firebase.storage {
         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Profile photos — users upload and read their own
+    match /profilePhotos/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && fileName == request.auth.uid + '.jpg';
+      allow delete: if isSignedIn() && fileName == request.auth.uid + '.jpg';
+    }
+
     // Course materials — admin uploads, any signed-in user can read
     match /materials/{courseId}/{fileName} {
       allow read: if isSignedIn();

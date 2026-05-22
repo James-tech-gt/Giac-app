@@ -1,6 +1,6 @@
 import { Fonts } from '@/constants/theme';
 import { auth } from '@/services/firebase';
-import { Course, CourseRegistration, getCourses, subscribeUserRegistration } from '@/services/firestore';
+import { Course, CourseRegistration, getCourses, getCoursesSync, subscribeUserRegistration } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -173,8 +173,8 @@ export default function ExploreScreen() {
   const isCompact = width < 390;
   const horizontalPadding = width < 380 ? 16 : 20;
   const user = auth.currentUser;
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [courses, setCourses] = useState<Course[]>(getCoursesSync());
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [registration, setRegistration] = useState<CourseRegistration | null | undefined>(undefined);
 
@@ -190,19 +190,12 @@ export default function ExploreScreen() {
 
     const loadCourses = async () => {
       try {
-        setError('');
         const data = await getCourses();
-        if (active) {
-          setCourses(data ?? []);
-        }
+        if (active) setCourses(data ?? getCoursesSync());
       } catch {
-        if (active) {
-          setError('We could not load courses right now.');
-        }
+        // keep the sync courses already shown
       } finally {
-        if (active) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       }
     };
 

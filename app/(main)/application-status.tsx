@@ -742,6 +742,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontFamily: Fonts.sansBold,
     color: C.textPrimary,
+    flexWrap: 'wrap',
+    flexShrink: 1,
   },
   cardSubtitle: {
     fontSize: 13,
@@ -764,6 +766,7 @@ const styles = StyleSheet.create({
   statusPillText: {
     fontSize: 11,
     fontFamily: Fonts.sansSemiBold,
+    flexShrink: 1,
   },
   detail: {
     fontSize: 14,
@@ -796,6 +799,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontFamily: Fonts.sansBold,
     color: C.textPrimary,
+    flexWrap: 'wrap',
   },
   feedbackCard: {
     backgroundColor: C.surfaceAlt,

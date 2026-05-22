@@ -710,6 +710,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: Fonts.sansSemiBold,
     color: C.textPrimary,
+    flexWrap: 'wrap',
   },
   selectMeta: {
     fontSize: 12,
@@ -762,6 +763,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontFamily: Fonts.sansSemiBold,
     color: C.textSecondary,
+    flexWrap: 'wrap',
   },
   optionTitleSelected: {
     color: C.secondary,
