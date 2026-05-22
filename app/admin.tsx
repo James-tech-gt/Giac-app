@@ -70,6 +70,7 @@ import {
   updateCourse,
   deleteCourse,
   deleteAnnouncement,
+  sendGraduationInvitation,
 } from '@/services/firestore';
 import { uploadFile, deleteFile } from '@/services/storage';
 import { FontAwesome6 } from '@expo/vector-icons';
@@ -881,6 +882,10 @@ function AdminPanel() {
   const [confirmDeleteEnrollId, setConfirmDeleteEnrollId] = useState<string | null>(null);
   const [certSuccessApp, setCertSuccessApp] = useState<Application | null>(null);
   const [pendingCertFile, setPendingCertFile] = useState<{ appId: string; asset: DocumentPicker.DocumentPickerAsset } | null>(null);
+  const [graduationInviteApp, setGraduationInviteApp] = useState<Application | null>(null);
+  const [graduationMessage, setGraduationMessage] = useState('');
+  const [sendingGradInvite, setSendingGradInvite] = useState(false);
+  const [gradInviteError, setGradInviteError] = useState('');
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
   const [lockingId, setLockingId] = useState<string | null>(null);
   const [progressEditing, setProgressEditing] = useState<Record<string, string>>({});
@@ -1236,6 +1241,27 @@ function AdminPanel() {
       Alert.alert('Error', 'Could not delete certificate. Please try again.');
     } finally {
       setDeletingCertId(null);
+    }
+  };
+
+  const handleSendGraduationInvite = async () => {
+    if (!graduationInviteApp || !graduationMessage.trim()) return;
+    setSendingGradInvite(true);
+    setGradInviteError('');
+    try {
+      await sendGraduationInvitation({
+        userId: graduationInviteApp.userId,
+        studentName: graduationInviteApp.fullName?.trim() || 'Student',
+        courseTitle: graduationInviteApp.courseTitle || 'GIAC Programme',
+        email: graduationInviteApp.email,
+        message: graduationMessage.trim(),
+      });
+      setGraduationInviteApp(null);
+      setGraduationMessage('');
+    } catch {
+      setGradInviteError('Could not send invitation. Please try again.');
+    } finally {
+      setSendingGradInvite(false);
     }
   };
 
@@ -1902,6 +1928,65 @@ function AdminPanel() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      {/* Graduation invitation modal */}
+      <Modal
+        visible={graduationInviteApp !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { setGraduationInviteApp(null); setGraduationMessage(''); setGradInviteError(''); }}
+      >
+        <KeyboardAvoidingView
+          style={styles.certOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={[styles.certSuccessCard, { gap: 14 }]}>
+            <View style={styles.certSuccessIconWrap}>
+              <FontAwesome6 name="graduation-cap" size={32} color={C.secondary} />
+            </View>
+            <Text style={styles.certSuccessTitle}>Send Graduation Invite</Text>
+            <Text style={[styles.certSuccessSub, { textAlign: 'left', color: C.textSecondary }]}>
+              Write a message to {graduationInviteApp?.fullName?.trim() || 'the student'} about the graduation ceremony — date, venue, dress code, or anything else they need to know.
+            </Text>
+            {gradInviteError ? (
+              <View style={[styles.banner, { backgroundColor: C.dangerSoft }]}>
+                <Text style={[styles.bannerText, { color: C.danger }]}>{gradInviteError}</Text>
+              </View>
+            ) : null}
+            <TextInput
+              value={graduationMessage}
+              onChangeText={(v) => { setGraduationMessage(v); setGradInviteError(''); }}
+              placeholder={`e.g. You are cordially invited to the GIAC Graduation Ceremony on [date] at [venue]. Please bring your student ID and admission letter.`}
+              placeholderTextColor={C.textMuted}
+              multiline
+              textAlignVertical="top"
+              style={[styles.textArea, { minHeight: 120 }]}
+              editable={!sendingGradInvite}
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Pressable
+                onPress={() => { setGraduationInviteApp(null); setGraduationMessage(''); setGradInviteError(''); }}
+                style={({ pressed }) => [styles.outlineButton, { flex: 1 }, pressed && styles.pressed]}
+              >
+                <Text style={styles.outlineButtonText}>Skip</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSendGraduationInvite}
+                disabled={sendingGradInvite || !graduationMessage.trim()}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  { flex: 1 },
+                  (sendingGradInvite || !graduationMessage.trim() || pressed) && styles.pressed,
+                ]}
+              >
+                {sendingGradInvite
+                  ? <ActivityIndicator size="small" color={C.textInverse} />
+                  : <Text style={styles.primaryButtonText}>Send Invite</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* Certificate success overlay */}
       <Modal visible={certSuccessApp !== null} transparent animationType="fade" onRequestClose={() => setCertSuccessApp(null)}>
         <View style={styles.certOverlay}>
@@ -2381,46 +2466,65 @@ function AdminPanel() {
                                 </Pressable>
                               </View>
                             ) : isCompleted && application.certificateUrl ? (
-                              <View style={styles.enrolledRow}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                  <FontAwesome6 name="circle-check" size={14} color={C.success} />
-                                  <View>
-                                    <Text style={{ fontFamily: Fonts.sansBold, fontSize: 13, color: C.success }}>Completed</Text>
-                                    <Text style={{ fontFamily: Fonts.sans, fontSize: 12, color: C.success }}>Certificate issued</Text>
-                                  </View>
-                                </View>
-                                {confirmDeleteCertId === application.id ? (
-                                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                                    <Pressable
-                                      onPress={() => setConfirmDeleteCertId(null)}
-                                      style={({ pressed }) => [styles.enrolledActionChip, pressed && styles.pressed]}
-                                    >
-                                      <Text style={styles.enrolledChipText}>Cancel</Text>
-                                    </Pressable>
-                                    <Pressable
-                                      onPress={() => handleDeleteCertificate(application)}
-                                      style={({ pressed }) => [styles.enrolledActionChip, { backgroundColor: C.danger }, pressed && styles.pressed]}
-                                    >
-                                      <Text style={[styles.enrolledChipText, { color: C.textInverse }]}>Confirm Delete</Text>
-                                    </Pressable>
-                                  </View>
-                                ) : deletingCertId === application.id ? (
-                                  <ActivityIndicator size="small" color={C.danger} />
-                                ) : (
-                                  <Pressable
-                                    onPress={() => setConfirmDeleteCertId(application.id)}
-                                    style={({ pressed }) => [
-                                      styles.enrolledActionChip,
-                                      { backgroundColor: C.dangerSoft },
-                                      pressed && styles.pressed,
-                                    ]}
-                                  >
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                                      <FontAwesome6 name="trash" size={11} color={C.danger} />
-                                      <Text style={[styles.enrolledChipText, { color: C.danger }]}>Delete Certificate</Text>
+                              <View style={{ gap: 8 }}>
+                                <View style={styles.enrolledRow}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <FontAwesome6 name="circle-check" size={14} color={C.success} />
+                                    <View>
+                                      <Text style={{ fontFamily: Fonts.sansBold, fontSize: 13, color: C.success }}>Completed</Text>
+                                      <Text style={{ fontFamily: Fonts.sans, fontSize: 12, color: C.success }}>Certificate issued</Text>
                                     </View>
-                                  </Pressable>
-                                )}
+                                  </View>
+                                  {confirmDeleteCertId === application.id ? (
+                                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                                      <Pressable
+                                        onPress={() => setConfirmDeleteCertId(null)}
+                                        style={({ pressed }) => [styles.enrolledActionChip, pressed && styles.pressed]}
+                                      >
+                                        <Text style={styles.enrolledChipText}>Cancel</Text>
+                                      </Pressable>
+                                      <Pressable
+                                        onPress={() => handleDeleteCertificate(application)}
+                                        style={({ pressed }) => [styles.enrolledActionChip, { backgroundColor: C.danger }, pressed && styles.pressed]}
+                                      >
+                                        <Text style={[styles.enrolledChipText, { color: C.textInverse }]}>Confirm Delete</Text>
+                                      </Pressable>
+                                    </View>
+                                  ) : deletingCertId === application.id ? (
+                                    <ActivityIndicator size="small" color={C.danger} />
+                                  ) : (
+                                    <Pressable
+                                      onPress={() => setConfirmDeleteCertId(application.id)}
+                                      style={({ pressed }) => [
+                                        styles.enrolledActionChip,
+                                        { backgroundColor: C.dangerSoft },
+                                        pressed && styles.pressed,
+                                      ]}
+                                    >
+                                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                        <FontAwesome6 name="trash" size={11} color={C.danger} />
+                                        <Text style={[styles.enrolledChipText, { color: C.danger }]}>Delete Certificate</Text>
+                                      </View>
+                                    </Pressable>
+                                  )}
+                                </View>
+                                <Pressable
+                                  onPress={() => {
+                                    setGraduationInviteApp(application);
+                                    setGraduationMessage('');
+                                    setGradInviteError('');
+                                  }}
+                                  style={({ pressed }) => [
+                                    styles.enrolledFullButton,
+                                    { backgroundColor: C.secondary },
+                                    pressed && styles.pressed,
+                                  ]}
+                                >
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <FontAwesome6 name="graduation-cap" size={14} color={C.textInverse} />
+                                    <Text style={[styles.enrolledChipText, { color: C.textInverse, fontSize: 14 }]}>Send Graduation Invite</Text>
+                                  </View>
+                                </Pressable>
                               </View>
                             ) : isCompleted ? (
                               <Pressable

@@ -24,7 +24,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
       allow create: if isOwner(userId) && request.resource.data.get('role', '') != 'admin';
       allow update: if isAdmin() || (
         isOwner(userId) && (
@@ -154,6 +155,11 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && (request.resource.data.status == 'accepted' || request.resource.data.status == 'declined'));
       allow delete: if isAdmin();
+    }
+
+    match /GraduationInvitations/{invId} {
+      allow read, create: if isAdmin();
+      allow update, delete: if isAdmin();
     }
   }
 }

@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onPasswordChanged = exports.onAdmissionLetterSent = exports.onCertificateCreated = exports.onCaseUpdated = exports.onApplicationUpdated = exports.onUserCreated = exports.onAdminNotification = exports.onStudentNotification = void 0;
+exports.onPasswordChanged = exports.onGraduationInvitation = exports.onAdmissionLetterSent = exports.onCertificateCreated = exports.onCaseUpdated = exports.onApplicationUpdated = exports.onUserCreated = exports.onAdminNotification = exports.onStudentNotification = void 0;
 const admin = __importStar(require("firebase-admin"));
 const https_1 = require("firebase-functions/v2/https");
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -47,7 +47,7 @@ const EMAIL_FOOTER = `
   <p style="font-size:12px;color:#9AA3B2;line-height:1.8;margin:0">
     Global Institute of ADR Center · Kasoa, Ghana<br/>
     For enquiries, contact us at <a href="mailto:${CONTACT_EMAIL}" style="color:#14213A">${CONTACT_EMAIL}</a><br/>
-    This is an automated message — please do not reply to this email.
+    Please do not reply to this email.
   </p>`;
 function getResend() {
     return new resend_1.Resend(process.env.RESEND_API_KEY);
@@ -145,9 +145,9 @@ exports.onUserCreated = (0, firestore_1.onDocumentCreated)({ document: 'users/{u
             <p style="line-height:1.6;color:#4A5468">
               To get started, register for a course that interests you and our team will be in touch with next steps.
             </p>
-            <a href="https://giacghana.com" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#1F2A44;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-              Open GIAC App
-            </a>
+            <p style="line-height:1.6;color:#4A5468">
+              Open the GIAC app to explore available courses.
+            </p>
             ${EMAIL_FOOTER}
           </div>
         `,
@@ -183,11 +183,8 @@ exports.onApplicationUpdated = (0, firestore_1.onDocumentUpdated)({ document: 'A
               We are pleased to inform you that your application for <strong>${courseTitle || 'the GIAC programme'}</strong> has been <strong>approved</strong>.
             </p>
             <p style="line-height:1.6;color:#4A5468">
-              Please log in to the GIAC app to view your admission details and next steps.
+              Please open the GIAC app to view your admission details and next steps.
             </p>
-            <a href="https://giacghana.com" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#2D6A4F;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-              View My Admission
-            </a>
             ${EMAIL_FOOTER}
           </div>
         `,
@@ -207,11 +204,8 @@ exports.onApplicationUpdated = (0, firestore_1.onDocumentUpdated)({ document: 'A
               After careful review, we are unable to proceed with your application at this time.
             </p>
             <p style="line-height:1.6;color:#4A5468">
-              We encourage you to reapply in the future or contact us if you have any questions.
+              We encourage you to reapply in the future. If you have any questions, please contact us at <a href="mailto:${CONTACT_EMAIL}" style="color:#14213A">${CONTACT_EMAIL}</a>.
             </p>
-            <a href="https://giacghana.com" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#1F2A44;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-              Contact GIAC
-            </a>
             ${EMAIL_FOOTER}
           </div>
         `,
@@ -240,11 +234,8 @@ exports.onCaseUpdated = (0, firestore_1.onDocumentUpdated)({ document: 'Services
             <p style="line-height:1.6;color:#4A5468">
               Dear ${name},<br/><br/>
               <strong>${after.mediatorName}</strong> has been assigned to handle your case.
-              You can track progress and communicate through the GIAC app.
+              Open the GIAC app to track progress and communicate with your mediator.
             </p>
-            <a href="https://giacghana.com" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#1F2A44;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-              View My Case
-            </a>
             ${EMAIL_FOOTER}
           </div>
         `,
@@ -265,11 +256,8 @@ exports.onCaseUpdated = (0, firestore_1.onDocumentUpdated)({ document: 'Services
               ${after.resolution ? `<br/><br/><strong>Resolution:</strong> ${after.resolution}` : ''}
             </p>
             <p style="line-height:1.6;color:#4A5468">
-              Thank you for trusting GIAC with your dispute resolution needs.
+              Thank you for trusting GIAC with your dispute resolution needs. Open the GIAC app to view the full resolution details.
             </p>
-            <a href="https://giacghana.com" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#2D6A4F;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-              View Resolution
-            </a>
             ${EMAIL_FOOTER}
           </div>
         `,
@@ -299,12 +287,10 @@ exports.onCertificateCreated = (0, firestore_1.onDocumentCreated)({ document: 'C
             Congratulations on successfully completing <strong>${courseTitle}</strong>.
             Your certificate has been issued and is available in the GIAC app.
           </p>
+          ${data.credentialId ? `<p style="line-height:1.6;color:#4A5468">Credential ID: <strong>${data.credentialId}</strong></p>` : ''}
           <p style="line-height:1.6;color:#4A5468">
-            Credential ID: <strong>${data.credentialId || 'N/A'}</strong>
+            Open the GIAC app to view and download your certificate.
           </p>
-          <a href="https://giacghana.com" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#2D6A4F;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-            Download Certificate
-          </a>
           ${EMAIL_FOOTER}
         </div>
       `,
@@ -339,9 +325,37 @@ exports.onAdmissionLetterSent = (0, firestore_1.onDocumentUpdated)({ document: '
             Your admission letter for <strong>${courseName}</strong> has been issued.
             Please open the GIAC app to view and download your letter.
           </p>
-          <a href="https://giacghana.com" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#1F2A44;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-            View Admission Letter
-          </a>
+          ${EMAIL_FOOTER}
+        </div>
+      `,
+    });
+});
+// Graduation invitation email
+exports.onGraduationInvitation = (0, firestore_1.onDocumentCreated)({ document: 'GraduationInvitations/{id}', secrets: ['RESEND_API_KEY'] }, async (event) => {
+    const data = event.data?.data();
+    if (!data)
+        return;
+    const { userId, studentName, courseTitle, message } = data;
+    let email = data.email;
+    if (!email && userId) {
+        const userSnap = await db.collection('users').doc(userId).get();
+        email = userSnap.data()?.email;
+    }
+    if (!email)
+        return;
+    const name = studentName || email;
+    await sendTransactionalEmail({
+        label: 'graduation-invitation',
+        to: email,
+        subject: `GIAC Graduation Invitation — ${courseTitle || 'Programme Completion'}`,
+        html: `
+        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#14213A">
+          <img src="https://www.giacghana.com/logo.png" alt="GIAC" width="120" style="margin-bottom:24px" />
+          <h2 style="margin:0 0 12px;color:#2A3F66">Graduation Invitation 🎓</h2>
+          <p style="line-height:1.8;color:#4A5468">
+            Dear ${name},<br/><br/>
+            ${message.replace(/\n/g, '<br/>')}
+          </p>
           ${EMAIL_FOOTER}
         </div>
       `,
@@ -365,11 +379,8 @@ exports.onPasswordChanged = (0, https_1.onCall)({ secrets: ['RESEND_API_KEY'] },
           If you made this change, no action is needed.
         </p>
         <p style="line-height:1.6;color:#4A5468">
-          If you did <strong>not</strong> make this change, please reset your password immediately and contact GIAC support.
+          If you did <strong>not</strong> make this change, please reset your password immediately via the GIAC app or contact us at <a href="mailto:${CONTACT_EMAIL}" style="color:#C0392B">${CONTACT_EMAIL}</a>.
         </p>
-        <a href="https://giacghana.com" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#C0392B;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">
-          Reset My Password
-        </a>
         ${EMAIL_FOOTER}
       </div>
     `,

@@ -26,6 +26,7 @@ const COLLECTIONS = {
   services: 'Services',
   users: 'users',
   notifications: 'AdminNotifications',
+  graduationInvitations: 'GraduationInvitations',
 } as const;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -2761,4 +2762,36 @@ export function subscribePersonalSessions(
 
 export async function deletePersonalSession(sessionId: string): Promise<void> {
   await deleteDoc(doc(db, 'PersonalSessions', sessionId));
+}
+
+export async function sendGraduationInvitation(input: {
+  userId: string;
+  studentName: string;
+  courseTitle: string;
+  email?: string;
+  message: string;
+}): Promise<void> {
+  const batch = writeBatch(db);
+
+  const invRef = doc(collection(db, COLLECTIONS.graduationInvitations));
+  batch.set(invRef, {
+    userId: input.userId,
+    studentName: input.studentName,
+    courseTitle: input.courseTitle,
+    email: input.email || '',
+    message: input.message,
+    createdAt: serverTimestamp(),
+  });
+
+  const notifRef = doc(collection(db, 'StudentNotifications'));
+  batch.set(notifRef, {
+    userId: input.userId,
+    type: 'graduation_invitation',
+    title: 'Graduation Invitation',
+    message: input.message,
+    read: false,
+    createdAt: serverTimestamp(),
+  });
+
+  await batch.commit();
 }

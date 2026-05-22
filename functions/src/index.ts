@@ -339,6 +339,42 @@ export const onAdmissionLetterSent = onDocumentUpdated(
   }
 );
 
+// Graduation invitation email
+export const onGraduationInvitation = onDocumentCreated(
+  { document: 'GraduationInvitations/{id}', secrets: ['RESEND_API_KEY'] },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const { userId, studentName, courseTitle, message } = data;
+    let email = data.email;
+    if (!email && userId) {
+      const userSnap = await db.collection('users').doc(userId).get();
+      email = userSnap.data()?.email;
+    }
+    if (!email) return;
+
+    const name = studentName || email;
+
+    await sendTransactionalEmail({
+      label: 'graduation-invitation',
+      to: email,
+      subject: `GIAC Graduation Invitation — ${courseTitle || 'Programme Completion'}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#14213A">
+          <img src="https://www.giacghana.com/logo.png" alt="GIAC" width="120" style="margin-bottom:24px" />
+          <h2 style="margin:0 0 12px;color:#2A3F66">Graduation Invitation 🎓</h2>
+          <p style="line-height:1.8;color:#4A5468">
+            Dear ${name},<br/><br/>
+            ${(message as string).replace(/\n/g, '<br/>')}
+          </p>
+          ${EMAIL_FOOTER}
+        </div>
+      `,
+    });
+  }
+);
+
 // Password changed security alert (callable from app after successful password change)
 export const onPasswordChanged = onCall({ secrets: ['RESEND_API_KEY'] }, async (request) => {
   const { email, name } = request.data;
