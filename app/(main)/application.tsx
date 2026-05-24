@@ -73,10 +73,10 @@ const MOMO_DETAILS = [
 ];
 
 const BANK_DETAILS = {
-  bankName: 'Ecobank Ghana',
-  branch: 'Accra Main',
-  accountName: 'GIAC Ghana Ltd',
-  accountNumber: '1234567890',
+  bankName: 'OMNIBSIC Bank',
+  branch: 'Kasoa',
+  accountName: 'Quansah John',
+  accountNumber: '0010236622011',
 };
 
 function formatCurrency(value?: number) {

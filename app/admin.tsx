@@ -2242,17 +2242,6 @@ function AdminPanel() {
                 <AnnouncementListCard announcements={announcements} />
               </View>
 
-              <View style={[styles.workspaceCard, isWide ? styles.workspaceCardWide : null]}>
-                <Text style={styles.workspaceTitle}>Revenue Estimate</Text>
-                <Text style={styles.workspaceBody}>Based on approved and completed applications.</Text>
-                <Text style={{ fontSize: 36, fontFamily: Fonts.displayBold, color: C.textPrimary, marginTop: 4 }}>
-                  {new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS', maximumFractionDigits: 0 }).format(analytics.revenue)}
-                </Text>
-                <View style={styles.workspaceMetricRow}>
-                  <MetaChip icon="user-graduate" label={`${applicationCounts.approved} enrolled`} />
-                  <MetaChip icon="clock" label={`${applicationCounts.pending} pending`} subtle />
-                </View>
-              </View>
             </View>
 
             <View style={[styles.summaryGrid, isWide ? styles.summaryGridWide : null]}>
