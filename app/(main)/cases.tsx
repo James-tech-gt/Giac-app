@@ -218,6 +218,16 @@ function CaseCard({ service, user, autoOpen = false }: { service: Service; user:
                   <Text style={styles.scheduledText}>Session: {formatDate(service.scheduledDate)}</Text>
                 </View>
               ) : null}
+            </View>
+          ) : null}
+
+          {/* Session Link section — always visible once case is in progress */}
+          {service.status !== 'submitted' ? (
+            <View style={styles.sessionLinkBlock}>
+              <View style={styles.sessionLinkHeader}>
+                <FontAwesome6 name="video" size={13} color={C.secondary} />
+                <Text style={styles.sessionLinkTitle}>Session Link</Text>
+              </View>
               {service.meetingLink ? (
                 <TouchableOpacity
                   style={styles.joinBtn}
@@ -227,7 +237,11 @@ function CaseCard({ service, user, autoOpen = false }: { service: Service; user:
                   <FontAwesome6 name="video" size={13} color="#fff" />
                   <Text style={styles.joinBtnText}>Join Session</Text>
                 </TouchableOpacity>
-              ) : null}
+              ) : (
+                <Text style={styles.sessionLinkWaiting}>
+                  Your mediator will share a session link here once your session is scheduled.
+                </Text>
+              )}
             </View>
           ) : null}
 
@@ -486,6 +500,18 @@ const styles = StyleSheet.create({
     paddingVertical: 10, paddingHorizontal: 16, marginTop: 4,
   },
   joinBtnText: { fontSize: 14, fontFamily: Fonts.sansBold, color: '#fff' },
+
+  sessionLinkBlock: {
+    marginHorizontal: 16, marginBottom: 12,
+    backgroundColor: C.secondarySoft, borderRadius: 14, padding: 12, gap: 8,
+    borderWidth: 1, borderColor: C.secondary + '30',
+  },
+  sessionLinkHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sessionLinkTitle: { fontSize: 13, fontFamily: Fonts.sansBold, color: C.secondary },
+  sessionLinkWaiting: {
+    fontSize: 13, lineHeight: 19, fontFamily: Fonts.sans, color: C.textSecondary,
+    fontStyle: 'italic',
+  },
 
   resolutionBlock: {
     marginHorizontal: 16, marginBottom: 12,

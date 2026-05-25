@@ -1938,17 +1938,22 @@ export async function deleteService(serviceId: string): Promise<void> {
   }
 }
 
+export async function updateServiceMeetingLink(serviceId: string, link: string): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.services, serviceId), {
+    meetingLink: link.trim(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function assignMediator(
   serviceId: string,
   mediatorName: string,
   mediatorNote: string,
   clientUserId: string,
-  meetingLink?: string
 ): Promise<void> {
   await updateDoc(doc(db, COLLECTIONS.services, serviceId), {
     mediatorName: mediatorName.trim(),
     mediatorAssigned: mediatorName.trim(),
-    meetingLink: meetingLink?.trim() || '',
     mediatorNote: mediatorNote.trim(),
     status: 'in-progress',
     statusUpdatedAt: serverTimestamp(),

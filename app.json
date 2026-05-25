@@ -24,7 +24,7 @@
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/giac-logo.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#14213A"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.giac.app",

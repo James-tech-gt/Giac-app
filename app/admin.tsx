@@ -71,6 +71,7 @@ import {
   deleteCourse,
   deleteAnnouncement,
   sendGraduationInvitation,
+  updateServiceMeetingLink,
 } from '@/services/firestore';
 import { uploadFile, deleteFile } from '@/services/storage';
 import { FontAwesome6 } from '@expo/vector-icons';
@@ -550,7 +551,7 @@ function CaseCard({
   busyAssign: boolean;
   busyStatus: boolean;
   busyDelete: boolean;
-  onAssignMediator: (name: string, note: string, meetingLink: string) => void;
+  onAssignMediator: (name: string, note: string) => void;
   onMarkComplete: (resolution: string) => void;
   onDelete: () => void;
   service: Service;
@@ -559,6 +560,8 @@ function CaseCard({
   const [mediatorName, setMediatorName] = useState(service.mediatorName ?? '');
   const [mediatorNote, setMediatorNote] = useState(service.mediatorNote ?? '');
   const [meetingLink, setMeetingLink] = useState(service.meetingLink ?? '');
+  const [linkSaving, setLinkSaving] = useState(false);
+  const [linkDeleting, setLinkDeleting] = useState(false);
   const [resolution, setResolution] = useState(service.resolution ?? '');
   const [messages, setMessages] = useState<CaseMessage[]>([]);
   const [chatText, setChatText] = useState('');
@@ -571,6 +574,31 @@ function CaseCard({
     setMeetingLink(service.meetingLink ?? '');
     setResolution(service.resolution ?? '');
   }, [service.mediatorName, service.mediatorNote, service.meetingLink, service.resolution]);
+
+  const handleSaveLink = async () => {
+    if (!meetingLink.trim()) { Alert.alert('Required', 'Enter a Zoom or Google Meet link.'); return; }
+    setLinkSaving(true);
+    try {
+      await updateServiceMeetingLink(service.id, meetingLink);
+      await createStudentNotification(service.userId, 'A session link has been added to your case. Join when ready.', 'case_message', service.id);
+    } catch {
+      Alert.alert('Error', 'Could not save the meeting link. Please try again.');
+    } finally {
+      setLinkSaving(false);
+    }
+  };
+
+  const handleDeleteLink = async () => {
+    setLinkDeleting(true);
+    try {
+      await updateServiceMeetingLink(service.id, '');
+      setMeetingLink('');
+    } catch {
+      Alert.alert('Error', 'Could not remove the meeting link. Please try again.');
+    } finally {
+      setLinkDeleting(false);
+    }
+  };
 
   useEffect(() => subscribeCaseMessages(service.id, setMessages), [service.id]);
 
@@ -646,21 +674,8 @@ function CaseCard({
         />
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>Session link (Zoom / Google Meet)</Text>
-        <TextInput
-          value={meetingLink}
-          onChangeText={setMeetingLink}
-          placeholder="https://zoom.us/j/... or meet.google.com/..."
-          placeholderTextColor={C.textMuted}
-          autoCapitalize="none"
-          keyboardType="url"
-          style={styles.input}
-        />
-      </View>
-
       <Pressable
-        onPress={() => onAssignMediator(mediatorName, mediatorNote, meetingLink)}
+        onPress={() => onAssignMediator(mediatorName, mediatorNote)}
         disabled={busyAssign}
         style={({ pressed }) => [styles.primaryButton, (busyAssign || pressed) ? styles.pressed : null]}
       >
@@ -671,6 +686,48 @@ function CaseCard({
             </Text>
         }
       </Pressable>
+
+      {/* ── Zoom / Meeting Link ── */}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>Session Link (Zoom / Google Meet)</Text>
+        <TextInput
+          value={meetingLink}
+          onChangeText={setMeetingLink}
+          placeholder="https://zoom.us/j/... or meet.google.com/..."
+          placeholderTextColor={C.textMuted}
+          autoCapitalize="none"
+          keyboardType="url"
+          style={styles.input}
+        />
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+          <Pressable
+            onPress={handleSaveLink}
+            disabled={linkSaving}
+            style={({ pressed }) => [styles.primaryButton, { flex: 1 }, (linkSaving || pressed) ? styles.pressed : null]}
+          >
+            {linkSaving
+              ? <ActivityIndicator size="small" color={C.textInverse} />
+              : <Text style={styles.primaryButtonText}>Send Link to Student</Text>
+            }
+          </Pressable>
+          {service.meetingLink ? (
+            <Pressable
+              onPress={handleDeleteLink}
+              disabled={linkDeleting}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                { backgroundColor: C.danger, paddingHorizontal: 14 },
+                (linkDeleting || pressed) ? styles.pressed : null,
+              ]}
+            >
+              {linkDeleting
+                ? <ActivityIndicator size="small" color={C.textInverse} />
+                : <FontAwesome6 name="trash" size={14} color={C.textInverse} />
+              }
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
 
       {service.status === 'in-progress' ? (
         <>
@@ -1443,12 +1500,12 @@ function AdminPanel() {
     }
   };
 
-  const handleAssignMediator = async (service: Service, name: string, note: string, meetingLink: string) => {
+  const handleAssignMediator = async (service: Service, name: string, note: string) => {
     if (!name.trim()) { Alert.alert('Required', 'Enter a mediator name before assigning.'); return; }
     setBusyAssignId(service.id);
     const adminName = auth.currentUser?.displayName || auth.currentUser?.email || 'An admin';
     try {
-      await assignMediator(service.id, name.trim(), note.trim(), service.userId, meetingLink.trim());
+      await assignMediator(service.id, name.trim(), note.trim(), service.userId);
       createAdminNotification({
         type: 'service',
         message: `${adminName} assigned ${name.trim()} as mediator for ${service.clientName || 'a client'}'s ${service.serviceType} case.`,
@@ -2913,7 +2970,7 @@ function AdminPanel() {
                       busyAssign={busyAssignId === service.id}
                       busyStatus={busyStatusId === service.id}
                       busyDelete={busyDeleteId === service.id}
-                      onAssignMediator={(name, note, link) => handleAssignMediator(service, name, note, link)}
+                      onAssignMediator={(name, note) => handleAssignMediator(service, name, note)}
                       onMarkComplete={(resolution) => handleUpdateStatus(service, 'completed', resolution)}
                       onDelete={() => handleDeleteCase(service)}
                     />
