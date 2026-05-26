@@ -75,5 +75,11 @@ service firebase.storage {
       allow create: if isSignedIn() && request.auth.uid == userId;
       allow delete: if isAdmin();
     }
+
+    // Graduation invitation letters — admin uploads, student can read their own
+    match /graduation-letters/{userId}/{fileName} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow write, delete: if isAdmin();
+    }
   }
 }

@@ -1546,6 +1546,10 @@ export async function rejectRegistration(registrationId: string): Promise<void> 
   });
 }
 
+export async function deleteRegistration(registrationId: string): Promise<void> {
+  await deleteDoc(doc(db, 'CourseRegistrations', registrationId));
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 export async function getApprovedApplications(userId: string): Promise<Application[]> {
   const apps = await getUserApplications(userId);
@@ -2061,7 +2065,8 @@ export interface StudentNotification {
     | 'case_message'
     | 'course_completed'
     | 'session_posted'
-    | 'certificate_issued';
+    | 'certificate_issued'
+    | 'graduation_invitation';
   message: string;
   referenceId: string;
   read: boolean;
@@ -2769,12 +2774,49 @@ export async function deletePersonalSession(sessionId: string): Promise<void> {
   await deleteDoc(doc(db, 'PersonalSessions', sessionId));
 }
 
+export interface GraduationInvitation {
+  id: string;
+  userId: string;
+  studentName: string;
+  courseTitle: string;
+  email: string;
+  message: string;
+  letterUrl: string;
+  createdAt: unknown;
+}
+
+export function subscribeUserGraduationInvitations(
+  userId: string,
+  callback: (invitations: GraduationInvitation[]) => void,
+): () => void {
+  const q = query(
+    collection(db, COLLECTIONS.graduationInvitations),
+    where('userId', '==', userId),
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as GraduationInvitation)));
+  }, () => callback([]));
+}
+
+export function subscribeAllGraduationInvitations(
+  callback: (invitations: GraduationInvitation[]) => void,
+): () => void {
+  return onSnapshot(collection(db, COLLECTIONS.graduationInvitations), (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as GraduationInvitation)));
+  }, () => callback([]));
+}
+
+export async function deleteGraduationInvitation(inviteId: string): Promise<void> {
+  await deleteDoc(doc(db, COLLECTIONS.graduationInvitations, inviteId));
+}
+
 export async function sendGraduationInvitation(input: {
   userId: string;
   studentName: string;
   courseTitle: string;
   email?: string;
   message: string;
+  letterUrl?: string;
 }): Promise<void> {
   const batch = writeBatch(db);
 
@@ -2785,15 +2827,21 @@ export async function sendGraduationInvitation(input: {
     courseTitle: input.courseTitle,
     email: input.email || '',
     message: input.message,
+    letterUrl: input.letterUrl || '',
     createdAt: serverTimestamp(),
   });
+
+  const notifMessage = input.message.trim()
+    ? input.message.trim()
+    : 'You have received a graduation invitation. Open it to view the details.';
 
   const notifRef = doc(collection(db, 'StudentNotifications'));
   batch.set(notifRef, {
     userId: input.userId,
     type: 'graduation_invitation',
     title: 'Graduation Invitation',
-    message: input.message,
+    message: notifMessage,
+    letterUrl: input.letterUrl || '',
     read: false,
     createdAt: serverTimestamp(),
   });

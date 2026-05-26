@@ -9,7 +9,6 @@ import {
   AdminNotification,
   Announcement,
   Application,
-  CaseMessage,
   Material,
   Service,
   UserRecord,
@@ -31,7 +30,6 @@ import {
   deleteService,
   rejectAccountDeletionRequest,
   rejectApplication,
-  sendCaseMessage,
   subscribeAccountDeletionRequests,
   subscribeAdminAssignments,
   subscribeAdminNotifications,
@@ -40,7 +38,6 @@ import {
   subscribeAllMaterials,
   subscribeAllServices,
   subscribeAnnouncements,
-  subscribeCaseMessages,
   updateCaseStatus,
   updateUserRole,
   markCourseComplete,
@@ -57,6 +54,7 @@ import {
   subscribeAllRegistrations,
   sendAdmissionLetter,
   rejectRegistration,
+  deleteRegistration,
   issueCertificate,
   deleteCertificate,
   updatePaymentStatus,
@@ -71,11 +69,15 @@ import {
   deleteCourse,
   deleteAnnouncement,
   sendGraduationInvitation,
+  subscribeAllGraduationInvitations,
+  deleteGraduationInvitation,
+  GraduationInvitation,
   updateServiceMeetingLink,
 } from '@/services/firestore';
 import { uploadFile, deleteFile } from '@/services/storage';
 import { FontAwesome6 } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as WebBrowser from 'expo-web-browser';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -403,14 +405,28 @@ function ApplicationCard({
         ) : null}
         {application.receiptLink?.trim() ? (
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Receipt Link</Text>
-            <Text style={[styles.detailValue, { color: '#2A3F66', textDecorationLine: 'underline' }]} numberOfLines={2}>{application.receiptLink.trim()}</Text>
+            <Text style={styles.detailLabel}>Receipt</Text>
+            <Pressable
+              onPress={() => WebBrowser.openBrowserAsync(application.receiptLink!)}
+              style={({ pressed }) => [styles.fileChip, pressed && styles.pressed]}
+            >
+              <FontAwesome6 name="file-lines" size={12} color={C.secondary} />
+              <Text style={styles.fileChipText}>View Receipt</Text>
+              <FontAwesome6 name="arrow-up-right-from-square" size={11} color={C.textMuted} />
+            </Pressable>
           </View>
         ) : null}
         {application.certificateLink?.trim() ? (
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Certificate Link</Text>
-            <Text style={styles.detailValue} numberOfLines={2}>{application.certificateLink.trim()}</Text>
+            <Text style={styles.detailLabel}>Certificate</Text>
+            <Pressable
+              onPress={() => WebBrowser.openBrowserAsync(application.certificateLink!)}
+              style={({ pressed }) => [styles.fileChip, pressed && styles.pressed]}
+            >
+              <FontAwesome6 name="certificate" size={12} color={C.secondary} />
+              <Text style={styles.fileChipText}>View Certificate</Text>
+              <FontAwesome6 name="arrow-up-right-from-square" size={11} color={C.textMuted} />
+            </Pressable>
           </View>
         ) : null}
       </View>
@@ -563,9 +579,6 @@ function CaseCard({
   const [linkSaving, setLinkSaving] = useState(false);
   const [linkDeleting, setLinkDeleting] = useState(false);
   const [resolution, setResolution] = useState(service.resolution ?? '');
-  const [messages, setMessages] = useState<CaseMessage[]>([]);
-  const [chatText, setChatText] = useState('');
-  const [chatSending, setChatSending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
@@ -597,29 +610,6 @@ function CaseCard({
       Alert.alert('Error', 'Could not remove the meeting link. Please try again.');
     } finally {
       setLinkDeleting(false);
-    }
-  };
-
-  useEffect(() => subscribeCaseMessages(service.id, setMessages), [service.id]);
-
-  const handleSendChat = async () => {
-    const text = chatText.trim();
-    if (!text) return;
-    setChatSending(true);
-    const senderName = service.mediatorName?.trim() || 'GIAC Admin';
-    try {
-      await sendCaseMessage(service.id, auth.currentUser?.uid ?? 'admin', senderName, 'admin', text);
-      createStudentNotification(
-        service.userId,
-        `New message from ${senderName}`,
-        'case_message',
-        service.id
-      ).catch(() => {});
-      setChatText('');
-    } catch {
-      Alert.alert('Error', 'Could not send message. Please try again.');
-    } finally {
-      setChatSending(false);
     }
   };
 
@@ -819,46 +809,22 @@ function CaseCard({
       )}
 
       <View style={styles.chatDivider} />
-      <Text style={styles.fieldLabel}>Client Messages</Text>
-      {messages.length > 0 ? (
-        <View style={styles.chatMessages}>
-          {messages.map((msg) => (
-            <View
-              key={msg.id}
-              style={[
-                styles.chatBubble,
-                msg.senderType === 'admin' ? styles.chatBubbleAdmin : styles.chatBubbleClient,
-              ]}
-            >
-              <Text style={styles.chatSender}>{msg.senderName}</Text>
-              <Text style={styles.chatText}>{msg.text}</Text>
-              <Text style={styles.chatTime}>{formatDate(msg.createdAt)}</Text>
-            </View>
-          ))}
-        </View>
-      ) : (
-        <Text style={styles.chatEmpty}>No messages yet.</Text>
-      )}
-      <View style={styles.chatInputRow}>
-        <TextInput
-          value={chatText}
-          onChangeText={setChatText}
-          placeholder="Reply to client…"
-          placeholderTextColor={C.textMuted}
-          style={styles.chatInput}
-          multiline
-        />
-        <Pressable
-          onPress={handleSendChat}
-          disabled={chatSending || !chatText.trim()}
-          style={({ pressed }) => [styles.chatSendBtn, (chatSending || !chatText.trim() || pressed) ? styles.pressed : null]}
-        >
-          {chatSending
-            ? <ActivityIndicator size="small" color={C.textInverse} />
-            : <FontAwesome6 name="paper-plane" size={13} color={C.textInverse} />
-          }
-        </Pressable>
-      </View>
+      <Pressable
+        onPress={() => router.push({
+          pathname: '/admin-case-chat',
+          params: {
+            caseId: service.id,
+            category: service.category ?? '',
+            serviceType: service.serviceType ?? '',
+            clientUserId: service.userId ?? '',
+            mediatorName: service.mediatorName ?? '',
+          },
+        })}
+        style={({ pressed }) => [styles.openChatBtn, pressed && styles.pressed]}
+      >
+        <FontAwesome6 name="comments" size={14} color={C.textInverse} />
+        <Text style={styles.openChatBtnText}>Open Client Chat</Text>
+      </Pressable>
     </View>
   );
 }
@@ -941,8 +907,12 @@ function AdminPanel() {
   const [pendingCertFile, setPendingCertFile] = useState<{ appId: string; asset: DocumentPicker.DocumentPickerAsset } | null>(null);
   const [graduationInviteApp, setGraduationInviteApp] = useState<Application | null>(null);
   const [graduationMessage, setGraduationMessage] = useState('');
+  const [graduationLetter, setGraduationLetter] = useState<{ uri: string; name: string } | null>(null);
   const [sendingGradInvite, setSendingGradInvite] = useState(false);
   const [gradInviteError, setGradInviteError] = useState('');
+  const [gradInviteSuccess, setGradInviteSuccess] = useState(false);
+  const [allGradInvites, setAllGradInvites] = useState<GraduationInvitation[]>([]);
+  const [deletingInviteId, setDeletingInviteId] = useState<string | null>(null);
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
   const [lockingId, setLockingId] = useState<string | null>(null);
   const [progressEditing, setProgressEditing] = useState<Record<string, string>>({});
@@ -1053,6 +1023,7 @@ function AdminPanel() {
   useEffect(() => subscribeAnnouncements(setAnnouncements), []);
   useEffect(() => subscribeAdminNotifications(setAdminNotifications), []);
   useEffect(() => subscribeAdminSessions(setSessions), []);
+  useEffect(() => subscribeAllGraduationInvitations(setAllGradInvites), []);
 
   // Navigate straight to the Cases view when arriving from a notification tap
   useEffect(() => {
@@ -1099,6 +1070,7 @@ function AdminPanel() {
   const [uploadingLetterId, setUploadingLetterId] = useState<string | null>(null);
   const [letterUploadProgress, setLetterUploadProgress] = useState(0);
   const [busyRegId, setBusyRegId] = useState<string | null>(null);
+  const [confirmDeleteRegId, setConfirmDeleteRegId] = useState<string | null>(null);
   useEffect(() => subscribeAllRegistrations(setRegistrations), []);
 
   // Courses
@@ -1301,20 +1273,40 @@ function AdminPanel() {
     }
   };
 
+  const handlePickGraduationLetter = async () => {
+    const result = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'], copyToCacheDirectory: true });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    setGraduationLetter({ uri: asset.uri, name: asset.name });
+  };
+
   const handleSendGraduationInvite = async () => {
-    if (!graduationInviteApp || !graduationMessage.trim()) return;
+    if (!graduationInviteApp) return;
+    if (!graduationMessage.trim() && !graduationLetter) {
+      setGradInviteError('Please type a message or upload an invitation letter.');
+      return;
+    }
     setSendingGradInvite(true);
     setGradInviteError('');
     try {
+      let letterUrl: string | undefined;
+      if (graduationLetter) {
+        const path = `graduation-letters/${graduationInviteApp.userId}/${Date.now()}_${graduationLetter.name}`;
+        letterUrl = await uploadFile(path, graduationLetter.uri);
+      }
       await sendGraduationInvitation({
         userId: graduationInviteApp.userId,
         studentName: graduationInviteApp.fullName?.trim() || 'Student',
         courseTitle: graduationInviteApp.courseTitle || 'GIAC Programme',
         email: graduationInviteApp.email,
         message: graduationMessage.trim(),
+        letterUrl,
       });
       setGraduationInviteApp(null);
       setGraduationMessage('');
+      setGraduationLetter(null);
+      setGradInviteSuccess(true);
+      setTimeout(() => setGradInviteSuccess(false), 4000);
     } catch {
       setGradInviteError('Could not send invitation. Please try again.');
     } finally {
@@ -2002,7 +1994,7 @@ function AdminPanel() {
             </View>
             <Text style={styles.certSuccessTitle}>Send Graduation Invite</Text>
             <Text style={[styles.certSuccessSub, { textAlign: 'left', color: C.textSecondary }]}>
-              Write a message to {graduationInviteApp?.fullName?.trim() || 'the student'} about the graduation ceremony — date, venue, dress code, or anything else they need to know.
+              Type a message, upload an invitation letter, or both. The student will receive it in-app and by email.
             </Text>
             {gradInviteError ? (
               <View style={[styles.banner, { backgroundColor: C.dangerSoft }]}>
@@ -2012,27 +2004,54 @@ function AdminPanel() {
             <TextInput
               value={graduationMessage}
               onChangeText={(v) => { setGraduationMessage(v); setGradInviteError(''); }}
-              placeholder={`e.g. You are cordially invited to the GIAC Graduation Ceremony on [date] at [venue]. Please bring your student ID and admission letter.`}
+              placeholder="e.g. You are cordially invited to the GIAC Graduation Ceremony on [date] at [venue]..."
               placeholderTextColor={C.textMuted}
               multiline
               textAlignVertical="top"
-              style={[styles.textArea, { minHeight: 120 }]}
+              style={[styles.textArea, { minHeight: 100 }]}
               editable={!sendingGradInvite}
             />
+
+            {/* Letter upload */}
+            {graduationLetter ? (
+              <View style={[styles.enrolledRow, { backgroundColor: C.surfaceAlt, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                  <FontAwesome6 name="file-pdf" size={15} color={C.danger} />
+                  <Text style={{ fontFamily: Fonts.sansSemiBold, fontSize: 13, color: C.textPrimary, flex: 1 }} numberOfLines={1}>
+                    {graduationLetter.name}
+                  </Text>
+                </View>
+                <Pressable onPress={() => setGraduationLetter(null)} style={({ pressed }) => [pressed && styles.pressed]}>
+                  <FontAwesome6 name="xmark" size={14} color={C.textSecondary} />
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                onPress={handlePickGraduationLetter}
+                disabled={sendingGradInvite}
+                style={({ pressed }) => [styles.outlineButton, pressed && styles.pressed]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <FontAwesome6 name="upload" size={13} color={C.textSecondary} />
+                  <Text style={styles.outlineButtonText}>Upload Invitation Letter (optional)</Text>
+                </View>
+              </Pressable>
+            )}
+
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <Pressable
-                onPress={() => { setGraduationInviteApp(null); setGraduationMessage(''); setGradInviteError(''); }}
+                onPress={() => { setGraduationInviteApp(null); setGraduationMessage(''); setGraduationLetter(null); setGradInviteError(''); }}
                 style={({ pressed }) => [styles.outlineButton, { flex: 1 }, pressed && styles.pressed]}
               >
                 <Text style={styles.outlineButtonText}>Skip</Text>
               </Pressable>
               <Pressable
                 onPress={handleSendGraduationInvite}
-                disabled={sendingGradInvite || !graduationMessage.trim()}
+                disabled={sendingGradInvite || (!graduationMessage.trim() && !graduationLetter)}
                 style={({ pressed }) => [
                   styles.primaryButton,
                   { flex: 1 },
-                  (sendingGradInvite || !graduationMessage.trim() || pressed) && styles.pressed,
+                  (sendingGradInvite || (!graduationMessage.trim() && !graduationLetter) || pressed) && styles.pressed,
                 ]}
               >
                 {sendingGradInvite
@@ -2571,6 +2590,44 @@ function AdminPanel() {
                                     <Text style={[styles.enrolledChipText, { color: C.textInverse, fontSize: 14 }]}>Send Graduation Invite</Text>
                                   </View>
                                 </Pressable>
+
+                                {gradInviteSuccess && graduationInviteApp === null && (
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#E8F2EE', borderRadius: 12, padding: 12 }}>
+                                    <FontAwesome6 name="circle-check" size={14} color={C.success} />
+                                    <Text style={{ fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.success, flex: 1 }}>Invitation sent successfully.</Text>
+                                  </View>
+                                )}
+
+                                {allGradInvites.filter(inv => inv.userId === application.userId).map(invite => (
+                                  <View key={invite.id} style={{ backgroundColor: C.surfaceAlt, borderRadius: 12, padding: 12, gap: 6 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                                        <FontAwesome6 name="graduation-cap" size={12} color={C.secondary} />
+                                        <Text style={{ fontSize: 12, fontFamily: Fonts.sansSemiBold, color: C.secondary, flex: 1 }} numberOfLines={1}>
+                                          Invite sent{invite.letterUrl ? ' · Letter attached' : ''}
+                                        </Text>
+                                      </View>
+                                      <Pressable
+                                        onPress={async () => {
+                                          setDeletingInviteId(invite.id);
+                                          try { await deleteGraduationInvitation(invite.id); }
+                                          catch { Alert.alert('Error', 'Could not delete invitation.'); }
+                                          finally { setDeletingInviteId(null); }
+                                        }}
+                                        disabled={deletingInviteId === invite.id}
+                                        style={({ pressed }) => [pressed && styles.pressed]}
+                                      >
+                                        {deletingInviteId === invite.id
+                                          ? <ActivityIndicator size="small" color={C.danger} />
+                                          : <FontAwesome6 name="trash" size={13} color={C.danger} />
+                                        }
+                                      </Pressable>
+                                    </View>
+                                    {invite.message ? (
+                                      <Text style={{ fontSize: 12, fontFamily: Fonts.sans, color: C.textSecondary }} numberOfLines={2}>{invite.message}</Text>
+                                    ) : null}
+                                  </View>
+                                ))}
                               </View>
                             ) : isCompleted ? (
                               <Pressable
@@ -3230,7 +3287,7 @@ function AdminPanel() {
 
                       {asn.fileUrl ? (
                         <Pressable
-                          onPress={() => Linking.openURL(asn.fileUrl!)}
+                          onPress={() => WebBrowser.openBrowserAsync(asn.fileUrl!)}
                           style={({ pressed }) => [styles.fileChip, pressed && styles.pressed]}
                         >
                           <FontAwesome6 name="file-arrow-down" size={12} color={C.secondary} />
@@ -3272,7 +3329,7 @@ function AdminPanel() {
 
                               {sub.attachmentLink ? (
                                 <Pressable
-                                  onPress={() => Linking.openURL(sub.attachmentLink!)}
+                                  onPress={() => WebBrowser.openBrowserAsync(sub.attachmentLink!)}
                                   style={({ pressed }) => [styles.fileChip, { alignSelf: 'flex-start' }, pressed && styles.pressed]}
                                 >
                                   <FontAwesome6 name="file-arrow-down" size={12} color={C.secondary} />
@@ -3448,7 +3505,7 @@ function AdminPanel() {
 
                     {test.fileUrl ? (
                       <Pressable
-                        onPress={() => Linking.openURL(test.fileUrl!)}
+                        onPress={() => WebBrowser.openBrowserAsync(test.fileUrl!)}
                         style={({ pressed }) => [styles.fileChip, pressed && styles.pressed]}
                       >
                         <FontAwesome6 name="file-arrow-down" size={12} color={C.secondary} />
@@ -3494,7 +3551,7 @@ function AdminPanel() {
                               ) : null}
                               {sub.attachmentLink ? (
                                 <Pressable
-                                  onPress={() => Linking.openURL(sub.attachmentLink!)}
+                                  onPress={() => WebBrowser.openBrowserAsync(sub.attachmentLink!)}
                                   style={({ pressed }) => [styles.fileChip, { alignSelf: 'flex-start' }, pressed && styles.pressed]}
                                 >
                                   <FontAwesome6 name="file-arrow-down" size={12} color={C.secondary} />
@@ -3725,7 +3782,7 @@ function AdminPanel() {
 
                   {reg.status === 'letter_sent' && reg.letterUrl ? (
                     <Pressable
-                      onPress={() => Linking.openURL(reg.letterUrl!)}
+                      onPress={() => WebBrowser.openBrowserAsync(reg.letterUrl!)}
                       style={({ pressed }) => [styles.fileChip, { marginTop: 8 }, pressed && styles.pressed]}
                     >
                       <FontAwesome6 name="file-arrow-down" size={12} color={C.secondary} />
@@ -3733,6 +3790,52 @@ function AdminPanel() {
                       <FontAwesome6 name="arrow-up-right-from-square" size={11} color={C.textMuted} />
                     </Pressable>
                   ) : null}
+
+                  {/* Delete registration */}
+                  <View style={[styles.enrolledDivider, { marginTop: 10 }]} />
+                  {confirmDeleteRegId === reg.id ? (
+                    <View style={{ gap: 8 }}>
+                      <Text style={{ fontFamily: Fonts.sans, fontSize: 13, color: C.danger }}>
+                        Delete this registration? This cannot be undone.
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <Pressable
+                          onPress={() => setConfirmDeleteRegId(null)}
+                          style={({ pressed }) => [styles.enrolledActionChip, pressed && styles.pressed]}
+                        >
+                          <Text style={styles.enrolledChipText}>Cancel</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={async () => {
+                            setConfirmDeleteRegId(null);
+                            setBusyRegId(reg.id);
+                            try { await deleteRegistration(reg.id); }
+                            catch { Alert.alert('Error', 'Could not delete registration.'); }
+                            finally { setBusyRegId(null); }
+                          }}
+                          disabled={busyRegId === reg.id}
+                          style={({ pressed }) => [
+                            styles.enrolledActionChip,
+                            { backgroundColor: C.danger },
+                            (pressed || busyRegId === reg.id) && styles.pressed,
+                          ]}
+                        >
+                          {busyRegId === reg.id
+                            ? <ActivityIndicator size="small" color={C.textInverse} />
+                            : <Text style={[styles.enrolledChipText, { color: C.textInverse }]}>Confirm Delete</Text>
+                          }
+                        </Pressable>
+                      </View>
+                    </View>
+                  ) : (
+                    <Pressable
+                      onPress={() => setConfirmDeleteRegId(reg.id)}
+                      style={({ pressed }) => [styles.enrolledDangerRow, pressed && styles.pressed]}
+                    >
+                      <FontAwesome6 name="trash" size={12} color={C.danger} />
+                      <Text style={styles.enrolledDangerText}>Delete Registration</Text>
+                    </Pressable>
+                  )}
                 </View>
               ))}
             </View>
@@ -5198,14 +5301,12 @@ const styles = StyleSheet.create({
   uploadBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   uploadBtnText: { flex: 1, fontSize: 14, fontFamily: Fonts.sans, color: C.secondary },
   chatDivider: { height: 1, backgroundColor: C.border, marginVertical: 4 },
-  chatMessages: { gap: 8 },
-  chatBubble: { borderRadius: 12, padding: 10, gap: 2, maxWidth: '90%' },
-  chatBubbleAdmin: { backgroundColor: C.primarySoft, alignSelf: 'flex-end' },
-  chatBubbleClient: { backgroundColor: C.surfaceAlt, borderWidth: 1, borderColor: C.border, alignSelf: 'flex-start' },
-  chatSender: { fontSize: 11, fontFamily: Fonts.sansSemiBold, color: C.textMuted },
-  chatText: { fontSize: 13, fontFamily: Fonts.sans, color: C.textPrimary, lineHeight: 19 },
-  chatTime: { fontSize: 10, fontFamily: Fonts.sans, color: C.textMuted },
-  chatEmpty: { fontSize: 13, fontFamily: Fonts.sans, color: C.textMuted },
+  openChatBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: C.secondary, borderRadius: 12,
+    paddingVertical: 12, paddingHorizontal: 16,
+  },
+  openChatBtnText: { fontSize: 14, fontFamily: Fonts.sansBold, color: C.textInverse },
   chatInputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
   chatInput: {
     flex: 1, backgroundColor: C.surfaceAlt, borderWidth: 1, borderColor: C.border,

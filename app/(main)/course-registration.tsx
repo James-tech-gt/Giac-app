@@ -48,6 +48,7 @@ export default function CourseRegistrationScreen() {
   const [phone, setPhone] = useState('');
   const [courseInterest, setCourseInterest] = useState<'pecadr' | 'pemadr'>('pecadr');
   const [busy, setBusy] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<string | null>(null);
 
@@ -83,13 +84,55 @@ export default function CourseRegistrationScreen() {
         phone,
         courseInterest,
       });
-      router.replace('/(main)/home');
+      setSubmitted(true);
     } catch {
       setBanner('Could not submit your registration. Please try again.');
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     } finally {
       setBusy(false);
     }
+  }
+
+  if (submitted) {
+    const selectedCourse = COURSES.find((c) => c.id === courseInterest);
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <ScrollView contentContainerStyle={styles.successContainer} showsVerticalScrollIndicator={false}>
+          <View style={styles.successIconWrap}>
+            <FontAwesome6 name="circle-check" size={52} color={C.success} />
+          </View>
+          <Text style={styles.successTitle}>Registration Submitted!</Text>
+          <Text style={styles.successBody}>
+            Your registration for{' '}
+            <Text style={styles.successBold}>{selectedCourse?.label ?? courseInterest.toUpperCase()}</Text>
+            {' '}has been received. GIAC will review it and send you an admission letter with your student number.
+          </Text>
+          <View style={styles.successCard}>
+            <View style={styles.successRow}>
+              <Text style={styles.successMetaLabel}>Name</Text>
+              <Text style={styles.successMeta}>{fullName}</Text>
+            </View>
+            <View style={styles.successDivider} />
+            <View style={styles.successRow}>
+              <Text style={styles.successMetaLabel}>Email</Text>
+              <Text style={styles.successMeta}>{email}</Text>
+            </View>
+            <View style={styles.successDivider} />
+            <View style={styles.successRow}>
+              <Text style={styles.successMetaLabel}>Course</Text>
+              <Text style={styles.successMeta}>{selectedCourse?.desc ?? courseInterest.toUpperCase()}</Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => router.replace('/(main)/home')}
+            style={({ pressed }) => [styles.submitBtn, pressed && styles.pressed]}
+          >
+            <Text style={styles.submitBtnText}>Back to Home</Text>
+            <FontAwesome6 name="house" size={14} color="#fff" />
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -280,4 +323,26 @@ const styles = StyleSheet.create({
   },
   submitBtnText: { fontSize: 16, fontFamily: Fonts.sansBold, color: '#FFFFFF' },
   pressed: { opacity: 0.85 },
+
+  successContainer: {
+    flexGrow: 1, padding: 28, alignItems: 'center', justifyContent: 'center', gap: 20,
+  },
+  successIconWrap: {
+    width: 96, height: 96, borderRadius: 48,
+    backgroundColor: C.successSoft, alignItems: 'center', justifyContent: 'center',
+  },
+  successTitle: { fontSize: 26, fontFamily: Fonts.displayBold, color: C.textPrimary, textAlign: 'center' },
+  successBody: {
+    fontSize: 15, lineHeight: 24, fontFamily: Fonts.sans,
+    color: C.textSecondary, textAlign: 'center',
+  },
+  successBold: { fontFamily: Fonts.sansBold, color: C.textPrimary },
+  successCard: {
+    width: '100%', backgroundColor: C.surface, borderRadius: 20,
+    borderWidth: 1, borderColor: C.border, padding: 20, gap: 12,
+  },
+  successRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  successMetaLabel: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.textMuted },
+  successMeta: { fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.textPrimary, flexShrink: 1, textAlign: 'right' },
+  successDivider: { height: 1, backgroundColor: C.border },
 });

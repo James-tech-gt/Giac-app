@@ -569,8 +569,8 @@ export default function SettingsScreen() {
                     <FontAwesome6 name="fingerprint" size={14} color={C.secondary} />
                   </View>
                   <View style={styles.settingBody}>
-                    <Text style={styles.settingTitle}>Account ID</Text>
-                    <Text style={styles.settingSubtitle} numberOfLines={1} ellipsizeMode="middle">{user.uid}</Text>
+                    <Text style={styles.settingTitle}>Member ID</Text>
+                    <Text style={styles.settingSubtitle}>GIAC-{user.uid.slice(0, 3).toUpperCase()}{user.uid.slice(-3).toUpperCase()}</Text>
                   </View>
                 </View>
               </>

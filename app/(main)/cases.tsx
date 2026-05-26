@@ -1,20 +1,17 @@
 import { Fonts } from '@/constants/theme';
 import { auth } from '@/services/firebase';
-import { CaseMessage, Service, createAdminNotification, sendCaseMessage, subscribeCaseMessages, subscribeUserServices } from '@/services/firestore';
+import { Service, subscribeUserServices } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Linking,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -53,15 +50,6 @@ function formatDate(ts: unknown): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function formatTime(ts: unknown): string {
-  if (!ts) return '';
-  const d =
-    typeof ts === 'object' && ts !== null && 'toDate' in ts
-      ? (ts as any).toDate()
-      : new Date(ts as any);
-  if (isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-}
 
 function getTimelineIdx(s: Service): number {
   if (s.status === 'completed') return 2;
@@ -79,44 +67,6 @@ function CaseCard({ service, user, autoOpen = false }: { service: Service; user:
       setExpanded(true);
     }
   }, [autoOpen]);
-  const [messages, setMessages] = useState<CaseMessage[]>([]);
-  const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
-
-  useEffect(() => {
-    if (!expanded) return;
-    return subscribeCaseMessages(service.id, (msgs) => {
-      setMessages(msgs);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
-    });
-  }, [expanded, service.id]);
-
-  const handleSend = async () => {
-    const msg = text.trim();
-    if (!msg) return;
-    setText('');
-    setSending(true);
-    try {
-      await sendCaseMessage(
-        service.id,
-        user.uid,
-        user.displayName ?? user.email ?? 'Client',
-        'client',
-        msg,
-      );
-      createAdminNotification({
-        type: 'service',
-        message: `New message from client in ${service.serviceType} case (${service.category})`,
-        referenceId: service.id,
-        userId: user.uid,
-      }).catch(() => {});
-    } catch {
-      setText(msg);
-    } finally {
-      setSending(false);
-    }
-  };
 
   const tIdx = getTimelineIdx(service);
 
@@ -256,7 +206,7 @@ function CaseCard({ service, user, autoOpen = false }: { service: Service; user:
             </View>
           ) : null}
 
-          {/* Chat — only available once case is in progress */}
+          {/* Chat */}
           {service.status === 'submitted' ? (
             <View style={styles.chatLocked}>
               <FontAwesome6 name="lock" size={14} color={C.textMuted} />
@@ -265,71 +215,21 @@ function CaseCard({ service, user, autoOpen = false }: { service: Service; user:
               </Text>
             </View>
           ) : (
-          <KeyboardAvoidingView
-            style={styles.chatWrap}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 18 : 0}
-          >
-            <Text style={styles.chatTitle}>In Progress — Messages with GIAC</Text>
-            <ScrollView
-              ref={scrollRef}
-              style={styles.chatScroll}
-              contentContainerStyle={{ gap: 10, padding: 12 }}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-              nestedScrollEnabled
-              onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+            <TouchableOpacity
+              style={styles.openChatBtn}
+              activeOpacity={0.82}
+              onPress={() => router.push({
+                pathname: '/(main)/case-chat',
+                params: {
+                  caseId: service.id,
+                  category: service.category ?? '',
+                  serviceType: service.serviceType ?? '',
+                },
+              })}
             >
-              {messages.length === 0 ? (
-                <Text style={styles.chatEmpty}>No messages yet. Send a message to your mediator below.</Text>
-              ) : (
-                messages.map((msg) => {
-                  const isMe = msg.senderId === user.uid;
-                  return (
-                    <View key={msg.id} style={[styles.bubbleRow, isMe && styles.bubbleRowMe]}>
-                      {!isMe && (
-                        <View style={styles.bubbleAvatar}>
-                          <Text style={styles.bubbleAvatarText}>{msg.senderName.charAt(0).toUpperCase()}</Text>
-                        </View>
-                      )}
-                      <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
-                        {!isMe && <Text style={styles.bubbleSender}>{msg.senderName}</Text>}
-                        <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{msg.text}</Text>
-                        <Text style={[styles.bubbleTime, isMe && { color: 'rgba(255,255,255,0.55)' }]}>
-                          {formatTime(msg.createdAt)}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                })
-              )}
-            </ScrollView>
-            <View style={styles.chatInputRow}>
-              <TextInput
-                style={styles.chatInput}
-                placeholder="Type a message…"
-                placeholderTextColor={C.textMuted}
-                value={text}
-                onChangeText={setText}
-                multiline
-                returnKeyType="send"
-              />
-              <Pressable
-                style={({ pressed }) => [
-                  styles.sendBtn,
-                  (!text.trim() || sending) && styles.sendBtnDisabled,
-                  pressed && { opacity: 0.8 },
-                ]}
-                onPress={handleSend}
-                disabled={!text.trim() || sending}
-              >
-                {sending
-                  ? <ActivityIndicator size="small" color="#fff" />
-                  : <FontAwesome6 name="paper-plane" size={13} color="#fff" />}
-              </Pressable>
-            </View>
-          </KeyboardAvoidingView>
+              <FontAwesome6 name="comments" size={15} color="#fff" />
+              <Text style={styles.openChatBtnText}>Open Chat with Mediator</Text>
+            </TouchableOpacity>
           )}
         </>
       )}
@@ -530,46 +430,12 @@ const styles = StyleSheet.create({
   chatLockedText: {
     flex: 1, fontSize: 13, lineHeight: 19, fontFamily: Fonts.sans, color: C.textMuted,
   },
-  chatTitle: {
-    fontSize: 13, fontFamily: Fonts.sansSemiBold, color: C.textSecondary,
-    paddingHorizontal: 16, paddingTop: 4, paddingBottom: 2,
-    borderTopWidth: 1, borderTopColor: C.border,
+  openChatBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    margin: 16, marginTop: 4, padding: 14, borderRadius: 14,
+    backgroundColor: C.secondary,
   },
-  chatWrap: {
-    marginTop: 2,
-  },
-  chatScroll: { maxHeight: 320 },
-  chatEmpty: { fontSize: 13, fontFamily: Fonts.sans, color: C.textMuted, textAlign: 'center', paddingVertical: 12 },
-  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  bubbleRowMe: { flexDirection: 'row-reverse' },
-  bubbleAvatar: {
-    width: 26, height: 26, borderRadius: 13,
-    backgroundColor: C.secondarySoft, alignItems: 'center', justifyContent: 'center',
-  },
-  bubbleAvatarText: { fontSize: 10, fontFamily: Fonts.sansBold, color: C.secondary },
-  bubble: { maxWidth: '76%', borderRadius: 14, padding: 10, gap: 3 },
-  bubbleMe: { backgroundColor: C.secondary, borderBottomRightRadius: 3 },
-  bubbleThem: { backgroundColor: C.surfaceAlt, borderWidth: 1, borderColor: C.border, borderBottomLeftRadius: 3 },
-  bubbleSender: { fontSize: 10, fontFamily: Fonts.sansSemiBold, color: C.textMuted },
-  bubbleText: { fontSize: 13, fontFamily: Fonts.sans, color: C.textPrimary, lineHeight: 19 },
-  bubbleTextMe: { color: '#fff' },
-  bubbleTime: { fontSize: 9, fontFamily: Fonts.sans, color: C.textMuted, alignSelf: 'flex-end' },
-
-  chatInputRow: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
-    paddingHorizontal: 12, paddingVertical: 10,
-    borderTopWidth: 1, borderTopColor: C.border,
-  },
-  chatInput: {
-    flex: 1, backgroundColor: C.surfaceAlt, borderWidth: 1, borderColor: C.border,
-    borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9,
-    fontSize: 13, fontFamily: Fonts.sans, color: C.textPrimary, maxHeight: 90,
-  },
-  sendBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: C.secondary, alignItems: 'center', justifyContent: 'center',
-  },
-  sendBtnDisabled: { opacity: 0.4 },
+  openChatBtnText: { fontSize: 14, fontFamily: Fonts.sansBold, color: '#fff' },
 
   emptyCard: {
     backgroundColor: C.surface, borderRadius: 20, padding: 28,

@@ -1,11 +1,13 @@
 import { Fonts } from '@/constants/theme';
 import { auth } from '@/services/firebase';
-import { Certificate, getCertificates } from '@/services/firestore';
+import { Certificate, GraduationInvitation, getCertificates, subscribeUserGraduationInvitations, deleteGraduationInvitation } from '@/services/firestore';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Linking,
   ScrollView,
   StyleSheet,
@@ -93,6 +95,8 @@ export default function CertificatesScreen() {
   const user = auth.currentUser;
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [graduationInvites, setGraduationInvites] = useState<GraduationInvitation[]>([]);
+  const [deletingInviteId, setDeletingInviteId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -106,7 +110,17 @@ export default function CertificatesScreen() {
       }
     }
     load();
-    return () => { active = false; };
+
+    const unsubInvites = user?.uid
+      ? subscribeUserGraduationInvitations(user.uid, (invites) => {
+          if (active) setGraduationInvites(invites);
+        })
+      : null;
+
+    return () => {
+      active = false;
+      unsubInvites?.();
+    };
   }, [user?.uid]);
 
   return (
@@ -131,6 +145,61 @@ export default function CertificatesScreen() {
             Your earned GIAC certifications recognized globally.
           </Text>
         </View>
+
+        {/* Graduation Invitations */}
+        {graduationInvites.length > 0 && (
+          <View style={styles.inviteSection}>
+            <Text style={styles.sectionHeader}>Graduation Invitations</Text>
+            {graduationInvites.map((invite) => (
+              <View key={invite.id} style={styles.inviteCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                  <View style={styles.inviteIconWrap}>
+                    <FontAwesome6 name="graduation-cap" size={20} color={C.accent} />
+                  </View>
+                  <View style={[styles.inviteInfo, { flex: 1 }]}>
+                    <Text style={styles.inviteTitle}>{invite.courseTitle}</Text>
+                    {invite.message ? (
+                      <Text style={styles.inviteMessage}>{invite.message}</Text>
+                    ) : null}
+                    <Text style={styles.inviteMeta}>Issued {formatDate(invite.createdAt)}</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Alert.alert('Delete Invitation', 'Remove this graduation invitation from your list?', [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete', style: 'destructive',
+                          onPress: async () => {
+                            setDeletingInviteId(invite.id);
+                            try { await deleteGraduationInvitation(invite.id); }
+                            catch { Alert.alert('Error', 'Could not delete invitation.'); }
+                            finally { setDeletingInviteId(null); }
+                          },
+                        },
+                      ]);
+                    }}
+                    disabled={deletingInviteId === invite.id}
+                    hitSlop={8}
+                  >
+                    {deletingInviteId === invite.id
+                      ? <ActivityIndicator size="small" color={C.textMuted} />
+                      : <FontAwesome6 name="trash" size={14} color={C.textMuted} />
+                    }
+                  </TouchableOpacity>
+                </View>
+                {invite.letterUrl ? (
+                  <TouchableOpacity
+                    style={styles.downloadBtn}
+                    onPress={() => WebBrowser.openBrowserAsync(invite.letterUrl)}
+                  >
+                    <FontAwesome6 name="download" size={13} color={C.surface} />
+                    <Text style={styles.downloadBtnText}>Download Letter</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Content */}
         {loading ? (
@@ -312,4 +381,20 @@ const styles = StyleSheet.create({
   infoText: { flex: 1, gap: 4 },
   infoTitle: { fontSize: 14, fontFamily: Fonts.sansSemiBold, color: C.secondary },
   infoBody: { fontSize: 13, lineHeight: 20, fontFamily: Fonts.sans, color: C.textSecondary },
+
+  inviteSection: { gap: 12 },
+  inviteCard: {
+    backgroundColor: C.surface, borderRadius: 20,
+    borderWidth: 1, borderColor: '#E7D7A8',
+    padding: 16, gap: 12,
+  },
+  inviteIconWrap: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: C.accentSoft, alignItems: 'center', justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
+  inviteInfo: { gap: 4 },
+  inviteTitle: { fontSize: 15, fontFamily: Fonts.sansBold, color: C.textPrimary },
+  inviteMessage: { fontSize: 14, lineHeight: 22, fontFamily: Fonts.sans, color: C.textSecondary },
+  inviteMeta: { fontSize: 12, fontFamily: Fonts.sans, color: C.textMuted },
 });

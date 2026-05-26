@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { router } from 'expo-router';
 import { Platform } from 'react-native';
 import { auth } from './firebase';
 import { updateUserPushToken } from './firestore';
@@ -24,6 +25,54 @@ try {
     }),
   });
 } catch {}
+
+export function navigateFromNotification(data: Record<string, string> | undefined | null): void {
+  if (!data) return;
+  const type = data.type;
+  try {
+    switch (type) {
+      case 'case_message':
+      case 'case_assigned':
+      case 'case_updated':
+      case 'case_completed':
+        router.push('/(main)/cases');
+        break;
+      case 'graduation_invitation':
+      case 'certificate_issued':
+      case 'course_completed':
+        router.push('/(student)/certificates' as any);
+        break;
+      case 'application_approved':
+      case 'application_rejected':
+        router.push('/(main)/application-status');
+        break;
+      case 'admission_letter':
+        router.push('/(main)/notifications');
+        break;
+      case 'assignment_graded':
+      case 'assignment_posted':
+        router.push('/(student)/assignments' as any);
+        break;
+      case 'test_graded':
+      case 'test_posted':
+        router.push('/(student)/tests' as any);
+        break;
+      case 'material_posted':
+      case 'session_posted':
+        router.push('/(student)/materials' as any);
+        break;
+      case 'application':
+      case 'service':
+      case 'account':
+      case 'registration':
+        router.push('/admin');
+        break;
+      default:
+        router.push('/(main)/notifications');
+        break;
+    }
+  } catch {}
+}
 
 export async function registerForPushNotifications(uid: string): Promise<void> {
   if (Platform.OS === 'web') return;
@@ -72,6 +121,8 @@ export function setupNotificationHandlers(
 ): () => void {
   try {
     const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as Record<string, string>;
+      navigateFromNotification(data);
       onTap?.(response.notification);
     });
 

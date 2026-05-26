@@ -43,12 +43,11 @@ const db = admin.firestore();
 const FROM_EMAIL = 'GIAC <noreply@giacghana.com>';
 const CONTACT_EMAIL = 'info@giacghana.com';
 const EMAIL_FOOTER = `
-  <hr style="border:none;border-top:1px solid #E3E9F2;margin:32px 0 20px" />
-  <p style="font-size:12px;color:#9AA3B2;line-height:1.8;margin:0">
-    Global Institute of ADR Center · Kasoa, Ghana<br/>
-    For enquiries, contact us at <a href="mailto:${CONTACT_EMAIL}" style="color:#14213A">${CONTACT_EMAIL}</a><br/>
+  <div style="margin-top:32px;padding-top:20px;border-top:1px solid #E3E9F2;font-size:13px;color:#9AA3B2;line-height:1.8">
+    Global Institute of ADR Center &middot; Kasoa, Ghana<br>
+    Enquiries: <a href="mailto:${CONTACT_EMAIL}" style="color:#4A5468;text-decoration:none">${CONTACT_EMAIL}</a><br>
     Please do not reply to this email.
-  </p>`;
+  </div>`;
 function getResend() {
     return new resend_1.Resend(process.env.RESEND_API_KEY);
 }
@@ -94,25 +93,33 @@ exports.onStudentNotification = (0, firestore_1.onDocumentCreated)('StudentNotif
     const data = event.data?.data();
     if (!data)
         return;
-    const { userId, message } = data;
+    const { userId, message, type, referenceId } = data;
     if (!userId || !message)
         return;
     const userSnap = await db.collection('users').doc(userId).get();
     const pushToken = userSnap.data()?.pushToken;
     if (!pushToken)
         return;
-    await sendFcmPush([pushToken], 'GIAC', message, { notificationId: event.params.id });
+    await sendFcmPush([pushToken], 'GIAC', message, {
+        notificationId: event.params.id,
+        type: type || '',
+        referenceId: referenceId || '',
+    });
 });
 // Admin gets a push when a new AdminNotification is created
 exports.onAdminNotification = (0, firestore_1.onDocumentCreated)('AdminNotifications/{id}', async (event) => {
     const data = event.data?.data();
     if (!data)
         return;
-    const { message } = data;
+    const { message, type, referenceId } = data;
     if (!message)
         return;
     const tokens = await getAdminPushTokens();
-    await sendFcmPush(tokens, 'GIAC Admin', message, { notificationId: event.params.id });
+    await sendFcmPush(tokens, 'GIAC Admin', message, {
+        notificationId: event.params.id,
+        type: type || 'admin',
+        referenceId: referenceId || '',
+    });
 });
 // ─── Part 5: Automated Emails ─────────────────────────────────────────────────
 // Welcome email when a new user document is created
@@ -335,7 +342,7 @@ exports.onGraduationInvitation = (0, firestore_1.onDocumentCreated)({ document: 
     const data = event.data?.data();
     if (!data)
         return;
-    const { userId, studentName, courseTitle, message } = data;
+    const { userId, studentName, courseTitle, message, letterUrl } = data;
     let email = data.email;
     if (!email && userId) {
         const userSnap = await db.collection('users').doc(userId).get();
@@ -344,6 +351,19 @@ exports.onGraduationInvitation = (0, firestore_1.onDocumentCreated)({ document: 
     if (!email)
         return;
     const name = studentName || email;
+    const bodyText = message?.trim();
+    const messageSection = bodyText
+        ? `<p style="line-height:1.8;color:#4A5468;margin:0 0 16px">Dear ${name},<br/><br/>${bodyText.replace(/\n/g, '<br/>')}</p>`
+        : `<p style="line-height:1.8;color:#4A5468;margin:0 0 16px">Dear ${name},<br/><br/>Please find your graduation invitation letter attached below.</p>`;
+    const letterSection = letterUrl
+        ? `<div style="margin-top:24px;text-align:center">
+           <a href="${letterUrl}" target="_blank"
+              style="display:inline-block;background:#2A3F66;color:#fff;text-decoration:none;
+                     padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px;">
+             Download Invitation Letter
+           </a>
+         </div>`
+        : '';
     await sendTransactionalEmail({
         label: 'graduation-invitation',
         to: email,
@@ -351,11 +371,9 @@ exports.onGraduationInvitation = (0, firestore_1.onDocumentCreated)({ document: 
         html: `
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#14213A">
           <img src="https://www.giacghana.com/logo.png" alt="GIAC" width="120" style="margin-bottom:24px" />
-          <h2 style="margin:0 0 12px;color:#2A3F66">Graduation Invitation 🎓</h2>
-          <p style="line-height:1.8;color:#4A5468">
-            Dear ${name},<br/><br/>
-            ${message.replace(/\n/g, '<br/>')}
-          </p>
+          <h2 style="margin:0 0 16px;color:#2A3F66">Graduation Invitation 🎓</h2>
+          ${messageSection}
+          ${letterSection}
           ${EMAIL_FOOTER}
         </div>
       `,

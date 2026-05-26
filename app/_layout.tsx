@@ -1,7 +1,7 @@
 import { auth } from '@/services/firebase';
 import { googleSignInState } from '@/services/auth';
 import { configureGoogleSignIn } from '@/services/google-signin';
-import { registerForPushNotifications, setupNotificationHandlers } from '@/services/notifications';
+import { navigateFromNotification, registerForPushNotifications, setupNotificationHandlers } from '@/services/notifications';
 import * as Notifications from 'expo-notifications';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
@@ -28,6 +28,7 @@ export default function RootLayout() {
   const segmentsRef = useRef(segments);
   useEffect(() => { segmentsRef.current = segments; }, [segments]);
   const registeredUidRef = useRef<string | null>(null);
+  const handledInitialNotifRef = useRef(false);
   const [currentUid, setCurrentUid] = useState<string | null>(auth.currentUser?.uid ?? null);
   const [fontsLoaded, fontError] = useFonts({
     'CormorantGaramond-Regular': require('../assets/fonts/CormorantGaramond-Regular.ttf'),
@@ -91,7 +92,23 @@ export default function RootLayout() {
 
   useEffect(() => {
     Notifications.setBadgeCountAsync(0).catch(() => {});
-    return setupNotificationHandlers(undefined, currentUid);
+    const cleanup = setupNotificationHandlers(undefined, currentUid);
+
+    // Handle cold-start: app opened by tapping a notification while terminated
+    if (currentUid && !handledInitialNotifRef.current) {
+      handledInitialNotifRef.current = true;
+      Notifications.getLastNotificationResponseAsync().then((response) => {
+        if (!response) return;
+        // Only act on responses from the last 30 seconds (fresh tap, not a stale one)
+        const ageMs = Date.now() - response.notification.date * 1000;
+        if (ageMs < 30_000) {
+          const data = response.notification.request.content.data as Record<string, string>;
+          navigateFromNotification(data);
+        }
+      }).catch(() => {});
+    }
+
+    return cleanup;
   }, [currentUid]);
 
   useEffect(() => {

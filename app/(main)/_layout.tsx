@@ -184,6 +184,7 @@ export default function MainLayout() {
       <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen name="privacy-policy" options={{ href: null }} />
       <Tabs.Screen name="course-registration" options={{ href: null }} />
+      <Tabs.Screen name="case-chat" options={{ href: null }} />
     </Tabs>
   );
 }
