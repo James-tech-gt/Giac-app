@@ -20,7 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { handleGoogleRedirectResult, resetPassword, signIn, signInWithGoogle } from '../../services/auth';
+import { resetPassword, signIn, signInWithGoogle } from '../../services/auth';
 
 const useNativeDriver = Platform.OS !== 'web';
 
