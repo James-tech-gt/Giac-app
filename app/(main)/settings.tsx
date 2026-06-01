@@ -618,6 +618,25 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {Platform.OS === 'web' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Install App</Text>
+            <View style={styles.card}>
+              <SettingRow
+                icon="mobile-screen"
+                title="Add to Home Screen (iPhone / iPad)"
+                subtitle={'Open this page in Safari → tap the Share icon (\u{1F4E4}) at the bottom → select “Add to Home Screen”.'}
+              />
+              <View style={styles.cardDivider} />
+              <SettingRow
+                icon="mobile"
+                title="Install App (Android)"
+                subtitle={'Open this page in Chrome → tap the menu icon (⋮) at the top right → select “Add to Home Screen”.'}
+              />
+            </View>
+          </View>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Session</Text>
           <View style={styles.card}>
