@@ -31,6 +31,9 @@ export default function RootLayout() {
   const handledInitialNotifRef = useRef(false);
   const [currentUid, setCurrentUid] = useState<string | null>(auth.currentUser?.uid ?? null);
   const [fontsLoaded, fontError] = useFonts({
+    'FontAwesome6Free-Regular': require('../assets/fonts/FontAwesome6_Regular.ttf'),
+    'FontAwesome6Free-Solid': require('../assets/fonts/FontAwesome6_Solid.ttf'),
+    'FontAwesome6Brands-Regular': require('../assets/fonts/FontAwesome6_Brands.ttf'),
     'CormorantGaramond-Regular': require('../assets/fonts/CormorantGaramond-Regular.ttf'),
     'CormorantGaramond-SemiBold': require('../assets/fonts/CormorantGaramond-SemiBold.ttf'),
     'CormorantGaramond-Bold': require('../assets/fonts/CormorantGaramond-Bold.ttf'),

@@ -241,9 +241,9 @@ export async function signUpWithGoogle(
 
     const credential = GoogleAuthProvider.credential(idToken);
     const userCredential = await signInWithCredential(auth, credential);
-    
+
     await ensureUserProfile(userCredential.user, { fullName });
-    
+
     return userCredential.user;
   } catch (error) {
     throw error;

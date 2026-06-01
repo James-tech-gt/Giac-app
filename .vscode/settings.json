@@ -1,4 +1,7 @@
 {
+  "files.exclude": {
+    "dist": true
+  },
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
