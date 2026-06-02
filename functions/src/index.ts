@@ -22,7 +22,7 @@ function getResend() {
 
 async function sendTransactionalEmail(input: {
   from?: string;
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
   label: string;
@@ -63,6 +63,13 @@ async function sendFcmPush(tokens: string[], title: string, body: string, data?:
 async function getAdminPushTokens(): Promise<string[]> {
   const snap = await db.collection('users').where('role', '==', 'admin').get();
   return snap.docs.map((d) => d.data().pushToken).filter(Boolean);
+}
+
+async function getAdminEmailRecipients(): Promise<string[]> {
+  const snap = await db.collection('users').where('role', '==', 'admin').get();
+  const emails = snap.docs.map((d) => d.data().email).filter(Boolean);
+  // Always include the contact email, deduplicate
+  return [...new Set([...emails, CONTACT_EMAIL])];
 }
 
 // ─── Part 4: Push Notifications ───────────────────────────────────────────────
@@ -110,7 +117,7 @@ export const onAdminNotification = onDocumentCreated(
 
 // ─── Part 5: Automated Emails ─────────────────────────────────────────────────
 
-// Welcome email when a new user document is created
+// Welcome email when a new user document is created + admin alert
 export const onUserCreated = onDocumentCreated(
   { document: 'users/{uid}', secrets: ['RESEND_API_KEY'] },
   async (event) => {
@@ -127,6 +134,10 @@ export const onUserCreated = onDocumentCreated(
     }
 
     const name = data.fullName || data.email;
+    const role = data.role || 'applicant';
+    const signedUpAt = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Accra' });
+
+    // Welcome email to new user
     try {
       await sendTransactionalEmail({
         label: 'welcome',
@@ -151,6 +162,176 @@ export const onUserCreated = onDocumentCreated(
       });
     } catch (err) {
       console.error('[onUserCreated] Failed to send welcome email:', err);
+    }
+
+    // Admin email alert
+    try {
+      const adminEmails = await getAdminEmailRecipients();
+      await sendTransactionalEmail({
+        label: 'admin-new-user',
+        to: adminEmails,
+        subject: `New User Signed Up — ${name}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#14213A">
+            <h2 style="margin:0 0 12px;color:#2A3F66">New User Signed Up</h2>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+              <tr><td style="padding:8px 0;color:#6B7689;width:120px">Name</td><td style="padding:8px 0;font-weight:600">${name}</td></tr>
+              <tr><td style="padding:8px 0;color:#6B7689">Email</td><td style="padding:8px 0">${data.email}</td></tr>
+              <tr><td style="padding:8px 0;color:#6B7689">Role</td><td style="padding:8px 0;text-transform:capitalize">${role}</td></tr>
+              <tr><td style="padding:8px 0;color:#6B7689">Signed up</td><td style="padding:8px 0">${signedUpAt}</td></tr>
+            </table>
+            <p style="line-height:1.6;color:#4A5468">Open the GIAC admin panel to view their profile.</p>
+            ${EMAIL_FOOTER}
+          </div>
+        `,
+      });
+    } catch (err) {
+      console.error('[onUserCreated] Failed to send admin alert:', err);
+    }
+
+    // Admin push notification
+    try {
+      const tokens = await getAdminPushTokens();
+      await sendFcmPush(tokens, 'New User', `${name} just signed up on GIAC`, { type: 'new_user', referenceId: event.params.uid });
+    } catch (err) {
+      console.error('[onUserCreated] Failed to send admin push:', err);
+    }
+  }
+);
+
+// Admin alert when a new application is submitted
+export const onApplicationCreated = onDocumentCreated(
+  { document: 'APPLICATIONS/{id}', secrets: ['RESEND_API_KEY'] },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const name = data.fullName || data.email || 'Unknown';
+    const course = data.courseTitle || data.program || 'GIAC Programme';
+    const submittedAt = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Accra' });
+
+    try {
+      const adminEmails = await getAdminEmailRecipients();
+      await sendTransactionalEmail({
+        label: 'admin-new-application',
+        to: adminEmails,
+        subject: `New Application — ${course}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#14213A">
+            <h2 style="margin:0 0 12px;color:#2A3F66">New Application Submitted</h2>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+              <tr><td style="padding:8px 0;color:#6B7689;width:120px">Applicant</td><td style="padding:8px 0;font-weight:600">${name}</td></tr>
+              <tr><td style="padding:8px 0;color:#6B7689">Email</td><td style="padding:8px 0">${data.email || 'N/A'}</td></tr>
+              <tr><td style="padding:8px 0;color:#6B7689">Programme</td><td style="padding:8px 0">${course}</td></tr>
+              <tr><td style="padding:8px 0;color:#6B7689">Submitted</td><td style="padding:8px 0">${submittedAt}</td></tr>
+            </table>
+            <p style="line-height:1.6;color:#4A5468">Open the GIAC admin panel to review and process this application.</p>
+            ${EMAIL_FOOTER}
+          </div>
+        `,
+      });
+    } catch (err) {
+      console.error('[onApplicationCreated] Failed to send admin alert:', err);
+    }
+
+    try {
+      const tokens = await getAdminPushTokens();
+      await sendFcmPush(tokens, 'New Application', `${name} applied for ${course}`, { type: 'new_application', referenceId: event.params.id });
+    } catch (err) {
+      console.error('[onApplicationCreated] Failed to send admin push:', err);
+    }
+  }
+);
+
+// Admin alert when a new course registration is submitted
+export const onCourseRegistrationCreated = onDocumentCreated(
+  { document: 'CourseRegistrations/{id}', secrets: ['RESEND_API_KEY'] },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const name = data.fullName || data.email || 'Unknown';
+    const course = data.courseInterest === 'pecadr'
+      ? 'Professional Executive Certificate in ADR'
+      : data.courseInterest === 'pemad'
+      ? 'Professional Executive Masters in ADR'
+      : data.courseInterest || 'GIAC Course';
+    const submittedAt = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Accra' });
+
+    try {
+      const adminEmails = await getAdminEmailRecipients();
+      await sendTransactionalEmail({
+        label: 'admin-new-registration',
+        to: adminEmails,
+        subject: `New Course Registration — ${name}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#14213A">
+            <h2 style="margin:0 0 12px;color:#2A3F66">New Course Registration</h2>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+              <tr><td style="padding:8px 0;color:#6B7689;width:120px">Student</td><td style="padding:8px 0;font-weight:600">${name}</td></tr>
+              <tr><td style="padding:8px 0;color:#6B7689">Email</td><td style="padding:8px 0">${data.email || 'N/A'}</td></tr>
+              <tr><td style="padding:8px 0;color:#6B7689">Course</td><td style="padding:8px 0">${course}</td></tr>
+              <tr><td style="padding:8px 0;color:#6B7689">Submitted</td><td style="padding:8px 0">${submittedAt}</td></tr>
+            </table>
+            <p style="line-height:1.6;color:#4A5468">Open the GIAC admin panel to review this registration and issue an admission letter.</p>
+            ${EMAIL_FOOTER}
+          </div>
+        `,
+      });
+    } catch (err) {
+      console.error('[onCourseRegistrationCreated] Failed to send admin alert:', err);
+    }
+
+    try {
+      const tokens = await getAdminPushTokens();
+      await sendFcmPush(tokens, 'New Registration', `${name} registered for ${course}`, { type: 'new_registration', referenceId: event.params.id });
+    } catch (err) {
+      console.error('[onCourseRegistrationCreated] Failed to send admin push:', err);
+    }
+  }
+);
+
+// Admin alert when a new mediation/service request is submitted
+export const onServiceCreated = onDocumentCreated(
+  { document: 'Services/{id}', secrets: ['RESEND_API_KEY'] },
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const name = data.fullName || data.clientName || data.email || 'Unknown';
+    const email = data.email || data.clientEmail || '';
+    const serviceType = data.serviceType || data.type || 'Mediation Request';
+    const submittedAt = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Accra' });
+
+    try {
+      const adminEmails = await getAdminEmailRecipients();
+      await sendTransactionalEmail({
+        label: 'admin-new-service',
+        to: adminEmails,
+        subject: `New Service Request — ${serviceType}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#14213A">
+            <h2 style="margin:0 0 12px;color:#2A3F66">New Service Request</h2>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+              <tr><td style="padding:8px 0;color:#6B7689;width:120px">Client</td><td style="padding:8px 0;font-weight:600">${name}</td></tr>
+              <tr><td style="padding:8px 0;color:#6B7689">Email</td><td style="padding:8px 0">${email || 'N/A'}</td></tr>
+              <tr><td style="padding:8px 0;color:#6B7689">Service</td><td style="padding:8px 0">${serviceType}</td></tr>
+              <tr><td style="padding:8px 0;color:#6B7689">Submitted</td><td style="padding:8px 0">${submittedAt}</td></tr>
+            </table>
+            <p style="line-height:1.6;color:#4A5468">Open the GIAC admin panel to review and assign a mediator.</p>
+            ${EMAIL_FOOTER}
+          </div>
+        `,
+      });
+    } catch (err) {
+      console.error('[onServiceCreated] Failed to send admin alert:', err);
+    }
+
+    try {
+      const tokens = await getAdminPushTokens();
+      await sendFcmPush(tokens, 'New Service Request', `${name} submitted a ${serviceType}`, { type: 'new_service', referenceId: event.params.id });
+    } catch (err) {
+      console.error('[onServiceCreated] Failed to send admin push:', err);
     }
   }
 );
