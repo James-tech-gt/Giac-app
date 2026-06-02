@@ -377,45 +377,47 @@ export default function ApplicationScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <ScrollView contentContainerStyle={styles.successContainer} showsVerticalScrollIndicator={false}>
-          <View style={styles.successIconWrap}>
-            <FontAwesome6 name="circle-check" size={56} color="#2D6A4F" />
+          <View style={styles.successInner}>
+            <View style={styles.successIconWrap}>
+              <FontAwesome6 name="circle-check" size={56} color="#2D6A4F" />
+            </View>
+            <Text style={styles.successTitle}>Application Submitted!</Text>
+            <Text style={styles.successBody}>
+              Your application for{' '}
+              <Text style={styles.successBold}>{selectedCourse?.title ?? 'the selected program'}</Text>{' '}
+              has been received. GIAC will review it and get back to you.
+            </Text>
+            <View style={styles.successCard}>
+              <View style={styles.successRow}>
+                <FontAwesome6 name="user" size={13} color={C.secondary} />
+                <Text style={styles.successMeta}>{fullName}</Text>
+              </View>
+              <View style={styles.successRow}>
+                <FontAwesome6 name="envelope" size={13} color={C.secondary} />
+                <Text style={styles.successMeta}>{email}</Text>
+              </View>
+              <View style={styles.successRow}>
+                <FontAwesome6 name="graduation-cap" size={13} color={C.secondary} />
+                <Text style={styles.successMeta}>{selectedCourse?.program} · {selectedCourse?.duration}</Text>
+              </View>
+              <View style={styles.successRow}>
+                <FontAwesome6 name="credit-card" size={13} color={C.secondary} />
+                <Text style={styles.successMeta}>Payment via {paymentMode}</Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={() => router.push('/(main)/application-status')}
+              style={({ pressed }) => [styles.submitButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.submitButtonText}>Track My Application</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/(main)/home')}
+              style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
+            >
+              <Text style={styles.secondaryBtnText}>Back to Home</Text>
+            </Pressable>
           </View>
-          <Text style={styles.successTitle}>Application Submitted!</Text>
-          <Text style={styles.successBody}>
-            Your application for{' '}
-            <Text style={styles.successBold}>{selectedCourse?.title ?? 'the selected program'}</Text>{' '}
-            has been received. GIAC will review it and get back to you.
-          </Text>
-          <View style={styles.successCard}>
-            <View style={styles.successRow}>
-              <FontAwesome6 name="user" size={13} color={C.secondary} />
-              <Text style={styles.successMeta}>{fullName}</Text>
-            </View>
-            <View style={styles.successRow}>
-              <FontAwesome6 name="envelope" size={13} color={C.secondary} />
-              <Text style={styles.successMeta}>{email}</Text>
-            </View>
-            <View style={styles.successRow}>
-              <FontAwesome6 name="graduation-cap" size={13} color={C.secondary} />
-              <Text style={styles.successMeta}>{selectedCourse?.program} · {selectedCourse?.duration}</Text>
-            </View>
-            <View style={styles.successRow}>
-              <FontAwesome6 name="credit-card" size={13} color={C.secondary} />
-              <Text style={styles.successMeta}>Payment via {paymentMode}</Text>
-            </View>
-          </View>
-          <Pressable
-            onPress={() => router.push('/(main)/application-status')}
-            style={({ pressed }) => [styles.submitButton, pressed && styles.pressed]}
-          >
-            <Text style={styles.submitButtonText}>Track My Application</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push('/(main)/home')}
-            style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
-          >
-            <Text style={styles.secondaryBtnText}>Back to Home</Text>
-          </Pressable>
         </ScrollView>
       </SafeAreaView>
     );
@@ -899,7 +901,7 @@ const styles = StyleSheet.create({
   },
 
   submitButton: {
-    backgroundColor: C.primary, borderRadius: 16,
+    width: '100%', backgroundColor: C.primary, borderRadius: 16,
     paddingVertical: 16, alignItems: 'center', justifyContent: 'center',
   },
   submitButtonText: { fontSize: 14, fontFamily: Fonts.sansBold, color: '#FFFFFF' },
@@ -956,7 +958,11 @@ const styles = StyleSheet.create({
   uploadBtnText: { flex: 1, fontSize: 14, fontFamily: Fonts.sans, color: C.secondary },
 
   successContainer: {
-    flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 16,
+    flexGrow: 1, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 20, paddingVertical: 40,
+  },
+  successInner: {
+    width: '100%', maxWidth: 480, gap: 16,
   },
   successIconWrap: { marginBottom: 8 },
   successTitle: { fontSize: 28, fontFamily: Fonts.displayBold, color: C.textPrimary, textAlign: 'center' },

@@ -5,9 +5,9 @@ import {
     GoogleAuthProvider,
     sendEmailVerification,
     sendPasswordResetEmail,
-    signInWithPopup,
     signInWithCredential,
     signInWithEmailAndPassword,
+    signInWithPopup,
     signOut,
     User
 } from 'firebase/auth';
@@ -79,11 +79,9 @@ export async function signUp(
   }
 ): Promise<User> {
   try {
-    // Create user in Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Create user profile in Firestore (merge so a concurrent pushToken write isn't erased)
     await setDoc(
       doc(db, USERS_COLLECTION, user.uid),
       buildUserProfile(user, {
@@ -228,7 +226,6 @@ export async function signUpWithGoogle(
   fullName?: string
 ): Promise<User> {
   try {
-    // Use popup flow only on web. Native flows must provide an ID token.
     if (!idToken) {
       if (Platform.OS !== 'web') {
         throw new Error(GOOGLE_NATIVE_UNAVAILABLE_MESSAGE);
@@ -249,3 +246,4 @@ export async function signUpWithGoogle(
     throw error;
   }
 }
+

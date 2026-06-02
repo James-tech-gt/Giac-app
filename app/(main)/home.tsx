@@ -19,7 +19,7 @@ import {
 import NotificationBell from '@/components/notification-bell';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -35,7 +35,23 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const HERO_IMAGE = require('@/assets/images/group.jpg');
+const HERO_IMAGES = [
+  require('@/assets/images/group.jpg'),
+  require('@/assets/images/event 1.jpg'),
+  require('@/assets/images/event 2.jpg'),
+  require('@/assets/images/event 3.jpg'),
+  require('@/assets/images/event 4.jpg'),
+  require('@/assets/images/event 6.jpg'),
+  require('@/assets/images/event 7.jpg'),
+  require('@/assets/images/event 8.jpg'),
+  require('@/assets/images/event 9.jpg'),
+  require('@/assets/images/event 10.jpg'),
+  require('@/assets/images/event 11.jpg'),
+  require('@/assets/images/event 12.jpg'),
+  require('@/assets/images/event 13.jpg'),
+  require('@/assets/images/event 14.jpg'),
+  require('@/assets/images/event 15.jpg'),
+];
 
 const C = {
   bg: '#F8FAFD',
@@ -132,6 +148,21 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const isCompact = width < 390;
   const horizontalPadding = width < 380 ? 16 : 20;
+  const heroWidth = width - horizontalPadding * 2;
+
+  const heroScrollRef = useRef<ScrollView>(null);
+  const [heroIndex, setHeroIndex] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setHeroIndex(i => {
+        const next = (i + 1) % HERO_IMAGES.length;
+        heroScrollRef.current?.scrollTo({ x: next * heroWidth, animated: true });
+        return next;
+      });
+    }, 4000);
+    return () => clearInterval(t);
+  }, [heroWidth]);
 
   const { profile } = useUserProfile();
   const [applications, setApplications] = useState<Application[]>([]);
@@ -369,20 +400,47 @@ export default function HomeScreen() {
           <NotificationBell />
         </View>
 
-        {/* Hero */}
-        <ImageBackground source={HERO_IMAGE} style={styles.hero} imageStyle={styles.heroImg}>
-          <View style={styles.heroOverlay}>
-            <Text style={styles.heroGreeting}>{getGreeting()}</Text>
-            <Text style={[styles.heroName, isCompact && styles.heroNameCompact]}>
-              {displayName}
-            </Text>
-            <View style={styles.heroPillRow}>
-              <View style={styles.heroPill}>
-                <Text style={styles.heroPillText}>{displayRole}</Text>
-              </View>
-            </View>
+        {/* Hero Carousel */}
+        <View style={styles.hero}>
+          <ScrollView
+            ref={heroScrollRef}
+            horizontal
+            pagingEnabled
+            scrollEnabled
+            showsHorizontalScrollIndicator={false}
+            style={{ width: heroWidth }}
+            onMomentumScrollEnd={e => {
+              const idx = Math.round(e.nativeEvent.contentOffset.x / heroWidth);
+              setHeroIndex(idx);
+            }}
+          >
+            {HERO_IMAGES.map((img, i) => (
+              <ImageBackground
+                key={i}
+                source={img}
+                style={[styles.heroSlide, { width: heroWidth }]}
+                imageStyle={styles.heroImg}
+              >
+                <View style={styles.heroOverlay}>
+                  <Text style={styles.heroGreeting}>{getGreeting()}</Text>
+                  <Text style={[styles.heroName, isCompact && styles.heroNameCompact]}>
+                    {displayName}
+                  </Text>
+                  <View style={styles.heroPillRow}>
+                    <View style={styles.heroPill}>
+                      <Text style={styles.heroPillText}>{displayRole}</Text>
+                    </View>
+                  </View>
+                </View>
+              </ImageBackground>
+            ))}
+          </ScrollView>
+          <View style={styles.heroDots}>
+            {HERO_IMAGES.map((_, i) => (
+              <View key={i} style={[styles.heroDot, i === heroIndex && styles.heroDotActive]} />
+            ))}
           </View>
-        </ImageBackground>
+        </View>
 
 
         {/* Admin pending-apps banner */}
@@ -678,20 +736,39 @@ const styles = StyleSheet.create({
 
   hero: {
     borderRadius: 24,
-    minHeight: 200,
-    backgroundColor: C.primary,
     overflow: 'hidden',
+    backgroundColor: C.primary,
+  },
+  heroSlide: {
+    height: 230,
   },
   heroImg: {
     borderRadius: 24,
+    resizeMode: 'cover',
   },
   heroOverlay: {
-    minHeight: 200,
+    height: 230,
     padding: 20,
     justifyContent: 'flex-end',
     gap: 6,
-    borderRadius: 24,
-    backgroundColor: 'rgba(12, 22, 42, 0.62)',
+    backgroundColor: 'rgba(12, 22, 42, 0.55)',
+  },
+  heroDots: {
+    position: 'absolute',
+    bottom: 12,
+    right: 14,
+    flexDirection: 'row',
+    gap: 5,
+  },
+  heroDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  heroDotActive: {
+    width: 18,
+    backgroundColor: '#FFFFFF',
   },
   heroGreeting: {
     fontSize: 12,

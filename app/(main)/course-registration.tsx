@@ -98,38 +98,40 @@ export default function CourseRegistrationScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <ScrollView contentContainerStyle={styles.successContainer} showsVerticalScrollIndicator={false}>
-          <View style={styles.successIconWrap}>
-            <FontAwesome6 name="circle-check" size={52} color={C.success} />
+          <View style={styles.successInner}>
+            <View style={styles.successIconWrap}>
+              <FontAwesome6 name="circle-check" size={52} color={C.success} />
+            </View>
+            <Text style={styles.successTitle}>Registration Submitted!</Text>
+            <Text style={styles.successBody}>
+              Your registration for{' '}
+              <Text style={styles.successBold}>{selectedCourse?.label ?? courseInterest.toUpperCase()}</Text>
+              {' '}has been received. GIAC will review it and send you an admission letter with your student number.
+            </Text>
+            <View style={styles.successCard}>
+              <View style={styles.successRow}>
+                <Text style={styles.successMetaLabel}>Name</Text>
+                <Text style={styles.successMeta}>{fullName}</Text>
+              </View>
+              <View style={styles.successDivider} />
+              <View style={styles.successRow}>
+                <Text style={styles.successMetaLabel}>Email</Text>
+                <Text style={styles.successMeta}>{email}</Text>
+              </View>
+              <View style={styles.successDivider} />
+              <View style={styles.successRow}>
+                <Text style={styles.successMetaLabel}>Course</Text>
+                <Text style={styles.successMeta}>{selectedCourse?.desc ?? courseInterest.toUpperCase()}</Text>
+              </View>
+            </View>
+            <Pressable
+              onPress={() => router.replace('/(main)/home')}
+              style={({ pressed }) => [styles.submitBtn, pressed && styles.pressed]}
+            >
+              <Text style={styles.submitBtnText}>Back to Home</Text>
+              <FontAwesome6 name="house" size={14} color="#fff" />
+            </Pressable>
           </View>
-          <Text style={styles.successTitle}>Registration Submitted!</Text>
-          <Text style={styles.successBody}>
-            Your registration for{' '}
-            <Text style={styles.successBold}>{selectedCourse?.label ?? courseInterest.toUpperCase()}</Text>
-            {' '}has been received. GIAC will review it and send you an admission letter with your student number.
-          </Text>
-          <View style={styles.successCard}>
-            <View style={styles.successRow}>
-              <Text style={styles.successMetaLabel}>Name</Text>
-              <Text style={styles.successMeta}>{fullName}</Text>
-            </View>
-            <View style={styles.successDivider} />
-            <View style={styles.successRow}>
-              <Text style={styles.successMetaLabel}>Email</Text>
-              <Text style={styles.successMeta}>{email}</Text>
-            </View>
-            <View style={styles.successDivider} />
-            <View style={styles.successRow}>
-              <Text style={styles.successMetaLabel}>Course</Text>
-              <Text style={styles.successMeta}>{selectedCourse?.desc ?? courseInterest.toUpperCase()}</Text>
-            </View>
-          </View>
-          <Pressable
-            onPress={() => router.replace('/(main)/home')}
-            style={({ pressed }) => [styles.submitBtn, pressed && styles.pressed]}
-          >
-            <Text style={styles.submitBtnText}>Back to Home</Text>
-            <FontAwesome6 name="house" size={14} color="#fff" />
-          </Pressable>
         </ScrollView>
       </SafeAreaView>
     );
@@ -318,14 +320,18 @@ const styles = StyleSheet.create({
   noteText: { flex: 1, fontSize: 13, lineHeight: 20, fontFamily: Fonts.sans, color: C.secondary },
 
   submitBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: C.primary, borderRadius: 16, paddingVertical: 16,
   },
   submitBtnText: { fontSize: 16, fontFamily: Fonts.sansBold, color: '#FFFFFF' },
   pressed: { opacity: 0.85 },
 
   successContainer: {
-    flexGrow: 1, padding: 28, alignItems: 'center', justifyContent: 'center', gap: 20,
+    flexGrow: 1, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 20, paddingVertical: 40,
+  },
+  successInner: {
+    width: '100%', maxWidth: 480, gap: 20,
   },
   successIconWrap: {
     width: 96, height: 96, borderRadius: 48,

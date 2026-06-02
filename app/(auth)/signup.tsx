@@ -33,7 +33,8 @@ export default function SignupScreen() {
     return () => sub?.remove();
   }, []);
 
-  const [fullName, setFullName] = useState('');
+
+const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
