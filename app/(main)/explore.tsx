@@ -222,7 +222,7 @@ export default function ExploreScreen() {
         <View style={styles.hero}>
           <Text style={styles.heroEyebrow}>Explore</Text>
           <Text style={[styles.heroTitle, isCompact ? styles.heroTitleCompact : null]}>
-            Courses and Programs
+            Apply for a Programme
           </Text>
           <Text style={styles.heroDescription}>
             Browse GIAC programs, open course details, and start an application from a dedicated screen when you find the right fit.
