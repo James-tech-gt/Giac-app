@@ -220,32 +220,34 @@ export default function RequestMediationScreen() {
           contentContainerStyle={styles.successContainer}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.successIconWrap}>
-            <FontAwesome6 name="circle-check" size={56} color="#4A7C59" />
-          </View>
-          <Text style={styles.successHeading}>Request Submitted</Text>
-          <Text style={styles.successBody}>
-            Your {selectedService.label.toLowerCase()} request has been received by GIAC. You can track its progress from your cases page.
-          </Text>
-
-          <View style={styles.successDetail}>
-            <View style={styles.successDetailRow}>
-              <Text style={styles.successDetailLabel}>Service</Text>
-              <Text style={styles.successDetailValue}>{selectedService.label}</Text>
+          <View style={styles.successInner}>
+            <View style={styles.successIconWrap}>
+              <FontAwesome6 name="circle-check" size={56} color="#4A7C59" />
             </View>
-            <View style={styles.successDivider} />
-            <View style={styles.successDetailRow}>
-              <Text style={styles.successDetailLabel}>Status</Text>
-              <Text style={[styles.successDetailValue, { color: '#4A7C59' }]}>Submitted</Text>
-            </View>
-          </View>
+            <Text style={styles.successHeading}>Request Submitted</Text>
+            <Text style={styles.successBody}>
+              Your {selectedService.label.toLowerCase()} request has been received by GIAC. You can track its progress from your cases page.
+            </Text>
 
-          <Pressable
-            onPress={() => router.replace('/(main)/home')}
-            style={({ pressed }) => [styles.ghostButton, pressed ? styles.pressed : null]}
-          >
-            <Text style={styles.ghostButtonText}>Back to Home</Text>
-          </Pressable>
+            <View style={styles.successDetail}>
+              <View style={styles.successDetailRow}>
+                <Text style={styles.successDetailLabel}>Service</Text>
+                <Text style={styles.successDetailValue}>{selectedService.label}</Text>
+              </View>
+              <View style={styles.successDivider} />
+              <View style={styles.successDetailRow}>
+                <Text style={styles.successDetailLabel}>Status</Text>
+                <Text style={[styles.successDetailValue, { color: '#4A7C59' }]}>Submitted</Text>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={() => router.replace('/(main)/home')}
+              style={({ pressed }) => [styles.ghostButton, pressed ? styles.pressed : null]}
+            >
+              <Text style={styles.ghostButtonText}>Back to Home</Text>
+            </Pressable>
+          </View>
         </ScrollView>
       </SafeAreaView>
     );
@@ -855,9 +857,14 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 28,
-    paddingVertical: 60,
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+  },
+  successInner: {
+    width: '100%',
+    maxWidth: 480,
     gap: 16,
+    alignItems: 'center',
   },
   successIconWrap: {
     width: 100,
@@ -952,6 +959,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#CBD3E0',
   },
   ghostButton: {
+    width: '100%',
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
