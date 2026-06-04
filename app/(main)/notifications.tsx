@@ -238,7 +238,7 @@ function PersonalNotifItem({ item }: { item: StudentNotification }) {
 }
 
 function AdminNotifItem({ item }: { item: AdminNotification }) {
-  const tappable = item.type === 'service' || item.type === 'application' || item.type === 'registration';
+  const tappable = ['service', 'application', 'registration', 'test_submission', 'assignment_submission'].includes(item.type);
 
   function handlePress() {
     if (item.type === 'application') {
@@ -247,8 +247,18 @@ function AdminNotifItem({ item }: { item: AdminNotification }) {
       router.push({ pathname: '/admin', params: { openRegistrations: '1' } } as any);
     } else if (item.type === 'service') {
       router.push({ pathname: '/admin', params: { openCaseId: item.referenceId } } as any);
+    } else if (item.type === 'test_submission') {
+      router.push({ pathname: '/admin', params: { openTests: '1' } } as any);
+    } else if (item.type === 'assignment_submission') {
+      router.push({ pathname: '/admin', params: { openAssignments: '1' } } as any);
     }
   }
+
+  let tagLabel = 'Admin';
+  let tagBg = '#E9EEF8';
+  let tagColor = '#2E4A8A';
+  if (item.type === 'test_submission') { tagLabel = 'Test'; tagBg = '#F8F2E2'; tagColor = '#A9822A'; }
+  if (item.type === 'assignment_submission') { tagLabel = 'Assignment'; tagBg = '#EAF0F8'; tagColor = '#2E4A8A'; }
 
   return (
     <Pressable
@@ -266,8 +276,8 @@ function AdminNotifItem({ item }: { item: AdminNotification }) {
               <Text style={styles.newPillText}>New</Text>
             </View>
           )}
-          <View style={[styles.urgentPill, { backgroundColor: '#E9EEF8' }]}>
-            <Text style={[styles.urgentPillText, { color: C.secondary }]}>Admin</Text>
+          <View style={[styles.urgentPill, { backgroundColor: tagBg }]}>
+            <Text style={[styles.urgentPillText, { color: tagColor }]}>{tagLabel}</Text>
           </View>
           {tappable && (
             <FontAwesome6 name="chevron-right" size={10} color={C.textMuted} />

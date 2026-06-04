@@ -68,8 +68,8 @@ const EDUCATION_LEVELS = [
 const PAYMENT_MODES = ['MoMo', 'Bank Transfer', 'Other'];
 
 const MOMO_DETAILS = [
-  { network: 'MTN MoMo', number: '0554670757', name: 'Global Institute of ADR Center' },
-  { network: 'Merchant (All Networks)', number: 'Merchant ID: 883031', name: 'Global Institute of ADR Center LTD' },
+  { network: 'MTN MoMo', number: '0554670757', sub: '' },
+  { network: 'Merchant ID (All Networks)', number: '883031', sub: 'Global Institute of ADR Center LTD' },
 ];
 
 const BANK_DETAILS = {
@@ -682,10 +682,17 @@ export default function ApplicationScreen() {
                 <Text style={styles.payDetailsTitle}>Send Payment via MoMo</Text>
               </View>
               {MOMO_DETAILS.map((m) => (
-                <View key={m.network} style={styles.payDetailsRow}>
-                  <Text style={styles.payDetailsNetwork}>{m.network}</Text>
-                  <Text style={styles.payDetailsNumber}>{m.number}</Text>
-                  <Text style={styles.payDetailsName}>{m.name}</Text>
+                <View key={m.network} style={{ gap: 2 }}>
+                  <View style={styles.payDetailsRow}>
+                    <Text style={styles.payDetailsNetwork}>{m.network}</Text>
+                    <Text style={styles.payDetailsNumber}>{m.number}</Text>
+                  </View>
+                  {m.sub ? (
+                    <View style={styles.payDetailsRow}>
+                      <Text style={styles.payDetailsNetwork}>Merchant Name</Text>
+                      <Text style={styles.payDetailsNumber}>{m.sub}</Text>
+                    </View>
+                  ) : null}
                 </View>
               ))}
               <Text style={styles.payDetailsNote}>Use your full name as the sender reference.</Text>

@@ -218,6 +218,7 @@ export default function AssignmentsScreen() {
     try {
       const input: AssignmentSubmissionInput = {
         assignmentId: assignment.id,
+        assignmentTitle: assignment.title,
         userId: user.uid,
         courseId: assignment.courseId,
         submissionText: draft,

@@ -968,6 +968,7 @@ function AdminPanel() {
 
   // Tests
   const [adminTests, setAdminTests] = useState<AdminTest[]>([]);
+  const [testTab, setTestTab] = useState<'create' | 'submissions'>('create');
   const [testTitle, setTestTitle] = useState('');
   const [testDesc, setTestDesc] = useState('');
   const [testDate, setTestDate] = useState('');
@@ -3192,7 +3193,9 @@ function AdminPanel() {
                 <Text style={[styles.tabBtnText, asnTab === 'create' ? styles.tabBtnTextActive : null]}>Create</Text>
               </Pressable>
               <Pressable onPress={() => setAsnTab('submissions')} style={[styles.tabBtn, asnTab === 'submissions' ? styles.tabBtnActive : null]}>
-                <Text style={[styles.tabBtnText, asnTab === 'submissions' ? styles.tabBtnTextActive : null]}>Submissions</Text>
+                <Text style={[styles.tabBtnText, asnTab === 'submissions' ? styles.tabBtnTextActive : null]}>
+                  Submissions ({adminAssignments.reduce((acc, a) => acc + a.submissions.length, 0)})
+                </Text>
               </Pressable>
             </View>
 
@@ -3405,12 +3408,24 @@ function AdminPanel() {
 
         {activeView === 'tests' ? (
           <>
+            <View style={styles.tabRow}>
+              <Pressable onPress={() => setTestTab('create')} style={[styles.tabBtn, testTab === 'create' ? styles.tabBtnActive : null]}>
+                <Text style={[styles.tabBtnText, testTab === 'create' ? styles.tabBtnTextActive : null]}>Create</Text>
+              </Pressable>
+              <Pressable onPress={() => setTestTab('submissions')} style={[styles.tabBtn, testTab === 'submissions' ? styles.tabBtnActive : null]}>
+                <Text style={[styles.tabBtnText, testTab === 'submissions' ? styles.tabBtnTextActive : null]}>
+                  Submissions ({adminTests.reduce((acc, t) => acc + t.submissions.length, 0)})
+                </Text>
+              </Pressable>
+            </View>
+
             {testMsg ? (
               <View style={[styles.banner, { backgroundColor: testMsg.kind === 'success' ? C.successSoft : C.dangerSoft }]}>
                 <Text style={[styles.bannerText, { color: testMsg.kind === 'success' ? C.success : C.danger }]}>{testMsg.text}</Text>
               </View>
             ) : null}
 
+            {testTab !== 'submissions' ? (
             <View style={styles.workspaceCard}>
                 <Text style={styles.workspaceTitle}>Schedule New Test</Text>
 
@@ -3478,15 +3493,17 @@ function AdminPanel() {
                   {testSaving ? <ActivityIndicator size="small" color={C.textInverse} /> : <Text style={styles.primaryButtonText}>Schedule Test</Text>}
                 </Pressable>
             </View>
-
-            {adminTests.length > 0 ? (
+            ) : (
+              adminTests.length === 0 ? (
+                <EmptyState icon="clipboard-list" title="No tests yet" body="Schedule a test first, then students' submissions will appear here." />
+              ) : (
               <View style={styles.stack}>
                 {adminTests.map((test) => (
                   <View key={test.id} style={styles.panelCard}>
                     <View style={styles.panelHeaderRow}>
                       <View style={styles.panelHeaderCopy}>
                         <Text style={styles.panelTitle}>{test.title}</Text>
-                        <Text style={styles.panelSubtitle}>{test.courseId.toUpperCase()} · {formatDate(test.scheduledDate)} · {test.durationMinutes} min</Text>
+                        <Text style={styles.panelSubtitle}>{test.courseId.toUpperCase()} · {formatDate(test.scheduledDate)} · {test.durationMinutes} min · {test.submissions.length} submission{test.submissions.length !== 1 ? 's' : ''}</Text>
                       </View>
                       <Pressable
                         onPress={() => handleDeleteTest(test.id, test.fileUrl)}
@@ -3614,7 +3631,8 @@ function AdminPanel() {
                   </View>
                 ))}
               </View>
-            ) : null}
+              )
+            )}
           </>
         ) : null}
 

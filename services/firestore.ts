@@ -63,7 +63,7 @@ export interface AnnouncementInput {
 
 export interface AdminNotification {
   id: string;
-  type: 'application' | 'service' | 'account' | 'registration';
+  type: 'application' | 'service' | 'account' | 'registration' | 'test_submission' | 'assignment_submission';
   message: string;
   referenceId: string;
   userId: string;
@@ -276,7 +276,7 @@ function isCurrentApplicationRecord(application: Application) {
 
 // ─── Internal helpers ───────────────────────────────────────────────────────
 export async function createAdminNotification(data: {
-  type: 'application' | 'service' | 'account' | 'registration';
+  type: 'application' | 'service' | 'account' | 'registration' | 'test_submission' | 'assignment_submission';
   message: string;
   referenceId: string;
   userId: string;
@@ -1101,6 +1101,7 @@ export interface Assignment {
 
 export interface AssignmentSubmissionInput {
   assignmentId: string;
+  assignmentTitle?: string;
   userId: string;
   courseId: string;
   submissionText?: string;
@@ -1206,6 +1207,12 @@ export async function submitAssignment(input: AssignmentSubmissionInput): Promis
       submittedAt: serverTimestamp(),
     },
   });
+  createAdminNotification({
+    type: 'assignment_submission',
+    message: `${input.studentName?.trim() || 'A student'} submitted an assignment${input.assignmentTitle ? `: "${input.assignmentTitle}"` : ''}.`,
+    referenceId: input.assignmentId,
+    userId: input.userId,
+  }).catch(() => {});
 }
 
 // ─── Student: Tests ──────────────────────────────────────────────────────────
@@ -1229,6 +1236,7 @@ export interface Test {
 
 export interface TestSubmissionInput {
   testId: string;
+  testTitle?: string;
   userId: string;
   courseId: string;
   submissionText?: string;
@@ -1340,6 +1348,12 @@ export async function submitTest(input: TestSubmissionInput): Promise<void> {
       submittedAt: serverTimestamp(),
     },
   });
+  createAdminNotification({
+    type: 'test_submission',
+    message: `${input.studentName?.trim() || 'A student'} submitted a test${input.testTitle ? `: "${input.testTitle}"` : ''}.`,
+    referenceId: input.testId,
+    userId: input.userId,
+  }).catch(() => {});
 }
 
 // ─── Student: Certificates ───────────────────────────────────────────────────

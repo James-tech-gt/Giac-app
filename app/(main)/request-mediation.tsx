@@ -159,6 +159,7 @@ export default function RequestMediationScreen() {
   const isCompact = width < 390;
   const horizontalPadding = width < 380 ? 16 : 20;
   const scrollRef = useRef<ScrollView>(null);
+  const caseDetailsY = useRef(0);
   const [serviceType, setServiceType] = useState<ServiceType>('mediation');
   const [category, setCategory] = useState('');
   const [caseDetails, setCaseDetails] = useState('');
@@ -257,7 +258,7 @@ export default function RequestMediationScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.safe}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
         <ScrollView
@@ -435,13 +436,21 @@ export default function RequestMediationScreen() {
             </View>
           ) : null}
 
-          <View style={styles.field}>
+          <View
+            style={styles.field}
+            onLayout={(e) => { caseDetailsY.current = e.nativeEvent.layout.y; }}
+          >
             <Text style={styles.fieldLabel}>Case details</Text>
             <TextInput
               value={caseDetails}
               onChangeText={(v) => {
                 setCaseDetails(v);
                 if (errors.caseDetails) setErrors((e) => ({ ...e, caseDetails: undefined }));
+              }}
+              onFocus={() => {
+                setTimeout(() => {
+                  scrollRef.current?.scrollTo({ y: caseDetailsY.current + 200, animated: true });
+                }, 150);
               }}
               placeholder="Describe the issue or dispute in at least 30 characters"
               placeholderTextColor={C.textMuted}
@@ -761,6 +770,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   optionTitle: {
+    flex: 1,
     fontSize: 14,
     lineHeight: 20,
     fontFamily: Fonts.sansSemiBold,

@@ -219,6 +219,7 @@ export default function TestsScreen() {
     try {
       const input: TestSubmissionInput = {
         testId: test.id,
+        testTitle: test.title,
         userId: user.uid,
         courseId: test.courseId,
         submissionText: draft,
